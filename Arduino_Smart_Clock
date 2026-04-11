@@ -1,0 +1,939 @@
+#include <MD_Parola.h>
+#include <MD_MAX72xx.h>
+#include <SPI.h>
+#include <Wire.h>
+#include "RTClib.h"
+#include <EEPROM.h>
+
+// ========== CONFIGURATION START ==========
+#define HARDWARE_TYPE MD_MAX72XX::FC16_HW
+#define MAX_DEVICES 6
+#define CLK_PIN 13
+#define DATA_PIN 11
+#define CS_PIN 10
+#define BUZZER_PIN 9
+
+// Button Pins
+#define MODE_SELECT_PIN 2    // Button 1: Mode select
+#define SET_CONFIRM_PIN 3    // Button 2: Set/Confirm
+#define INCREASE_PIN 4       // Button 3: Increase
+#define DECREASE_PIN 5       // Button 4: Decrease
+#define DISCARD_PIN 6        // Button 5: Discard/Reset
+#define BEEP_SWITCH_PIN 7    // External switch for beep control
+
+// Buzzer frequencies
+#define BEEP_BUTTON_FREQ 1800    // Button beeps
+#define BEEP_ALARM_FREQ 2700     // Alarm continuous
+#define BEEP_STOPWATCH_FREQ 2700 // Stopwatch continuous
+#define BEEP_SECOND_FREQ 800    // Per second beep - DEFAULT
+#define BEEP_NIGHT_FREQ 800     // Night beep - SOFT
+
+// Brightness settings
+#define DAY_BRIGHTNESS 3         // 6:00 AM to 9:00 PM
+#define NIGHT_BRIGHTNESS 0       // 9:00 PM to 6:00 AM
+
+// EEPROM Addresses
+#define EEPROM_ALARM_HOUR 0      // Alarm hour storage address
+#define EEPROM_ALARM_MINUTE 1    // Alarm minute storage address
+#define EEPROM_ALARM_AM 2        // Alarm AM/PM storage address
+#define EEPROM_ALARM_ENABLED 3   // Alarm enabled status storage address
+#define EEPROM_MAGIC_NUMBER 4    // Magic number to check if data is valid
+
+// Magic number to verify EEPROM data
+#define MAGIC_NUM 123
+
+// ========== CUSTOM DIGIT FONT (LCD STYLE) ==========
+const uint8_t PROGMEM lcdDigits[10][8] = {
+ {0b00111100,0b01100110,0b01100110,0b01100110,0b01100110,0b01100110,0b01100110,0b00111100},
+ {0b00011000,0b00111000,0b00011000,0b00011000,0b00011000,0b00011000,0b00011000,0b01111110},
+ {0b00111100,0b01100110,0b00000110,0b00001100,0b00011000,0b00110000,0b01100000,0b01111110},
+ {0b00111100,0b01100110,0b00000110,0b00011100,0b00000110,0b00000110,0b01100110,0b00111100},
+ {0b00000110,0b00001110,0b00011110,0b00110110,0b01100110,0b01111110,0b00000110,0b00000110},
+ {0b01111110,0b01100000,0b01100000,0b01111100,0b00000110,0b00000110,0b01100110,0b00111100},
+ {0b00111100,0b01100110,0b01100000,0b01111100,0b01100110,0b01100110,0b01100110,0b00111100},
+ {0b01111110,0b00000110,0b00001100,0b00011000,0b00110000,0b00110000,0b00110000,0b00110000},
+ {0b00111100,0b01100110,0b01100110,0b00111100,0b01100110,0b01100110,0b01100110,0b00111100},
+ {0b00111100,0b01100110,0b01100110,0b01100110,0b00111110,0b00000110,0b01100110,0b00111100}
+};
+
+// ========== OBJECTS ==========
+MD_Parola display = MD_Parola(HARDWARE_TYPE, DATA_PIN, CLK_PIN, CS_PIN, MAX_DEVICES);
+RTC_DS3231 rtc;
+
+// ========== DIGIT DRAWING FUNCTIONS ==========
+#define DIGIT_WIDTH 6
+#define TOTAL_COLS (MAX_DEVICES * 8) // 6 * 8 = 48
+
+// Positions for digits and colons
+#define H1_POS 1    // Hour/1st-group tens
+#define H2_POS 8    // Hour/1st-group ones
+#define C1_POS 15   // First colon/slash
+#define M1_POS 18   // Minute/2nd-group tens
+#define M2_POS 25   // Minute/2nd-group ones
+#define C2_POS 32   // Second colon/slash (SS or YY)
+#define S1_POS 35   // Second/3rd-group tens
+#define S2_POS 42   // Second/3rd-group ones
+
+// Mirror fix for FC16_HW display
+uint8_t mapCol(uint8_t col) {
+  return (TOTAL_COLS - 1) - col;
+}
+
+// Draw a single digit
+void drawDigit(uint8_t digit, uint8_t startCol) {
+  if (digit > 9) return;
+ 
+  for (uint8_t row = 0; row < 8; row++) {
+    uint8_t rowData = pgm_read_byte(&lcdDigits[digit][row]);
+    for (uint8_t col = 0; col < DIGIT_WIDTH; col++) {
+      bool pixel = (rowData >> (DIGIT_WIDTH - col)) & 0x01;
+      display.getGraphicObject()->setPoint(row, mapCol(startCol + col), pixel);
+    }
+  }
+}
+
+// Draw/clear colon
+void drawColon(uint8_t col, bool state) {
+  display.getGraphicObject()->setPoint(2, mapCol(col), state);
+  display.getGraphicObject()->setPoint(5, mapCol(col), state);
+}
+
+// Draw complete time (Used for Mode 0 - HH:MM:SS)
+void drawCustomTime(uint8_t g1, uint8_t g2, uint8_t g3, bool showColon) {
+  display.getGraphicObject()->clear();
+ 
+  // Group 1 (HH / DD)
+  drawDigit(g1 / 10, H1_POS);
+  drawDigit(g1 % 10, H2_POS);
+  drawColon(C1_POS, showColon);
+ 
+  // Group 2 (MM / MM)
+  drawDigit(g2 / 10, M1_POS);
+  drawDigit(g2 % 10, M2_POS);
+  drawColon(C2_POS, showColon);
+ 
+  // Group 3 (SS / YY)
+  drawDigit(g3 / 10, S1_POS);
+  drawDigit(g3 % 10, S2_POS);
+}
+
+// Draw slash for date format
+void drawSlash(uint8_t col) {
+  display.getGraphicObject()->setPoint(1, mapCol(col), true);
+  display.getGraphicObject()->setPoint(2, mapCol(col), true);
+  display.getGraphicObject()->setPoint(3, mapCol(col), false);
+  display.getGraphicObject()->setPoint(4, mapCol(col), false);
+  display.getGraphicObject()->setPoint(5, mapCol(col), true);
+  display.getGraphicObject()->setPoint(6, mapCol(col), true);
+}
+
+// Draw date with slashes (DD/MM/YY)
+void drawDate(uint8_t day, uint8_t month, uint8_t year) {
+  display.getGraphicObject()->clear();
+ 
+  // Day
+  drawDigit(day / 10, H1_POS);
+  drawDigit(day % 10, H2_POS);
+ 
+  // Slash 1
+  drawSlash(C1_POS);
+ 
+  // Month
+  drawDigit(month / 10, M1_POS);
+  drawDigit(month % 10, M2_POS);
+ 
+  // Slash 2
+  drawSlash(C2_POS);
+ 
+  // Year
+  drawDigit(year / 10, S1_POS);
+  drawDigit(year % 10, S2_POS);
+}
+
+// ========== VARIABLES ==========
+uint8_t mode = 0;
+bool colonState = false;
+bool alarmEnabled = false;
+bool stopwatchRunning = false;
+bool alarmRinging = false;
+bool stopwatchOver = false;
+
+uint8_t displayedHour12 = 0;
+uint8_t displayedMinute = 0;
+uint8_t displayedSecond = 0;
+uint8_t displayedStopwatchHours = 0;
+uint8_t displayedStopwatchMinutes = 0;
+uint8_t displayedStopwatchSeconds = 0;
+
+uint8_t alarmHour12 = 12;
+uint8_t alarmMinute = 0;
+bool alarmAM = true;
+uint8_t stopwatchHours = 0;
+uint8_t stopwatchMinutes = 0;
+uint8_t stopwatchSeconds = 0;
+
+unsigned long lastSecond = 0;
+unsigned long alarmStartTime = 0;
+unsigned long stopwatchStartTime = 0;
+unsigned long stopwatchTotalTime = 0;
+unsigned long timeOverStartTime = 0;
+
+DateTime now;
+bool initialDraw = true;
+bool stopwatchInitialDraw = true;
+
+char displayBuffer[20];
+unsigned long lastButtonCheck = 0;
+bool displayNeedsUpdate = true;
+
+// BEEPING SYSTEM
+uint8_t lastSecondBeeped = 255;
+
+// Info Static Mode Variables (NO SCROLL)
+uint8_t infoStaticState = 0; // 0: Date (DD/MM/YY), 1: Time (HH:MM AM/PM), 2: Day (Text)
+unsigned long lastStateChange = 0;
+const unsigned long STATE_INTERVAL = 8000; // 8 seconds per state
+
+// ========== EEPROM FUNCTIONS ==========
+void saveAlarmToEEPROM() {
+  EEPROM.write(EEPROM_ALARM_HOUR, alarmHour12);
+  EEPROM.write(EEPROM_ALARM_MINUTE, alarmMinute);
+  EEPROM.write(EEPROM_ALARM_AM, alarmAM ? 1 : 0);
+  EEPROM.write(EEPROM_ALARM_ENABLED, alarmEnabled ? 1 : 0);
+  EEPROM.write(EEPROM_MAGIC_NUMBER, MAGIC_NUM);
+ 
+  // Optional: Beep to confirm save
+  beep(BEEP_BUTTON_FREQ, 50);
+}
+
+void loadAlarmFromEEPROM() {
+  // Check if valid data exists
+  if (EEPROM.read(EEPROM_MAGIC_NUMBER) == MAGIC_NUM) {
+    alarmHour12 = EEPROM.read(EEPROM_ALARM_HOUR);
+    alarmMinute = EEPROM.read(EEPROM_ALARM_MINUTE);
+    alarmAM = EEPROM.read(EEPROM_ALARM_AM) == 1;
+    alarmEnabled = EEPROM.read(EEPROM_ALARM_ENABLED) == 1;
+   
+    // Validate loaded data
+    if (alarmHour12 < 1 || alarmHour12 > 12) alarmHour12 = 12;
+    if (alarmMinute > 59) alarmMinute = 0;
+  }
+}
+
+void clearEEPROM() {
+  for (int i = 0; i < 10; i++) {
+    EEPROM.write(i, 0);
+  }
+}
+
+// ========== UTILITY FUNCTIONS ==========
+void beep(uint16_t freq, uint16_t dur) {
+  tone(BUZZER_PIN, freq, dur);
+  delay(dur);
+  noTone(BUZZER_PIN);
+}
+
+void longBeep(uint16_t freq) {
+  tone(BUZZER_PIN, freq);
+}
+
+bool isBeepSwitchOn() {
+  return digitalRead(BEEP_SWITCH_PIN) == LOW;
+}
+
+// Precise time update with switch-controlled beep
+void updateTimeWithPreciseBeep() {
+  static uint8_t lastRTCSecond = 255;
+ 
+  now = rtc.now();
+  uint8_t currentSecond = now.second();
+ 
+  if (currentSecond != lastRTCSecond) {
+    lastRTCSecond = currentSecond;
+    colonState = !colonState;
+   
+    // Switch-controlled beep at second change (only in default mode)
+    if (mode == 0 && isBeepSwitchOn() && currentSecond != lastSecondBeeped) {
+      lastSecondBeeped = currentSecond;
+      if (now.hour() >= 21 || now.hour() < 6) {
+        tone(BUZZER_PIN, BEEP_NIGHT_FREQ, 30);
+      } else {
+        tone(BUZZER_PIN, BEEP_SECOND_FREQ, 60);
+      }
+    }
+    // If we are in the time static mode, we need to trigger a redraw
+    // every minute if we are not using custom graphic digits for HH:MM.
+    if (mode == 12 && infoStaticState == 1) {
+        displayNeedsUpdate = true;
+    }
+  }
+ 
+  // Brightness control
+  static uint8_t lastBrightnessHour = 255;
+  uint8_t currentHour = now.hour();
+  if (currentHour != lastBrightnessHour) {
+    lastBrightnessHour = currentHour;
+    if (currentHour >= 6 && currentHour < 21) {
+      display.setIntensity(DAY_BRIGHTNESS);
+    } else {
+      display.setIntensity(NIGHT_BRIGHTNESS);
+    }
+  }
+}
+
+// ========== DISPLAY FUNCTIONS (Core) ==========
+
+// Update clock display (Mode 0)
+void updateDisplayedClockTime() {
+  uint8_t hour12 = now.hour() % 12;
+  if(hour12 == 0) hour12 = 12;
+  uint8_t minute = now.minute();
+  uint8_t second = now.second();
+ 
+  if(initialDraw) {
+    drawCustomTime(hour12, minute, second, colonState);
+    displayedHour12 = hour12;
+    displayedMinute = minute;
+    displayedSecond = second;
+    initialDraw = false;
+    return;
+  }
+ 
+  // Optimized drawing update
+  drawColon(C1_POS, colonState);
+  drawColon(C2_POS, colonState);
+ 
+  if(second != displayedSecond) {
+    drawDigit(second % 10, S2_POS);
+    if(second / 10 != displayedSecond / 10) {
+      drawDigit(second / 10, S1_POS);
+    }
+    displayedSecond = second;
+  }
+ 
+  if(minute != displayedMinute) {
+    drawDigit(minute % 10, M2_POS);
+    if(minute / 10 != displayedMinute / 10) {
+      drawDigit(minute / 10, M1_POS);
+    }
+    displayedMinute = minute;
+  }
+ 
+  if(hour12 != displayedHour12) {
+    drawDigit(hour12 % 10, H2_POS);
+    if(hour12 / 10 != displayedHour12 / 10) {
+      drawDigit(hour12 / 10, H1_POS);
+    }
+    displayedHour12 = hour12;
+  }
+}
+
+// Update stopwatch display (Mode 9)
+void updateDisplayedStopwatchTime(uint8_t hours, uint8_t minutes, uint8_t seconds) {
+  if(stopwatchInitialDraw) {
+    drawCustomTime(hours, minutes, seconds, colonState);
+    displayedStopwatchHours = hours;
+    displayedStopwatchMinutes = minutes;
+    displayedStopwatchSeconds = seconds;
+    stopwatchInitialDraw = false;
+    return;
+  }
+ 
+  drawColon(C1_POS, colonState);
+  drawColon(C2_POS, colonState);
+ 
+  if(seconds != displayedStopwatchSeconds) {
+    drawDigit(seconds % 10, S2_POS);
+    if(seconds / 10 != displayedStopwatchSeconds / 10) {
+      drawDigit(seconds / 10, S1_POS);
+    }
+    displayedStopwatchSeconds = seconds;
+  }
+ 
+  if(minutes != displayedStopwatchMinutes) {
+    drawDigit(minutes % 10, M2_POS);
+    if(minutes / 10 != displayedStopwatchMinutes / 10) {
+      drawDigit(minutes / 10, M1_POS);
+    }
+    displayedStopwatchMinutes = minutes;
+  }
+ 
+  if(hours != displayedStopwatchHours) {
+    drawDigit(hours % 10, H2_POS);
+    if(hours / 10 != displayedStopwatchHours / 10) {
+      drawDigit(hours / 10, H1_POS);
+    }
+    displayedStopwatchHours = hours;
+  }
+}
+
+// Update Info Static Display (Mode 12) - NO SCROLL, STATIC TRANSITION (Corrected version)
+void updateInfoStaticMode() {
+  static uint8_t lastDrawnState = 255;
+  static uint8_t lastDisplayedMinute = 255;
+  static bool contentNeedsRedraw = true;
+ 
+  // Check if it's time to switch to next state
+  if (millis() - lastStateChange >= STATE_INTERVAL || initialDraw) {
+    lastStateChange = millis();
+    initialDraw = false;
+   
+    // Cycle to next state (0 -> 1 -> 2 -> 0...)
+    infoStaticState = (infoStaticState + 1) % 3;
+   
+    // Force redraw for new state
+    contentNeedsRedraw = true;
+    lastDrawnState = 255;
+   
+    // Clear display only here to prevent flicker between states
+    display.displayClear();
+    display.getGraphicObject()->clear();
+  }
+ 
+  // State 1 (Time) needs periodic update for minute change
+  if (infoStaticState == 1) {
+    // We update the content only when the minute changes or when the state is newly entered
+    if (now.minute() != lastDisplayedMinute) {
+      lastDisplayedMinute = now.minute();
+      contentNeedsRedraw = true;
+    }
+  }
+ 
+  // Redraw only when state changes or content needs update
+  if (infoStaticState != lastDrawnState || contentNeedsRedraw) {
+    lastDrawnState = infoStaticState;
+    contentNeedsRedraw = false;
+   
+    // --- State 0: Date (DD/MM/YY) - GRAPHIC MODE ---
+    if (infoStaticState == 0) {
+      // Clear graphic buffer for redrawing
+      display.getGraphicObject()->clear();
+      drawDate(now.day(), now.month(), now.year() % 100);
+     
+      // NOTE: For static graphic display, no further action is needed here.
+    }
+    // --- State 1: Time (HH:MM AM/PM) - TEXT MODE (FIXED FONT) ---
+    else if (infoStaticState == 1) {
+      // Ensure the display is in text mode and clear any previous graphics
+      display.displayClear();
+      display.setTextAlignment(PA_CENTER);
+
+      uint8_t hour12 = now.hour() % 12;
+      if(hour12 == 0) hour12 = 12;
+     
+      if (now.hour() < 12) {
+        snprintf(displayBuffer, 20, "%02d:%02d AM", hour12, now.minute());
+      } else {
+        snprintf(displayBuffer, 20, "%02d:%02d PM", hour12, now.minute());
+      }
+     
+      display.print(displayBuffer);
+    }
+    // --- State 2: Day (Text) - TEXT MODE ---
+    else if (infoStaticState == 2) {
+      // Ensure the display is in text mode and clear any previous graphics
+      display.displayClear();
+      display.setTextAlignment(PA_CENTER);
+     
+      const char* days[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+      display.print(days[now.dayOfTheWeek()]);
+    }
+  }
+}
+
+// ========== BUTTON ACTIONS ==========
+
+void incrementValue() {
+  beep(BEEP_BUTTON_FREQ, 30);
+  displayNeedsUpdate = true;
+ 
+  switch(mode) {
+    case 3:
+      alarmHour12 = (alarmHour12 % 12) + 1;
+      break;
+    case 4:
+      alarmMinute = (alarmMinute + 1) % 60;
+      break;
+    case 5:
+      alarmAM = !alarmAM;
+      break;
+    case 6: stopwatchHours = (stopwatchHours + 1) % 24; break;
+    case 7: stopwatchMinutes = (stopwatchMinutes + 1) % 60; break;
+    case 8: if(!stopwatchRunning) stopwatchSeconds = (stopwatchSeconds + 1) % 60; break;
+  }
+}
+
+void decrementValue() {
+  beep(BEEP_BUTTON_FREQ, 30);
+  displayNeedsUpdate = true;
+ 
+  switch(mode) {
+    case 3:
+      alarmHour12 = (alarmHour12 == 1) ? 12 : (alarmHour12 - 1);
+      break;
+    case 4:
+      alarmMinute = (alarmMinute == 0) ? 59 : (alarmMinute - 1);
+      break;
+    case 5:
+      alarmAM = !alarmAM;
+      break;
+    case 6: stopwatchHours = (stopwatchHours == 0) ? 23 : (stopwatchHours - 1); break;
+    case 7: stopwatchMinutes = (stopwatchMinutes == 0) ? 59 : (stopwatchMinutes - 1); break;
+    case 8: if(!stopwatchRunning) stopwatchSeconds = (stopwatchSeconds == 0) ? 59 : (stopwatchSeconds - 1); break;
+  }
+}
+
+// Simplified button handler
+void handleButton(uint8_t pin, void (*action)()) {
+  static unsigned long lastPress[7] = {0};
+  uint8_t idx = pin - 2;
+ 
+  if(!digitalRead(pin)) {
+    if(millis() - lastPress[idx] > 200) {
+      lastPress[idx] = millis();
+      action();
+    }
+    while(!digitalRead(pin)) delay(10);
+  }
+}
+
+void modeSelectAction() {
+  // If currently in TIME OVER mode, stop it and go back to mode 0
+  if(mode == 10 || mode == 11) {
+    noTone(BUZZER_PIN);
+    alarmRinging = false;
+    stopwatchOver = false;
+    mode = 0;
+    initialDraw = true;
+    displayNeedsUpdate = true;
+    beep(BEEP_BUTTON_FREQ, 100);
+    return;
+  }
+
+  // Rest of existing mode cycle logic
+  if(mode == 0) mode = 1;
+  else if(mode == 1) mode = 2;
+  else if(mode == 2) {
+    mode = 12; // **INFO STATIC DISPLAY**
+    infoStaticState = 0; // Start with state 0
+    lastStateChange = 0; // Trigger immediate display
+    initialDraw = true;
+    display.setTextAlignment(PA_CENTER); // Reset alignment
+  }
+  else if(mode == 12) mode = 0; // **CYCLE BACK TO DEFAULT**
+  else mode = 0;
+
+  initialDraw = true;
+  displayNeedsUpdate = true;
+  beep(BEEP_BUTTON_FREQ, 100);
+}
+
+void setConfirmAction() {
+  beep(BEEP_BUTTON_FREQ, 250);
+  displayNeedsUpdate = true;
+ 
+  switch(mode) {
+    case 1:
+      mode = 3;
+      initialDraw = true;
+      break;
+    case 2:
+      mode = 6;
+      stopwatchHours = stopwatchMinutes = stopwatchSeconds = 0;
+      initialDraw = true;
+      break;
+    case 3:
+      mode = 4;
+      initialDraw = true;
+      break;
+    case 4:
+      mode = 5;
+      initialDraw = true;
+      break;
+    case 5:
+      alarmEnabled = true;
+      saveAlarmToEEPROM(); // Save alarm to EEPROM
+      mode = 0;
+      initialDraw = true;
+      break;
+    case 6:
+      mode = 7;
+      initialDraw = true;
+      break;
+    case 7:
+      mode = 8;
+      initialDraw = true;
+      break;
+    case 8:
+      stopwatchTotalTime = (stopwatchHours * 3600000UL) + (stopwatchMinutes * 60000UL) + (stopwatchSeconds * 1000UL);
+      if(stopwatchTotalTime > 0) {
+        stopwatchStartTime = millis();
+        stopwatchRunning = true;
+        stopwatchInitialDraw = true;
+        mode = 9;
+      }
+      break;
+    case 9:
+      if(stopwatchRunning) {
+        unsigned long elapsed = millis() - stopwatchStartTime;
+        if(elapsed < stopwatchTotalTime) stopwatchTotalTime -= elapsed;
+        stopwatchRunning = false;
+        mode = 2;
+        initialDraw = true;
+      }
+      break;
+  }
+}
+
+void discardAction() {
+  beep(BEEP_BUTTON_FREQ, 100);
+  delay(100);
+   beep(BEEP_BUTTON_FREQ, 100);
+  displayNeedsUpdate = true;
+ 
+  if(mode == 10) {
+    noTone(BUZZER_PIN);
+    alarmRinging = false;
+    alarmEnabled = false;  
+    saveAlarmToEEPROM(); // Save disabled status
+    mode = 0;
+    initialDraw = true;
+  }
+  else if(mode == 11) {
+    noTone(BUZZER_PIN);
+    stopwatchOver = false;
+    mode = 0;
+    initialDraw = true;
+  }
+  else if(mode == 9 && stopwatchRunning) {
+    stopwatchRunning = false;
+    stopwatchHours = stopwatchMinutes = stopwatchSeconds = 0;
+    mode = 2;
+    initialDraw = true;
+    stopwatchInitialDraw = true;
+  }
+  else if(mode >= 3 && mode <= 8) {
+    mode = 0;
+    alarmEnabled = false;
+    saveAlarmToEEPROM(); // Save disabled status
+    initialDraw = true;
+  }
+  else if(mode == 1 || mode == 2 || mode == 12) {
+    mode = 0;
+    initialDraw = true;
+  }
+  else if(mode == 0 && alarmEnabled) {
+    alarmEnabled = false;
+    saveAlarmToEEPROM(); // Save disabled status
+    initialDraw = true; // Force redraw to show clean time
+  }
+}
+
+void handleButtons() {
+  handleButton(MODE_SELECT_PIN, modeSelectAction);
+  handleButton(SET_CONFIRM_PIN, setConfirmAction);
+  handleButton(DISCARD_PIN, discardAction);
+ 
+  // Increase/Decrease with long press
+  static unsigned long increaseStart = 0, decreaseStart = 0;
+  static bool increaseLong = false, decreaseLong = false;
+  static unsigned long lastAutoInc = 0, lastAutoDec = 0;
+ 
+  if(!digitalRead(INCREASE_PIN)) {
+    if(increaseStart == 0) increaseStart = millis();
+    if(!increaseLong && millis() - increaseStart > 1000) {
+      increaseLong = true;
+      beep(BEEP_BUTTON_FREQ, 100);
+    }
+    if(increaseLong && millis() - lastAutoInc > 200) {
+      lastAutoInc = millis();
+      incrementValue();
+    }
+  } else {
+    if(increaseStart > 0 && !increaseLong) incrementValue();
+    increaseStart = 0;
+    increaseLong = false;
+  }
+ 
+  if(!digitalRead(DECREASE_PIN)) {
+    if(decreaseStart == 0) decreaseStart = millis();
+    if(!decreaseLong && millis() - decreaseStart > 1000) {
+      decreaseLong = true;
+      beep(BEEP_BUTTON_FREQ, 100);
+    }
+    if(decreaseLong && millis() - lastAutoDec > 200) {
+      lastAutoDec = millis();
+      decrementValue();
+    }
+  } else {
+    if(decreaseStart > 0 && !decreaseLong) decrementValue();
+    decreaseStart = 0;
+    decreaseLong = false;
+  }
+}
+
+// ========== LOGIC FUNCTIONS ==========
+
+void checkAlarm() {
+ 
+  if(!alarmEnabled) return;
+  
+ 
+  if(alarmRinging) return;
+ 
+  uint8_t alarmHour24 = alarmHour12;
+  if(alarmAM) {
+    if(alarmHour12 == 12) alarmHour24 = 0;
+    else alarmHour24 = alarmHour12;
+  } else {
+    if(alarmHour12 == 12) alarmHour24 = 12;
+    else alarmHour24 = alarmHour12 + 12;
+  }
+ 
+
+  if(now.hour() == alarmHour24 && now.minute() == alarmMinute && now.second() == 0) {
+    alarmRinging = true;
+    timeOverStartTime = millis();
+    mode = 10;
+    displayNeedsUpdate = true;
+    initialDraw = true;
+    // Clear display and show TIME OVER immediately
+    display.displayClear();
+    display.getGraphicObject()->clear();
+    longBeep(BEEP_ALARM_FREQ);
+  }
+}
+
+void updateStopwatch() {
+  if(!stopwatchRunning) return;
+ 
+  unsigned long elapsed = millis() - stopwatchStartTime;
+  if(elapsed < stopwatchTotalTime) {
+    unsigned long remaining = stopwatchTotalTime - elapsed;
+    uint8_t hours = remaining / 3600000;
+    uint8_t minutes = (remaining % 3600000) / 60000;
+    uint8_t seconds = (remaining % 60000) / 1000;
+   
+    updateDisplayedStopwatchTime(hours, minutes, seconds);
+   
+    // Switch-controlled beep during stopwatch countdown
+    if(isBeepSwitchOn()) {
+      static uint8_t lastStopwatchSecond = 255;
+      if(seconds != lastStopwatchSecond) {
+        lastStopwatchSecond = seconds;
+        beep(BEEP_SECOND_FREQ, 60);
+      }
+    }
+  } else {
+  
+    stopwatchRunning = false;
+    stopwatchOver = true;
+    timeOverStartTime = millis();
+    mode = 11;
+    displayNeedsUpdate = true;
+    initialDraw = true;
+    stopwatchInitialDraw = true;
+    
+    longBeep(BEEP_STOPWATCH_FREQ);  // ALWAYS beep (switch independent)
+  }
+}
+
+// Update text display (Used for menu/setting modes 1-8, 10, 11)
+void updateTextDisplay() {
+  // Always clear when switching to text mode or initial draw
+  if(displayNeedsUpdate || initialDraw) {
+    display.displayClear();
+    display.getGraphicObject()->clear();
+  }
+ 
+  switch(mode) {
+    case 1:
+      if(alarmEnabled) {
+        snprintf(displayBuffer, 10, "Alarm-ON");
+      } else {
+        snprintf(displayBuffer, 10, " Alarm ");
+      }
+      display.setTextAlignment(PA_CENTER);
+      display.print(displayBuffer);
+      break;
+    case 2:
+      snprintf(displayBuffer, 10, "Stopwatch");
+      display.setTextAlignment(PA_CENTER);
+      display.print(displayBuffer);
+      break;
+    case 3:
+      snprintf(displayBuffer, 10, "Hour: %02d", alarmHour12);
+      display.setTextAlignment(PA_CENTER);
+      display.print(displayBuffer);
+      break;
+    case 4:
+      snprintf(displayBuffer, 10, "Min: %02d", alarmMinute);
+      display.setTextAlignment(PA_CENTER);
+      display.print(displayBuffer);
+      break;
+    case 5:
+      snprintf(displayBuffer, 10, "%s", alarmAM ? "AM" : "PM");
+      display.setTextAlignment(PA_CENTER);
+      display.print(displayBuffer);
+      break;
+    case 6:
+      snprintf(displayBuffer, 10, "Hour: %02d", stopwatchHours);
+      display.setTextAlignment(PA_CENTER);
+      display.print(displayBuffer);
+      break;
+    case 7:
+      snprintf(displayBuffer, 10, "Min: %02d", stopwatchMinutes);
+      display.setTextAlignment(PA_CENTER);
+      display.print(displayBuffer);
+      break;
+    case 8:
+      if(!stopwatchRunning) {
+        snprintf(displayBuffer, 10, "Sec: %02d", stopwatchSeconds);
+        display.setTextAlignment(PA_CENTER);
+        display.print(displayBuffer);
+      }
+      break;
+    default:
+      // Do nothing for other modes
+      break;
+  }
+ 
+  displayNeedsUpdate = false;
+  initialDraw = false;
+}
+
+// Handle Time Over timeout
+void handleTimeOverTimeout() {
+  if((mode == 10 || mode == 11) && (millis() - timeOverStartTime > 180000)) {
+    if(mode == 10) {
+      noTone(BUZZER_PIN);
+      alarmRinging = falseো;
+    } else {
+      noTone(BUZZER_PIN);
+      stopwatchOver = false;
+    }
+    mode = 0;
+    initialDraw = true;
+    displayNeedsUpdate = true;
+  }
+}
+
+// ========== SETUP ==========
+void setup() {
+  Wire.begin();
+ 
+  // Load saved alarm from EEPROM
+  loadAlarmFromEEPROM();
+ 
+  // Initialize RTC
+  if(!rtc.begin()) {
+    while(1) {
+      tone(BUZZER_PIN, 1500, 200);
+      delay(1000);
+    }
+  }
+ 
+  if(rtc.lostPower()) {
+    // rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+  }
+ 
+  // Initialize Display
+  display.begin();
+  display.setSpeed(0); // No scrolling speed
+  display.setPause(0); // No pause between animation steps
+  display.setTextAlignment(PA_CENTER);
+  display.setIntensity(DAY_BRIGHTNESS);
+  display.displayClear();
+ 
+  // Pin Setup
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(MODE_SELECT_PIN, INPUT_PULLUP);
+  pinMode(SET_CONFIRM_PIN, INPUT_PULLUP);
+  pinMode(INCREASE_PIN, INPUT_PULLUP);
+  pinMode(DECREASE_PIN, INPUT_PULLUP);
+  pinMode(DISCARD_PIN, INPUT_PULLUP);
+  pinMode(BEEP_SWITCH_PIN, INPUT_PULLUP);
+ 
+  now = rtc.now();
+  lastSecondBeeped = now.second();
+ 
+  // Startup beep and show alarm status
+  for(int i=0; i<2; i++) {
+    beep(BEEP_SECOND_FREQ, 100);
+    delay(200);
+  }
+ 
+  // Show alarm status briefly if enabled
+  if(alarmEnabled) {
+    display.setTextAlignment(PA_CENTER);
+    display.print("Alarm-ON");
+    delay(1000);
+    display.displayClear();
+  }
+}
+
+// ========== MAIN LOOP ==========
+void loop() {
+  updateTimeWithPreciseBeep();
+ 
+  handleButtons();
+ 
+  static unsigned long lastUpdate = 0;
+  // Use a faster update rate for stopwatch/colon animation
+  if (millis() - lastUpdate >= 50) {
+    lastUpdate = millis();
+   
+    checkAlarm();
+   
+    if (mode == 9) {
+      updateStopwatch();
+    }
+    else if (mode == 0 && stopwatchRunning) {
+      // If somehow stopwatch is running but we're not in mode 9
+      updateStopwatch();
+    }
+   
+    handleTimeOverTimeout();
+  }
+ 
+  // --- DISPLAY CONTROL ---
+ 
+  if (mode == 0) {
+    // Default 6-digit clock mode
+    updateDisplayedClockTime();
+    display.displayAnimate();
+  }
+  else if(mode == 12) {
+    // Info Static Mode (Date -> Time -> Day)
+    // The state logic within updateInfoStaticMode handles redrawing
+    updateInfoStaticMode();
+    display.displayAnimate();
+  }
+  else if (mode == 9) {
+    // Stopwatch Running (Custom Digits)
+    // updateStopwatch handles the drawing (via updateDisplayedStopwatchTime)
+    display.displayAnimate();
+  }
+  else if (mode == 10 || mode == 11) {
+    if (digitalRead(BUZZER_PIN) == HIGH) { 
+      // Blinking "TIME OVER"
+      if (colonState) {
+        display.setTextAlignment(PA_CENTER);
+        display.print("TIME UP");
+      } else {
+        display.setTextAlignment(PA_CENTER);
+        display.print("         "); // Blank screen
+      }
+    } else { ো
+      display.displayClear();
+    }
+    display.displayAnimate();
+  }
+  else {
+    // Text-based modes (Alarm Menu, Stopwatch Menu, Set Modes)
+    if(displayNeedsUpdate || initialDraw) {
+      updateTextDisplay();
+    }
+    display.displayAnimate();
+  }
+}
