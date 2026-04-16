@@ -1,3 +1,28 @@
+/*
+ * LCD Custom Character Font Library for SMART-TIME Project
+ * Copyright (C) 2026  RAHUL MANNA
+
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License as published by
+ * the Massachusetts Institute of Technology.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * MIT License for more details.
+ *
+ * You should have received a copy of the MIT License
+ * along with this program. If not, see <https://opensource.org/licenses/MIT>.
+ *
+ * Author: Rahul Manna
+ * Date: 2026
+ * Description: Custom LCD character patterns for 16x2/20x4 LCD displays
+ *              supporting digits, alphabets (uppercase & lowercase), and
+ *              special symbols for enhanced visual output.
+ *
+ *------------------- LCD FONT LIBRARY v1.0 --------------
+ */
+
 
 const uint8_t PROGMEM lcdAlpha[26][8] = {
   {0b00111100,0b01100110,0b01100110,0b01111110,0b01100110,0b01100110,0b01100110,0b01100110}, // A
