@@ -1,4 +1,4 @@
-//=======================DAY 1 of Learning IoT==============================
+//=======================DAY 1 of Learning IoT (LED, Serial monitor) ==============================
 
 //int led = 2;
 void setup(){           //   run once
@@ -18,7 +18,7 @@ delay(2000);
 
 
 
-//=======================DAY 2 of Learning IoT==============================
+//=======================DAY 2 of Learning IoT(Serial Monitor In details)==============================
 
 
 const int LED_PIN = 2;  // Using pin 2 (not built-in, use external LED)
@@ -77,3 +77,5 @@ void loop() {
     }
   }
 }
+
+
