@@ -132,3 +132,25 @@ void loop() {
   }
 
 }
+
+//===================================DAY %5 of Learning IoT(toggle switch)============================
+
+int buttonPin = 12;
+int ledPin = 2;
+int lastButtonState = HIGH;
+
+void setup() {
+  pinMode(buttonPin, INPUT_PULLUP);
+  pinMode(ledPin, OUTPUT);
+}
+
+void loop() {
+  int buttonState = digitalRead(buttonPin);
+  
+  if (lastButtonState == HIGH && buttonState == LOW) {             //button state is low when pressed (connected to gnd)
+    digitalWrite(ledPin, !digitalRead(ledPin));        //   ledPin condition toggles 
+    delay(200);
+  }
+  
+  lastButtonState = buttonState;
+}
