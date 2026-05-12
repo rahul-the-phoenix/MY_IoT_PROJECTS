@@ -42,7 +42,7 @@ void loop() {
     userInput.toLowerCase();     // Convert to lowercase
     
     if (userInput == "on") {
-      digitalWrite(LED_PIN, HIGH);             //digitalWrite(2, 1/0);  as 1 and 0 for high and low , and the led pin if known      
+      digitalWrite(LED_PIN, HIGH);  //digitalWrite(2, 1/0) as 1 & 0 for high & low, 2= ledpin    
       ledstage = true;
       Serial.println("✅ LED is now ON");
     }
@@ -78,4 +78,30 @@ void loop() {
   }
 }
 
+//=======================DAY 3 of Learning IoT(FOR LOOPS , Led brightness , Function In details)==============================
 
+
+int led = 2;
+void ledcontrol() {             // creating a function 
+
+  for(int i = 0; i < 3; i++) {       //for loop using for effects and all
+    digitalWrite(led, HIGH);
+    delay(200);
+    digitalWrite(led, LOW);
+    delay(200);
+  }
+  delay(1000);
+
+  for(int brightness = 0; brightness <= 255; brightness++) {      //  for controlling the brightness use brightness 
+    analogWrite(led, brightness);                       //   this effect is known as breath effect
+    delay(5);
+  }      
+}
+
+void setup() {
+  pinMode(led, OUTPUT);
+}
+
+void loop() {
+  ledcontrol();     // Call the function functon will run in a loop
+}
