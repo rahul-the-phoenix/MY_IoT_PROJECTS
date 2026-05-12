@@ -105,3 +105,30 @@ void setup() {
 void loop() {
   ledcontrol();     // Call the function functon will run in a loop
 }
+
+
+
+
+//=======================DAY 4 of Learning IoT(Switch uses , floating points , input pullups)==============================
+
+int buttonPin = 12;  
+int ledPin = 2;    
+int buttonState = 0;  
+
+void setup() {
+ // pinMode(buttonPin, INPUT);   // Set button pin as input   ### Floating point error so that led is may on or off (10K resistor is not connected)
+  pinMode(buttonPin, INPUT_PULLUP);    // solving the problem  by using input_pullup default high , if pressed then low 
+  pinMode(ledPin, OUTPUT);        
+  digitalWrite(ledPin, LOW);          // Start with LED off
+}
+
+void loop() {
+  buttonState = digitalRead(buttonPin);  // Read button state 
+  
+  if (buttonState == LOW) {     // If button is pressed (LOW) means connected to gnd 
+    digitalWrite(ledPin, HIGH); // Turn LED ON
+  } else {                      
+    digitalWrite(ledPin, LOW);  // not connected to gnd so  Turn LED OFF
+  }
+
+}
