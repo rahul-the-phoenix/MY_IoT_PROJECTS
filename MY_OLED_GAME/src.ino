@@ -216,8 +216,7 @@ void saveRPSWin(int gameIndex) {
 }
 
 void saveHighScore(int gameIndex, uint16_t score) {
-  // For RPS game, high score is (wins/total)*100
-  if (gameIndex == 12) { // RPS game index
+  if (gameIndex == 12) {
     uint16_t winRate = 0;
     if (totalGamesPlayed[gameIndex] > 0) {
       winRate = (rpsWins[gameIndex] * 100) / totalGamesPlayed[gameIndex];
@@ -317,7 +316,6 @@ void gameOverScreen(uint16_t score, int gameIndex, bool isWin) {
   
   if (isWin) saveTotalGames(gameIndex);
   
-  // For RPS game, save win separately
   if (gameIndex == 12 && isWin) {
     saveRPSWin(gameIndex);
   }
@@ -366,7 +364,7 @@ int showGameMenu(const char* gameName, int gameIndex) {
     
     u8g2.setFont(u8g2_font_ncenB08_tr);
     for (int i = 0; i < 3; i++) {
-      int y = 23 + i * 13;
+      int y = 33 + i * 13;
       if (i == sel) {
         u8g2.drawRBox(10, y - 8, SCREEN_W - 20, 12, 2);
         u8g2.setDrawColor(0);
@@ -435,20 +433,19 @@ void runGameWithMenu(GameFunction game, const char* gameName, int gameIndex) {
       u8g2.setFont(u8g2_font_ncenB10_tr);
       centreStr("HIGH SCORE", 20);
       u8g2.setFont(u8g2_font_ncenB08_tr);
-      char hs[30];
+      
       if (gameIndex == 12) {
-        uint16_t winRate = 0;
-        if (totalGamesPlayed[gameIndex] > 0) {
-          winRate = (rpsWins[gameIndex] * 100) / totalGamesPlayed[gameIndex];
-        }
-        snprintf(hs, sizeof(hs), "Win Rate: %u%%", winRate);
+        centreStr("🌟 You are a", 38);
+        centreStr("Rock Paper", 48);
+        centreStr("Scissors Champion! 🏆", 58);
       } else {
+        char hs[30];
         snprintf(hs, sizeof(hs), "%u", highScores[gameIndex]);
+        centreStr(hs, 38);
+        char total[30];
+        snprintf(total, sizeof(total), "Total Games: %u", totalGamesPlayed[gameIndex]);
+        centreStr(total, 50);
       }
-      centreStr(hs, 38);
-      char total[30];
-      snprintf(total, sizeof(total), "Total Games: %u", totalGamesPlayed[gameIndex]);
-      centreStr(total, 50);
       u8g2.sendBuffer();
       waitRelease();
       while (!btnHeld(BTN_UP) && !btnHeld(BTN_DOWN) && !btnHeld(BTN_LEFT) &&
@@ -464,7 +461,7 @@ void runGameWithMenu(GameFunction game, const char* gameName, int gameIndex) {
         "Jump over cacti and run as far as you can!",
         "Flap through pipes and avoid hitting them!",
         "Eat food to grow and avoid self-collision!",
-        "Eat food within boundary and shrink after 20!",
+        "Eat food within boundary and shrink after 10!",
         "First to score 7 wins! Move your paddle!",
         "Eat all dots while avoiding the ghost!",
         "Shoot all aliens while dodging their fire!",
@@ -1153,7 +1150,7 @@ void game_snake1() {
 }
 
 // ============================================================
-// GAME: SNAKE 2 (With Boundary - Full Screen)
+// GAME: SNAKE 2 (With Boundary - Shrink at 10 Food)
 // ============================================================
 
 #define SN2_COLS 20
@@ -1178,8 +1175,8 @@ void game_snake2() {
     bool ok;
     do {
       ok = true;
-      fx = random(1, SN2_COLS - 1);
-      fy = random(1, SN2_ROWS - 1);
+      fx = random(0, SN2_COLS);
+      fy = random(0, SN2_ROWS);
       for (int i = 0; i < len; i++)
         if (sx[i] == fx && sy[i] == fy) { ok = false; break; }
     } while (!ok);
@@ -1196,7 +1193,7 @@ void game_snake2() {
   centreStr("SNAKE 2", 24);
   u8g2.setFont(u8g2_font_6x10_tr);
   centreStr("Boundary version!", 40);
-  centreStr("Eat 20 to shrink!", 54);
+  centreStr("Eat 10 to shrink!", 54);
   u8g2.sendBuffer();
   delay(1400);
   waitRelease();
@@ -1218,8 +1215,8 @@ void game_snake2() {
     int nx = sx[0] + dx;
     int ny = sy[0] + dy;
 
-    // Check boundary collision
-    if (nx <= 0 || nx >= SN2_COLS - 1 || ny <= 0 || ny >= SN2_ROWS - 1) {
+    // Check boundary collision - full screen boundary
+    if (nx < 0 || nx >= SN2_COLS || ny < 0 || ny >= SN2_ROWS) {
       gameOverScreen(score, 5, false);
       return;
     }
@@ -1244,7 +1241,7 @@ void game_snake2() {
       beep(1400, 35);
       placeFood();
       
-      if (foodEaten >= 20) {
+      if (foodEaten >= 10) {
         foodEaten = 0;
         if (len > 4) {
           len = 4;
@@ -1255,7 +1252,7 @@ void game_snake2() {
 
     u8g2.clearBuffer();
     
-    // Draw boundary full screen
+    // Draw boundary - full screen
     int bx = SN2_OX - 1, by = SN2_OY - 1;
     int bw = SN2_COLS * SN2_SZ + 2, bh = SN2_ROWS * SN2_SZ + 2;
     u8g2.drawFrame(bx, by, bw, bh);
@@ -1275,7 +1272,7 @@ void game_snake2() {
     char foodStr[6];
     itoa(foodEaten, foodStr, 10);
     u8g2.drawStr(SCREEN_W - 20, 16, foodStr);
-    u8g2.drawStr(SCREEN_W - 20, 24, "/20");
+    u8g2.drawStr(SCREEN_W - 20, 24, "/10");
     u8g2.sendBuffer();
   }
 }
@@ -2196,8 +2193,7 @@ void game_car() {
   float baseSpeed = 1.5f;
   int lives = 3;
   
-  // Reduced speeds by 25%
-  const float SPEED_TYPES[4] = {0.6f, 0.9f, 1.35f, 1.88f};
+  const float SPEED_TYPES[4] = {0.6f, 0.9f, 1.35f, 1.7f};
   
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
@@ -2262,7 +2258,6 @@ void game_car() {
     
     u8g2.clearBuffer();
     
-    // Full width road
     for (int i = 0; i < 3; i++) {
       int x = LANE_START + i * LANE_WIDTH;
       u8g2.drawFrame(x, 0, LANE_WIDTH, SCREEN_H);
@@ -2271,14 +2266,12 @@ void game_car() {
       }
     }
     
-    // Player car
     u8g2.drawBox((int)playerX, SCREEN_H - 12, CAR_W, CAR_H);
     u8g2.drawBox((int)playerX + 2, SCREEN_H - 14, 6, 2);
     u8g2.setDrawColor(0);
     u8g2.drawBox((int)playerX + 3, SCREEN_H - 11, 4, 2);
     u8g2.setDrawColor(1);
     
-    // Obstacles
     for (int i = 0; i < 8; i++) {
       if (!obs[i].active) continue;
       u8g2.drawBox((int)obs[i].x, (int)obs[i].y, 12, 10);
@@ -2324,23 +2317,23 @@ int menuSelect() {
     if (sel >= top + VISIBLE) top = sel - VISIBLE + 1;
 
     u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_6x10_tr);
+    u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawBox(0, 0, SCREEN_W, 11);
     u8g2.setDrawColor(0);
-    centreStr("** GAME CONSOLE **", 9);
+    centreStr("🎮 GAME CONSOLE 🎮", 9);
     u8g2.setDrawColor(1);
 
     for (int i = 0; i < VISIBLE; i++) {
       int idx = top + i;
       if (idx >= TOTAL_GAMES) break;
-      int y = 13 + i * 13;
+      int y = 14 + i * 13;
       if (idx == sel) {
-        u8g2.drawRBox(0, y, SCREEN_W - 10, 12, 2);
+        u8g2.drawRBox(0, y-1, SCREEN_W, 12, 2);
         u8g2.setDrawColor(0);
-        u8g2.drawStr(4, y + 9, names[idx]);
+        u8g2.drawStr(6, y + 9, names[idx]);
         u8g2.setDrawColor(1);
       } else {
-        u8g2.drawStr(4, y + 9, names[idx]);
+        u8g2.drawStr(6, y + 9, names[idx]);
       }
     }
 
