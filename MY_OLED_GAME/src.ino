@@ -1,6 +1,6 @@
 // ============================================================
 // COMPLETE GAME CONSOLE FOR ESP32-C3
-// 13 Games Total (Removed Tic Tac Toe)
+// 14 Games Total
 // ============================================================
 
 #include <Arduino.h>
@@ -37,7 +37,7 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, OLED_SCL, OLED_
 
 // ── EEPROM for high scores ────────────
 #define EEPROM_SIZE 512
-#define GAME_COUNT 13
+#define GAME_COUNT 14
 
 uint16_t highScores[GAME_COUNT];
 uint16_t totalGamesPlayed[GAME_COUNT];
@@ -59,7 +59,8 @@ void playGameOverMusic();
 void playPauseSound();
 void playResumeSound();
 void loadHighScores();
-void saveHighScore(int gameIndex, uint16_t score, bool isWin);
+void saveHighScore(int gameIndex, uint16_t score);
+void saveTotalGames(int gameIndex);
 bool checkPause(const char* gameName);
 bool checkMenuAndReturn();
 void gameOverScreen(uint16_t score, int gameIndex, bool isWin);
@@ -73,15 +74,16 @@ void game_asteroids();
 void game_breakout();
 void game_dino();
 void game_flappy();
-void game_snake();
+void game_snake1();
+void game_snake2();
 void game_pong();
 void game_pacman();
 void game_spaceinvaders();
 void game_tetris();
 void game_tank();
 void game_maze();
-void game_rps();        // Rock Paper Scissors
-void game_car();        // 3-Lane Car Game
+void game_rps();
+void game_car();
 
 // Tetris helper functions
 void loadPiece(struct TetPiece &p, uint8_t t);
@@ -171,6 +173,13 @@ void playResumeSound() {
   beep(500, 100);
 }
 
+void levelCompleteMusic() {
+  beep(523, 150); delay(150);
+  beep(659, 150); delay(150);
+  beep(784, 150); delay(150);
+  beep(1047, 300);
+}
+
 // ============================================================
 // HIGH SCORE MANAGEMENT
 // ============================================================
@@ -186,14 +195,17 @@ void loadHighScores() {
   EEPROM.end();
 }
 
-void saveHighScore(int gameIndex, uint16_t score, bool isWin) {
+void saveTotalGames(int gameIndex) {
   totalGamesPlayed[gameIndex]++;
-  
-  // Calculate win percentage as high score: (wins / total) * 100
-  uint16_t winPercent = (score * 100) / totalGamesPlayed[gameIndex];
-  
-  if (winPercent > highScores[gameIndex]) {
-    highScores[gameIndex] = winPercent;
+  EEPROM.begin(EEPROM_SIZE);
+  EEPROM.put((gameIndex + GAME_COUNT) * sizeof(uint16_t), totalGamesPlayed[gameIndex]);
+  EEPROM.commit();
+  EEPROM.end();
+}
+
+void saveHighScore(int gameIndex, uint16_t score) {
+  if (score > highScores[gameIndex]) {
+    highScores[gameIndex] = score;
     EEPROM.begin(EEPROM_SIZE);
     EEPROM.put(gameIndex * sizeof(uint16_t), highScores[gameIndex]);
     EEPROM.put((gameIndex + GAME_COUNT) * sizeof(uint16_t), totalGamesPlayed[gameIndex]);
@@ -214,6 +226,7 @@ void saveHighScore(int gameIndex, uint16_t score, bool isWin) {
 volatile bool menuPressed = false;
 volatile bool gamePaused = false;
 String currentGameName = "";
+int lastGameIndex = 0;
 
 bool checkPause(const char* gameName) {
   currentGameName = String(gameName);
@@ -271,7 +284,8 @@ void gameOverScreen(uint16_t score, int gameIndex, bool isWin) {
   char buf[20];
   snprintf(buf, sizeof(buf), "Score: %u", score);
   
-  saveHighScore(gameIndex, score, isWin);
+  if (isWin) saveTotalGames(gameIndex);
+  saveHighScore(gameIndex, score);
   
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
@@ -280,7 +294,7 @@ void gameOverScreen(uint16_t score, int gameIndex, bool isWin) {
   centreStr(buf, 35);
   
   char hs[30];
-  snprintf(hs, sizeof(hs), "Win Rate: %u%%", highScores[gameIndex]);
+  snprintf(hs, sizeof(hs), "High Score: %u", highScores[gameIndex]);
   centreStr(hs, 47);
   
   char total[30];
@@ -293,7 +307,7 @@ void gameOverScreen(uint16_t score, int gameIndex, bool isWin) {
 }
 
 int showGameMenu(const char* gameName, int gameIndex) {
-  const char* options[] = {"▶ PLAY GAME", "★ HIGH SCORE", "ℹ GAME RULES"};
+  const char* options[] = {"1. PLAY GAME", "2. HIGH SCORE", "3. GAME RULES"};
   int sel = 0;
   
   while (true) {
@@ -305,7 +319,7 @@ int showGameMenu(const char* gameName, int gameIndex) {
     centreStr(gameName, 11);
     u8g2.setDrawColor(1);
     
-    u8g2.setFont(u8g2_font_6x10_tr);
+    u8g2.setFont(u8g2_font_ncenB08_tr);
     for (int i = 0; i < 3; i++) {
       int y = 22 + i * 13;
       if (i == sel) {
@@ -329,6 +343,7 @@ int showGameMenu(const char* gameName, int gameIndex) {
 }
 
 void runGameWithMenu(GameFunction game, const char* gameName, int gameIndex) {
+  lastGameIndex = gameIndex;
   while (true) {
     int choice = showGameMenu(gameName, gameIndex);
     if (choice == -1) return;
@@ -373,14 +388,14 @@ void runGameWithMenu(GameFunction game, const char* gameName, int gameIndex) {
     else if (choice == 1) {
       u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_ncenB10_tr);
-      centreStr("★ HIGH SCORE", 20);
+      centreStr("HIGH SCORE", 20);
       u8g2.setFont(u8g2_font_ncenB08_tr);
       char hs[20];
-      snprintf(hs, sizeof(hs), "Win Rate: %u%%", highScores[gameIndex]);
-      centreStr(hs, 35);
+      snprintf(hs, sizeof(hs), "%u", highScores[gameIndex]);
+      centreStr(hs, 38);
       char total[30];
       snprintf(total, sizeof(total), "Total Games: %u", totalGamesPlayed[gameIndex]);
-      centreStr(total, 47);
+      centreStr(total, 50);
       u8g2.sendBuffer();
       waitRelease();
       while (!btnHeld(BTN_UP) && !btnHeld(BTN_DOWN) && !btnHeld(BTN_LEFT) &&
@@ -390,44 +405,62 @@ void runGameWithMenu(GameFunction game, const char* gameName, int gameIndex) {
     }
     
     else if (choice == 2) {
-      const char* rules[13] = {
-        "ASTEROIDS:\nDodge asteroids\nSurvive as long\nas possible!",
-        "BREAKOUT:\nBreak all bricks\nwith the ball!",
-        "DINO RUN:\nJump over cacti\nRun as far as\nyou can!",
-        "FLAPPY BIRD:\nFlap through pipes\nDon't hit them!",
-        "MAZE RUNNER:\nFind the exit\nin each maze!",
-        "PACMAN:\nEat all dots\nAvoid the ghost!",
-        "PONG:\nFirst to 7 wins\nMove paddle!",
-        "SNAKE:\nEat food to grow\nDon't hit yourself!",
-        "SPACE INVADERS:\nShoot all aliens\nAvoid their fire!",
-        "TETRIS:\nComplete lines\nDon't stack high!",
-        "TANK BATTLE:\nDestroy enemy\ntanks!",
-        "ROCK PAPER SCISSORS:\nBest of 5 wins!\nChoose wisely!",
-        "CAR RACER:\nAvoid obstacles\n3 lanes!\nStay alive!"
+      const char* rules[14] = {
+        "Dodge asteroids and survive as long as possible!",
+        "Break all bricks using the bouncing ball!",
+        "Jump over cacti and run as far as you can!",
+        "Flap through pipes and avoid hitting them!",
+        "Eat food to grow longer and avoid self-collision!",
+        "Eat food in boundary, shrink after 20 foods!",
+        "First to score 7 wins! Move your paddle!",
+        "Eat all dots while avoiding the ghost!",
+        "Shoot all aliens while dodging their fire!",
+        "Complete lines to score and prevent stacking!",
+        "Destroy enemy tanks with your cannon!",
+        "Find the exit in each maze as fast as possible!",
+        "Beat the computer in unlimited rounds!",
+        "Avoid obstacles and stay alive on 3 lanes!"
       };
       
       u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_6x10_tr);
-      const char* gameRules = rules[gameIndex];
-      int y = 8;
-      char line[30];
-      int idx = 0;
-      for (int i = 0; gameRules[i] != '\0' && idx < 5; i++) {
-        if (gameRules[i] == '\n') {
-          line[i] = '\0';
-          centreStr(line, y);
-          y += 11;
-          idx++;
-          int j = 0;
-          for (int k = i + 1; gameRules[k] != '\0' && gameRules[k] != '\n' && j < 28; k++) {
-            line[j++] = gameRules[k];
-            i = k;
-          }
-          line[j] = '\0';
+      centreStr("RULES", 10);
+      
+      const char* ruleText = rules[gameIndex];
+      int len = strlen(ruleText);
+      int y = 22;
+      int lineStart = 0;
+      int lineEnd = 0;
+      
+      while (lineStart < len && y < 60) {
+        lineEnd = lineStart;
+        int lastSpace = lineStart;
+        while (lineEnd < len && (lineEnd - lineStart) < 18) {
+          if (ruleText[lineEnd] == ' ') lastSpace = lineEnd;
+          lineEnd++;
         }
+        if (lineEnd < len && lastSpace > lineStart) {
+          lineEnd = lastSpace;
+        }
+        
+        char line[20];
+        int idx = 0;
+        for (int i = lineStart; i < lineEnd && idx < 19; i++) {
+          if (ruleText[i] != ' ' || (i > lineStart && ruleText[i-1] != ' ')) {
+            line[idx++] = ruleText[i];
+          }
+        }
+        line[idx] = '\0';
+        
+        if (strlen(line) > 0) {
+          centreStr(line, y);
+          y += 12;
+        }
+        
+        lineStart = lineEnd + 1;
+        if (lineEnd < len && ruleText[lineEnd] == ' ' && lineStart < len) lineStart++;
       }
-      u8g2.setFont(u8g2_font_5x7_tr);
-      centreStr("Press any key", 58);
+      
       u8g2.sendBuffer();
       waitRelease();
       while (!btnHeld(BTN_UP) && !btnHeld(BTN_DOWN) && !btnHeld(BTN_LEFT) &&
@@ -966,7 +999,7 @@ void game_flappy() {
 }
 
 // ============================================================
-// GAME: SNAKE
+// GAME: SNAKE 1 (Original - No Boundary)
 // ============================================================
 
 #define SN_COLS 21
@@ -974,7 +1007,7 @@ void game_flappy() {
 #define SN_SZ 6
 #define SN_MAXLEN 80
 
-void game_snake() {
+void game_snake1() {
   int sx[SN_MAXLEN], sy[SN_MAXLEN];
   int len = 4;
   int dx = 1, dy = 0;
@@ -1003,7 +1036,7 @@ void game_snake() {
 
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
-  centreStr("SNAKE", 24);
+  centreStr("SNAKE 1", 24);
   u8g2.setFont(u8g2_font_6x10_tr);
   centreStr("Use buttons to steer", 40);
   centreStr("Eat to grow!", 54);
@@ -1012,7 +1045,7 @@ void game_snake() {
   waitRelease();
 
   while (true) {
-    if (checkPause("SNAKE")) return;
+    if (checkPause("SNAKE 1")) return;
     if (checkMenuAndReturn()) return;
     
     if (btnHeld(BTN_UP) && dy == 0) { next_dx = 0; next_dy = -1; }
@@ -1030,7 +1063,7 @@ void game_snake() {
 
     for (int i = 1; i < len; i++) {
       if (sx[i] == nx && sy[i] == ny) {
-        gameOverScreen(score, 7, false);
+        gameOverScreen(score, 4, false);
         return;
       }
     }
@@ -1062,6 +1095,143 @@ void game_snake() {
     itoa(score, sc, 10);
     u8g2.drawStr(1 + SN_COLS * SN_SZ + 4, 10, "SC");
     u8g2.drawStr(1 + SN_COLS * SN_SZ + 4, 20, sc);
+    u8g2.sendBuffer();
+  }
+}
+
+// ============================================================
+// GAME: SNAKE 2 (With Boundary)
+// ============================================================
+
+#define SN2_COLS 19
+#define SN2_ROWS 8
+#define SN2_SZ 6
+#define SN2_MAXLEN 80
+#define SN2_OX 3
+#define SN2_OY 3
+
+void game_snake2() {
+  int sx[SN2_MAXLEN], sy[SN2_MAXLEN];
+  int len = 4;
+  int dx = 1, dy = 0;
+  int next_dx = 1, next_dy = 0;
+  int fx, fy;
+  uint32_t lastMove = 0;
+  uint16_t spd = 210;
+  uint16_t score = 0;
+  int foodEaten = 0;
+
+  auto placeFood = [&]() {
+    bool ok;
+    do {
+      ok = true;
+      fx = random(1, SN2_COLS - 1);
+      fy = random(1, SN2_ROWS - 1);
+      for (int i = 0; i < len; i++)
+        if (sx[i] == fx && sy[i] == fy) { ok = false; break; }
+    } while (!ok);
+  };
+
+  for (int i = 0; i < len; i++) {
+    sx[i] = len - 1 - i;
+    sy[i] = SN2_ROWS / 2;
+  }
+  placeFood();
+
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  centreStr("SNAKE 2", 24);
+  u8g2.setFont(u8g2_font_6x10_tr);
+  centreStr("Boundary version!", 40);
+  centreStr("Eat 20 to shrink!", 54);
+  u8g2.sendBuffer();
+  delay(1400);
+  waitRelease();
+
+  while (true) {
+    if (checkPause("SNAKE 2")) return;
+    if (checkMenuAndReturn()) return;
+    
+    if (btnHeld(BTN_UP) && dy == 0) { next_dx = 0; next_dy = -1; }
+    if (btnHeld(BTN_DOWN) && dy == 0) { next_dx = 0; next_dy = 1; }
+    if (btnHeld(BTN_LEFT) && dx == 0) { next_dx = -1; next_dy = 0; }
+    if (btnHeld(BTN_RIGHT) && dx == 0) { next_dx = 1; next_dy = 0; }
+
+    uint32_t now = millis();
+    if (now - lastMove < spd) { delay(8); continue; }
+    lastMove = now;
+
+    dx = next_dx; dy = next_dy;
+    int nx = sx[0] + dx;
+    int ny = sy[0] + dy;
+
+    // Check boundary collision
+    if (nx <= 0 || nx >= SN2_COLS - 1 || ny <= 0 || ny >= SN2_ROWS - 1) {
+      gameOverScreen(score, 5, false);
+      return;
+    }
+
+    for (int i = 1; i < len; i++) {
+      if (sx[i] == nx && sy[i] == ny) {
+        gameOverScreen(score, 5, false);
+        return;
+      }
+    }
+
+    for (int i = len - 1; i > 0; i--) {
+      sx[i] = sx[i - 1]; sy[i] = sy[i - 1];
+    }
+    sx[0] = nx; sy[0] = ny;
+
+    if (nx == fx && ny == fy) {
+      score++;
+      foodEaten++;
+      if (len < SN2_MAXLEN) len++;
+      spd = max(70, (int)spd - 7);
+      beep(1400, 35);
+      placeFood();
+      
+      // Check if 20 food eaten - shrink snake
+      if (foodEaten >= 20) {
+        foodEaten = 0;
+        // Shrink snake to length 4
+        if (len > 4) {
+          // Keep head and first 3 body parts
+          int newLen = 4;
+          for (int i = 1; i < newLen && i < len; i++) {
+            sx[i] = sx[i];
+            sy[i] = sy[i];
+          }
+          len = newLen;
+          levelCompleteMusic();
+        }
+      }
+    }
+
+    u8g2.clearBuffer();
+    
+    // Draw boundary
+    int bx = SN2_OX - 1, by = SN2_OY - 1;
+    int bw = SN2_COLS * SN2_SZ + 2, bh = SN2_ROWS * SN2_SZ + 2;
+    u8g2.drawFrame(bx, by, bw, bh);
+    
+    // Draw snake
+    for (int i = 0; i < len; i++) {
+      int px = SN2_OX + sx[i] * SN2_SZ;
+      int py = SN2_OY + sy[i] * SN2_SZ;
+      if (i == 0) u8g2.drawBox(px, py, SN2_SZ, SN2_SZ);
+      else u8g2.drawFrame(px + 1, py + 1, SN2_SZ - 2, SN2_SZ - 2);
+    }
+    u8g2.drawDisc(SN2_OX + fx * SN2_SZ + 3, SN2_OY + fy * SN2_SZ + 3, 3);
+    
+    u8g2.setFont(u8g2_font_5x7_tr);
+    char sc[6];
+    itoa(score, sc, 10);
+    u8g2.drawStr(SCREEN_W - 20, 8, sc);
+    char foodStr[6];
+    itoa(foodEaten, foodStr, 10);
+    u8g2.drawStr(SCREEN_W - 20, 16, foodStr);
+    u8g2.drawStr(SCREEN_W - 20, 24, "/20");
     u8g2.sendBuffer();
   }
 }
@@ -1161,7 +1331,7 @@ void game_pong() {
 }
 
 // ============================================================
-// GAME: PACMAN (Simplified)
+// GAME: PACMAN
 // ============================================================
 
 void game_pacman() {
@@ -1222,7 +1392,7 @@ void game_pacman() {
     }
 
     if (abs(px - gx) < 6 && abs(py - gy) < 6) {
-      gameOverScreen(score, 5, false);
+      gameOverScreen(score, 7, false);
       return;
     }
 
@@ -1237,7 +1407,7 @@ void game_pacman() {
       centreStr("YOU WIN!", 32);
       u8g2.sendBuffer();
       delay(2000);
-      gameOverScreen(score, 5, true);
+      gameOverScreen(score, 7, true);
       return;
     }
 
@@ -1295,7 +1465,7 @@ void game_spaceinvaders() {
   centreStr("INVADERS", 24);
   u8g2.setFont(u8g2_font_6x10_tr);
   centreStr("L/R = Move", 40);
-  centreStr("Destroy them all!", 54);
+  centreStr("ENTER = Fire", 52);
   u8g2.sendBuffer();
   delay(1500);
   waitRelease();
@@ -1600,13 +1770,15 @@ void game_tank() {
   Tank enemies[3];
   for (int i = 0; i < 3; i++) enemies[i].active = false;
   
-  TankBullet pBullet = {0, 0, 0, 0, false};
-  TankBullet eBullets[3];
-  for (int i = 0; i < 3; i++) eBullets[i].active = false;
+  TankBullet pBullet[3];
+  for (int i = 0; i < 3; i++) pBullet[i].active = false;
+  TankBullet eBullets[5];
+  for (int i = 0; i < 5; i++) eBullets[i].active = false;
   
   uint16_t score = 0;
   uint32_t lastSpawn = 0;
   uint32_t lastFrame = millis();
+  uint32_t lastFire = 0;
 
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
@@ -1634,14 +1806,20 @@ void game_tank() {
     player.x = constrain(player.x, 0, SCREEN_W - 8);
     player.y = constrain(player.y, 0, SCREEN_H - 8);
 
-    if (btnPressed(BTN_ENTER) && !pBullet.active) {
-      pBullet.x = player.x + 3; pBullet.y = player.y + 3;
-      pBullet.dx = player.dx; pBullet.dy = player.dy;
-      pBullet.active = true;
-      beep(1200, 20);
+    if (btnPressed(BTN_ENTER) && now - lastFire > 300) {
+      for (int i = 0; i < 3; i++) {
+        if (!pBullet[i].active) {
+          pBullet[i].x = player.x + 3; pBullet[i].y = player.y + 3;
+          pBullet[i].dx = player.dx; pBullet[i].dy = player.dy;
+          pBullet[i].active = true;
+          beep(1200, 20);
+          lastFire = now;
+          break;
+        }
+      }
     }
 
-    if (now - lastSpawn > 3000) {
+    if (now - lastSpawn > 2000) {
       for (int i = 0; i < 3; i++) {
         if (!enemies[i].active) {
           enemies[i].x = random(0, SCREEN_W - 8);
@@ -1657,17 +1835,22 @@ void game_tank() {
 
     for (int i = 0; i < 3; i++) {
       if (!enemies[i].active) continue;
-      if (now - enemies[i].lastMove > 1000) {
+      if (now - enemies[i].lastMove > 800) {
         int dir = random(0, 4);
         if (dir == 0) { enemies[i].dx = 0; enemies[i].dy = -1; }
         else if (dir == 1) { enemies[i].dx = 1; enemies[i].dy = 0; }
         else if (dir == 2) { enemies[i].dx = 0; enemies[i].dy = 1; }
         else { enemies[i].dx = -1; enemies[i].dy = 0; }
         enemies[i].lastMove = now;
-        if (!eBullets[i].active) {
-          eBullets[i].x = enemies[i].x + 3; eBullets[i].y = enemies[i].y + 3;
-          eBullets[i].dx = enemies[i].dx; eBullets[i].dy = enemies[i].dy;
-          eBullets[i].active = true;
+        if (random(0, 100) < 40) {
+          for (int j = 0; j < 5; j++) {
+            if (!eBullets[j].active) {
+              eBullets[j].x = enemies[i].x + 3; eBullets[j].y = enemies[i].y + 3;
+              eBullets[j].dx = enemies[i].dx; eBullets[j].dy = enemies[i].dy;
+              eBullets[j].active = true;
+              break;
+            }
+          }
         }
       }
       enemies[i].x += enemies[i].dx * 0.8f * dt;
@@ -1676,13 +1859,16 @@ void game_tank() {
       enemies[i].y = constrain(enemies[i].y, 0, SCREEN_H - 8);
     }
 
-    if (pBullet.active) {
-      pBullet.x += pBullet.dx * 3.0f * dt;
-      pBullet.y += pBullet.dy * 3.0f * dt;
-      if (pBullet.x < 0 || pBullet.x > SCREEN_W || pBullet.y < 0 || pBullet.y > SCREEN_H)
-        pBullet.active = false;
-    }
     for (int i = 0; i < 3; i++) {
+      if (pBullet[i].active) {
+        pBullet[i].x += pBullet[i].dx * 3.0f * dt;
+        pBullet[i].y += pBullet[i].dy * 3.0f * dt;
+        if (pBullet[i].x < 0 || pBullet[i].x > SCREEN_W || pBullet[i].y < 0 || pBullet[i].y > SCREEN_H)
+          pBullet[i].active = false;
+      }
+    }
+    
+    for (int i = 0; i < 5; i++) {
       if (eBullets[i].active) {
         eBullets[i].x += eBullets[i].dx * 2.0f * dt;
         eBullets[i].y += eBullets[i].dy * 2.0f * dt;
@@ -1691,18 +1877,21 @@ void game_tank() {
       }
     }
 
-    if (pBullet.active) {
-      for (int i = 0; i < 3; i++) {
-        if (enemies[i].active && pBullet.x > enemies[i].x && pBullet.x < enemies[i].x + 8 &&
-            pBullet.y > enemies[i].y && pBullet.y < enemies[i].y + 8) {
-          enemies[i].active = false;
-          pBullet.active = false;
+    for (int i = 0; i < 3; i++) {
+      if (!pBullet[i].active) continue;
+      for (int j = 0; j < 3; j++) {
+        if (enemies[j].active && pBullet[i].x > enemies[j].x && pBullet[i].x < enemies[j].x + 8 &&
+            pBullet[i].y > enemies[j].y && pBullet[i].y < enemies[j].y + 8) {
+          enemies[j].active = false;
+          pBullet[i].active = false;
           score += 50;
           beep(800, 40);
+          break;
         }
       }
     }
-    for (int i = 0; i < 3; i++) {
+    
+    for (int i = 0; i < 5; i++) {
       if (eBullets[i].active && eBullets[i].x > player.x && eBullets[i].x < player.x + 8 &&
           eBullets[i].y > player.y && eBullets[i].y < player.y + 8) {
         gameOverScreen(score, 10, false);
@@ -1717,9 +1906,12 @@ void game_tank() {
         u8g2.drawBox((int)enemies[i].x, (int)enemies[i].y, 8, 8);
       }
     }
-    if (pBullet.active) u8g2.drawDisc((int)pBullet.x, (int)pBullet.y, 1);
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 3; i++) {
+      if (pBullet[i].active) u8g2.drawDisc((int)pBullet[i].x, (int)pBullet[i].y, 1);
+    }
+    for (int i = 0; i < 5; i++) {
       if (eBullets[i].active) u8g2.drawPixel((int)eBullets[i].x, (int)eBullets[i].y);
+    }
     
     u8g2.setFont(u8g2_font_6x10_tr);
     char sc[6]; itoa(score, sc, 10);
@@ -1730,7 +1922,7 @@ void game_tank() {
 }
 
 // ============================================================
-// GAME: MAZE RUNNER (Simplified)
+// GAME: MAZE RUNNER
 // ============================================================
 
 const uint8_t MAZE_L1[8][16] PROGMEM = {
@@ -1796,7 +1988,7 @@ void game_maze() {
              !btnHeld(BTN_ENTER))
         delay(15);
       waitRelease();
-      gameOverScreen(secs, 4, true);
+      gameOverScreen(secs, 11, true);
       return;
     }
 
@@ -1825,18 +2017,16 @@ void game_maze() {
 }
 
 // ============================================================
-// GAME: ROCK PAPER SCISSORS (Unlimited Play)
+// GAME: ROCK PAPER SCISSORS
 // ============================================================
 
 void game_rps() {
   const char* moves[] = {"✊ ROCK", "✋ PAPER", "✌ SCISSORS"};
   int playerScore = 0, cpuScore = 0;
   int playerChoice = 0, cpuChoice = 0;
-  int state = 0; // 0=selecting, 1=result
+  int state = 0;
   uint32_t resultTime = 0;
-  int totalRounds = 0;
-  int playerWins = 0;
-  
+
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
   centreStr("ROCK PAPER", 20);
@@ -1861,7 +2051,6 @@ void game_rps() {
         state = 1;
         resultTime = millis();
         beep(900, 30);
-        totalRounds++;
       }
       
       u8g2.clearBuffer();
@@ -1913,8 +2102,9 @@ void game_rps() {
       else if (result == 1) { 
         resultText = "YOU WIN! 🎉"; 
         playerScore++; 
-        playerWins++;
         beep(1200, 40); delay(100); beep(1500, 40); 
+        saveTotalGames(12);
+        saveHighScore(12, playerScore);
       }
       else { 
         resultText = "CPU WINS! 😢"; 
@@ -1937,25 +2127,27 @@ void game_rps() {
 }
 
 // ============================================================
-// GAME: 3-LANE CAR RACER (LEFT/RIGHT Controls)
+// GAME: CAR RACER
 // ============================================================
 
 void game_car() {
   const int CAR_W = 10, CAR_H = 6;
   int playerX = 64 - CAR_W/2;
-  int targetLane = 1; // 0, 1, 2
-  const int LANE_WIDTH = 30;
-  const int LANE_START = 19;
+  int targetLane = 1;
+  const int LANE_WIDTH = 42;
+  const int LANE_START = 1;
   
-  struct Obstacle { float x, y; int lane; bool active; };
-  Obstacle obs[6];
-  for (int i = 0; i < 6; i++) obs[i].active = false;
+  struct Obstacle { float x, y; int lane; bool active; float speed; };
+  Obstacle obs[8];
+  for (int i = 0; i < 8; i++) obs[i].active = false;
   
   uint32_t lastSpawn = 0;
   uint32_t lastFrame = millis();
   uint16_t score = 0;
-  float speed = 2.0f;
+  float baseSpeed = 1.5f;
   int lives = 3;
+  
+  const float SPEED_TYPES[4] = {0.8f, 1.2f, 1.8f, 2.5f};
   
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
@@ -1975,32 +2167,30 @@ void game_car() {
     float dt = (now - lastFrame) / 20.0f;
     lastFrame = now;
     
-    // Player movement - LEFT/RIGHT now
     if (btnPressed(BTN_LEFT)) targetLane = max(0, targetLane - 1);
     if (btnPressed(BTN_RIGHT)) targetLane = min(2, targetLane + 1);
     
     int targetX = LANE_START + targetLane * LANE_WIDTH + (LANE_WIDTH - CAR_W) / 2;
     playerX += (targetX - playerX) * 0.15f * dt;
     
-    // Spawn obstacles
-    if (now - lastSpawn > (uint32_t)max(500, 1500 - score * 2)) {
+    if (now - lastSpawn > (uint32_t)max(400, 1200 - score * 2)) {
       lastSpawn = now;
-      for (int i = 0; i < 6; i++) {
+      for (int i = 0; i < 8; i++) {
         if (!obs[i].active) {
           obs[i].lane = random(0, 3);
           obs[i].x = LANE_START + obs[i].lane * LANE_WIDTH + (LANE_WIDTH - 12) / 2;
           obs[i].y = -10;
           obs[i].active = true;
+          obs[i].speed = SPEED_TYPES[random(0, 4)] * (1.0f + score / 200.0f);
           break;
         }
       }
-      speed = 2.0f + score / 100.0f;
+      baseSpeed = 1.5f + score / 150.0f;
     }
     
-    // Move obstacles
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 8; i++) {
       if (!obs[i].active) continue;
-      obs[i].y += speed * dt;
+      obs[i].y += obs[i].speed * dt;
       if (obs[i].y > SCREEN_H) {
         obs[i].active = false;
         score++;
@@ -2008,41 +2198,35 @@ void game_car() {
         continue;
       }
       
-      // Collision
       if (obs[i].y + 10 > SCREEN_H - 12 && obs[i].y < SCREEN_H - 6 + 6 &&
           obs[i].x < playerX + CAR_W && obs[i].x + 12 > playerX) {
         lives--;
         beep(200, 200);
         if (lives <= 0) {
-          gameOverScreen(score, 12, false);
+          gameOverScreen(score, 13, false);
           return;
         }
         obs[i].active = false;
       }
     }
     
-    // Draw
     u8g2.clearBuffer();
     
-    // Road lanes
     for (int i = 0; i < 3; i++) {
       int x = LANE_START + i * LANE_WIDTH;
       u8g2.drawFrame(x, 0, LANE_WIDTH, SCREEN_H);
-      // Lane markings
       for (int y = 8; y < SCREEN_H; y += 16) {
         u8g2.drawHLine(x + LANE_WIDTH/2 - 1, y, 2);
       }
     }
     
-    // Player car
     u8g2.drawBox((int)playerX, SCREEN_H - 12, CAR_W, CAR_H);
     u8g2.drawBox((int)playerX + 2, SCREEN_H - 14, 6, 2);
     u8g2.setDrawColor(0);
     u8g2.drawBox((int)playerX + 3, SCREEN_H - 11, 4, 2);
     u8g2.setDrawColor(1);
     
-    // Obstacles
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 8; i++) {
       if (!obs[i].active) continue;
       u8g2.drawBox((int)obs[i].x, (int)obs[i].y, 12, 10);
       u8g2.setDrawColor(0);
@@ -2050,7 +2234,6 @@ void game_car() {
       u8g2.setDrawColor(1);
     }
     
-    // HUD
     u8g2.setFont(u8g2_font_5x7_tr);
     char sc[8];
     itoa(score, sc, 10);
@@ -2069,16 +2252,17 @@ void game_car() {
 // MAIN MENU
 // ============================================================
 
-#define TOTAL_GAMES 13
+#define TOTAL_GAMES 14
 
 int menuSelect() {
   const char *names[TOTAL_GAMES] = {
       "1. Asteroids", "2. Breakout", "3. Dino Run", "4. Flappy Bird",
-      "5. Maze Runner", "6. Pacman", "7. Pong", "8. Snake",
+      "5. Snake 1", "6. Snake 2", "7. Pong", "8. Pacman",
       "9. Space Invaders", "10. Tetris", "11. Tank Battle",
-      "12. Rock Paper Scissors", "13. Car Racer"
+      "12. Maze Runner", "13. Rock Paper Scissors", "14. Car Racer"
   };
-  int sel = 0;
+  int sel = lastGameIndex;
+  if (sel >= TOTAL_GAMES) sel = 0;
   int top = 0;
   const int VISIBLE = 4;
 
@@ -2159,16 +2343,16 @@ void loop() {
   
   const char* gameNames[TOTAL_GAMES] = {
     "ASTEROIDS", "BREAKOUT", "DINO RUN", "FLAPPY BIRD",
-    "MAZE RUNNER", "PACMAN", "PONG", "SNAKE",
+    "SNAKE 1", "SNAKE 2", "PONG", "PACMAN",
     "SPACE INVADERS", "TETRIS", "TANK BATTLE",
-    "ROCK PAPER SCISSORS", "CAR RACER"
+    "MAZE RUNNER", "ROCK PAPER SCISSORS", "CAR RACER"
   };
   
   GameFunction games[TOTAL_GAMES] = {
     game_asteroids, game_breakout, game_dino, game_flappy,
-    game_maze, game_pacman, game_pong, game_snake,
+    game_snake1, game_snake2, game_pong, game_pacman,
     game_spaceinvaders, game_tetris, game_tank,
-    game_rps, game_car
+    game_maze, game_rps, game_car
   };
   
   if (sel >= 0 && sel < TOTAL_GAMES) {
