@@ -1,6 +1,6 @@
 // ============================================================
 // COMPLETE GAME CONSOLE FOR ESP32-C3
-// 14 Games Total with Favorites, Settings, and Button Config
+// 14 Games Total with Favorites, Settings, and Background Music
 // ============================================================
 
 #include <Arduino.h>
@@ -45,8 +45,12 @@ uint16_t totalGamesPlayed[GAME_COUNT];
 uint16_t rpsWins[GAME_COUNT];
 uint8_t favoriteGames[MAX_FAVORITES];
 uint8_t favoriteCount = 0;
-uint8_t brightnessLevel = 200;
+uint8_t brightnessLevel = 4;
+uint8_t soundLevel = 3;
 bool soundEnabled = true;
+bool gameMusicPlaying = false;
+uint32_t lastMusicNote = 0;
+uint8_t currentMusicNote = 0;
 
 // ============================================================
 // FORWARD DECLARATIONS
@@ -56,7 +60,7 @@ typedef void (*GameFunction)();
 
 bool btnPressed(uint8_t pin);
 bool btnHeld(uint8_t pin);
-void beep(uint16_t freq, uint16_t ms);
+void beep(uint16_t freq, uint16_t ms, uint8_t volume = 3);
 void playMenuButtonSound();
 void waitRelease();
 void centreStr(const char *s, uint8_t y);
@@ -71,14 +75,13 @@ void saveRPSWin(int gameIndex);
 bool checkPause(const char* gameName);
 bool checkMenuAndReturn();
 void gameOverScreen(uint16_t score, int gameIndex, bool isWin);
-int showGameMenu(const char* gameName, int gameIndex);
+void showGameMenu(const char* gameName, int gameIndex, GameFunction game);
 void runGameWithMenu(GameFunction game, const char* gameName, int gameIndex);
 int menuSelect();
 void showSplash();
 void showMainMenu();
 void showFavoritesMenu();
 void showSettingsMenu();
-void showButtonConfig();
 void toggleFavorite(int gameIndex);
 bool isFavorite(int gameIndex);
 void saveFavorites();
@@ -87,6 +90,8 @@ void saveBrightness();
 void loadBrightness();
 void saveSoundSetting();
 void loadSoundSetting();
+void playGameMusic(int gameIndex);
+void stopGameMusic();
 
 // Game functions
 void game_asteroids();
@@ -137,16 +142,22 @@ bool btnHeld(uint8_t pin) {
   return digitalRead(pin) == LOW; 
 }
 
-void beep(uint16_t freq, uint16_t ms) {
-  if (!soundEnabled || freq == 0 || ms == 0) return;
-  tone(BUZZER_PIN, freq, ms);
+void beep(uint16_t freq, uint16_t ms, uint8_t volume) {
+  if (!soundEnabled || volume == 0 || freq == 0 || ms == 0) return;
+  if (volume == 1) {
+    tone(BUZZER_PIN, freq * 0.8, ms * 0.6);
+  } else if (volume == 2) {
+    tone(BUZZER_PIN, freq * 0.9, ms * 0.8);
+  } else {
+    tone(BUZZER_PIN, freq, ms);
+  }
 }
 
 void playMenuButtonSound() {
   if (!soundEnabled) return;
-  tone(BUZZER_PIN, 600, 150);
+  beep(600, 150, soundLevel);
   delay(150);
-  tone(BUZZER_PIN, 800, 150);
+  beep(800, 150, soundLevel);
 }
 
 void waitRelease() {
@@ -164,91 +175,191 @@ void centreStr(const char *s, uint8_t y) {
 
 void playStartMusic() {
   if (!soundEnabled) return;
-  beep(523, 150); delay(200);
-  beep(659, 150); delay(200);
-  beep(784, 150); delay(200);
-  beep(523, 150); delay(200);
-  beep(784, 150); delay(200);
-  beep(1046, 300); delay(400);
-  beep(880, 150); delay(200);
-  beep(1046, 500);
+  beep(523, 150, soundLevel); delay(200);
+  beep(659, 150, soundLevel); delay(200);
+  beep(784, 150, soundLevel); delay(200);
+  beep(523, 150, soundLevel); delay(200);
+  beep(784, 150, soundLevel); delay(200);
+  beep(1046, 300, soundLevel); delay(400);
+  beep(880, 150, soundLevel); delay(200);
+  beep(1046, 500, soundLevel);
 }
 
 void playGameOverMusic() {
   if (!soundEnabled) return;
-  beep(392, 250); delay(300);
-  beep(349, 250); delay(300);
-  beep(329, 250); delay(300);
-  beep(261, 500); delay(600);
-  beep(196, 700);
+  beep(392, 250, soundLevel); delay(300);
+  beep(349, 250, soundLevel); delay(300);
+  beep(329, 250, soundLevel); delay(300);
+  beep(261, 500, soundLevel); delay(600);
+  beep(196, 700, soundLevel);
 }
 
 void playPauseSound() {
   if (!soundEnabled) return;
-  beep(500, 100);
+  beep(500, 100, soundLevel);
   delay(120);
-  beep(400, 100);
+  beep(400, 100, soundLevel);
 }
 
 void playResumeSound() {
   if (!soundEnabled) return;
-  beep(400, 100);
+  beep(400, 100, soundLevel);
   delay(120);
-  beep(500, 100);
+  beep(500, 100, soundLevel);
 }
 
 void levelCompleteMusic() {
   if (!soundEnabled) return;
-  beep(523, 150); delay(150);
-  beep(659, 150); delay(150);
-  beep(784, 150); delay(150);
-  beep(1047, 300);
+  beep(523, 150, soundLevel); delay(150);
+  beep(659, 150, soundLevel); delay(150);
+  beep(784, 150, soundLevel); delay(150);
+  beep(1047, 300, soundLevel);
+}
+
+void playGameMusic(int gameIndex) {
+  if (!soundEnabled) return;
+  uint32_t now = millis();
+  if (now - lastMusicNote < 180) return;
+  lastMusicNote = now;
+  
+  uint8_t vol = soundLevel;
+  switch(gameIndex) {
+    case 0:
+      { uint16_t notes[] = {220, 277, 330, 392, 440, 494, 554, 587, 554, 494, 440, 392};
+        beep(notes[currentMusicNote % 12], 160, vol); currentMusicNote++; }
+      break;
+    case 1:
+      { uint16_t notes[] = {523, 587, 659, 784, 659, 587, 523, 587, 659, 784, 880, 784};
+        beep(notes[currentMusicNote % 12], 130, vol); currentMusicNote++; }
+      break;
+    case 2:
+      { uint16_t notes[] = {440, 494, 554, 587, 659, 587, 554, 494, 440, 494, 554, 659, 740, 659};
+        beep(notes[currentMusicNote % 14], 110, vol); currentMusicNote++; }
+      break;
+    case 3:
+      { uint16_t notes[] = {880, 988, 1109, 1319, 1480, 1319, 1109, 988, 880, 988, 1109, 1319};
+        beep(notes[currentMusicNote % 12], 100, vol); currentMusicNote++; }
+      break;
+    case 4:
+      { uint16_t notes[] = {262, 294, 330, 349, 392, 349, 330, 294, 262, 294, 330, 392, 440, 392};
+        beep(notes[currentMusicNote % 14], 140, vol); currentMusicNote++; }
+      break;
+    case 5:
+      { uint16_t notes[] = {196, 220, 247, 262, 294, 262, 247, 220, 196, 220, 247, 294, 330, 294};
+        beep(notes[currentMusicNote % 14], 150, vol); currentMusicNote++; }
+      break;
+    case 6:
+      { uint16_t notes[] = {659, 784, 880, 988, 1109, 988, 880, 784, 659, 784, 880, 988};
+        beep(notes[currentMusicNote % 12], 120, vol); currentMusicNote++; }
+      break;
+    case 7:
+      { uint16_t notes[] = {523, 523, 523, 587, 659, 784, 659, 587, 523, 587, 659, 784, 880, 784, 659, 587};
+        beep(notes[currentMusicNote % 16], 130, vol); currentMusicNote++; }
+      break;
+    case 8:
+      { uint16_t notes[] = {330, 294, 262, 294, 330, 392, 440, 392, 330, 294, 262, 294, 330, 392, 440, 494};
+        beep(notes[currentMusicNote % 16], 110, vol); currentMusicNote++; }
+      break;
+    case 9:
+      { uint16_t notes[] = {659, 659, 659, 784, 587, 659, 880, 784, 659, 659, 659, 784, 587, 659, 880, 784, 659, 587, 523};
+        beep(notes[currentMusicNote % 19], 140, vol); currentMusicNote++; }
+      break;
+    case 10:
+      { uint16_t notes[] = {262, 294, 330, 392, 440, 392, 330, 294, 262, 294, 330, 392, 440, 494, 440, 392};
+        beep(notes[currentMusicNote % 16], 130, vol); currentMusicNote++; }
+      break;
+    case 11:
+      { uint16_t notes[] = {392, 349, 330, 294, 330, 349, 392, 440, 392, 349, 330, 294, 330, 349, 392, 440};
+        beep(notes[currentMusicNote % 16], 120, vol); currentMusicNote++; }
+      break;
+    case 12:
+      { uint16_t notes[] = {440, 554, 659, 784, 880, 784, 659, 554, 440, 554, 659, 784, 880, 988, 880, 784};
+        beep(notes[currentMusicNote % 16], 130, vol); currentMusicNote++; }
+      break;
+    case 13:
+      { uint16_t notes[] = {494, 554, 659, 740, 830, 740, 659, 554, 494, 554, 659, 740, 830, 880, 830, 740};
+        beep(notes[currentMusicNote % 16], 100, vol); currentMusicNote++; }
+      break;
+  }
+}
+
+void stopGameMusic() {
+  gameMusicPlaying = false;
+  noTone(BUZZER_PIN);
 }
 
 void uniqueGameStartSound(int gameIndex) {
   if (!soundEnabled) return;
+  uint8_t vol = soundLevel;
   switch(gameIndex) {
-    case 0: // Asteroids
-      beep(200, 100); delay(100); beep(300, 100); delay(100); beep(400, 150);
+    case 0:
+      beep(200, 120, vol); delay(100); beep(300, 120, vol); delay(100); 
+      beep(400, 150, vol); delay(100); beep(500, 150, vol); delay(100); 
+      beep(600, 200, vol); delay(100); beep(700, 250, vol);
       break;
-    case 1: // Breakout
-      beep(500, 80); delay(80); beep(600, 80); delay(80); beep(700, 100);
+    case 1:
+      beep(500, 80, vol); delay(80); beep(600, 80, vol); delay(80); 
+      beep(700, 100, vol); delay(80); beep(800, 80, vol); delay(80); beep(900, 120, vol);
       break;
-    case 2: // Dino
-      beep(400, 60); delay(60); beep(600, 60); delay(60); beep(800, 80);
+    case 2:
+      beep(400, 70, vol); delay(70); beep(600, 70, vol); delay(70); 
+      beep(800, 90, vol); delay(70); beep(1000, 70, vol); delay(70); 
+      beep(1200, 100, vol); delay(70); beep(1400, 130, vol);
       break;
-    case 3: // Flappy
-      beep(700, 50); delay(50); beep(900, 50); delay(50); beep(1100, 80);
+    case 3:
+      beep(700, 60, vol); delay(60); beep(900, 60, vol); delay(60); 
+      beep(1100, 80, vol); delay(60); beep(1300, 60, vol); delay(60); 
+      beep(1500, 100, vol); delay(60); beep(1700, 120, vol);
       break;
-    case 4: // Snake1
-      beep(300, 80); delay(80); beep(500, 80); delay(80); beep(700, 100);
+    case 4:
+      beep(300, 90, vol); delay(90); beep(500, 90, vol); delay(90); 
+      beep(700, 110, vol); delay(90); beep(900, 90, vol); delay(90); 
+      beep(1100, 120, vol); delay(90); beep(1300, 150, vol);
       break;
-    case 5: // Snake2
-      beep(350, 80); delay(80); beep(550, 80); delay(80); beep(750, 100);
+    case 5:
+      beep(200, 90, vol); delay(90); beep(400, 90, vol); delay(90); 
+      beep(600, 110, vol); delay(90); beep(800, 90, vol); delay(90); 
+      beep(1000, 120, vol); delay(90); beep(1200, 150, vol);
       break;
-    case 6: // Pong
-      beep(600, 60); delay(60); beep(800, 60); delay(60); beep(1000, 80);
+    case 6:
+      beep(600, 70, vol); delay(70); beep(800, 70, vol); delay(70); 
+      beep(1000, 90, vol); delay(70); beep(1200, 70, vol); delay(70); 
+      beep(1400, 100, vol); delay(70); beep(1600, 130, vol);
       break;
-    case 7: // Pacman
-      beep(400, 100); delay(80); beep(600, 100); delay(80); beep(800, 120);
+    case 7:
+      beep(400, 110, vol); delay(90); beep(600, 110, vol); delay(90); 
+      beep(800, 130, vol); delay(90); beep(1000, 110, vol); delay(90); 
+      beep(1200, 150, vol); delay(90); beep(1400, 180, vol);
       break;
-    case 8: // Space Invaders
-      beep(200, 80); delay(80); beep(400, 80); delay(80); beep(600, 100);
+    case 8:
+      beep(200, 90, vol); delay(90); beep(300, 90, vol); delay(90); 
+      beep(400, 110, vol); delay(90); beep(300, 90, vol); delay(90); 
+      beep(600, 130, vol); delay(90); beep(800, 160, vol);
       break;
-    case 9: // Tetris
-      beep(500, 100); delay(80); beep(700, 100); delay(80); beep(900, 120);
+    case 9:
+      beep(500, 110, vol); delay(90); beep(600, 110, vol); delay(90); 
+      beep(700, 130, vol); delay(90); beep(800, 110, vol); delay(90); 
+      beep(900, 150, vol); delay(90); beep(1000, 180, vol);
       break;
-    case 10: // Tank
-      beep(250, 80); delay(80); beep(450, 80); delay(80); beep(650, 100);
+    case 10:
+      beep(250, 90, vol); delay(90); beep(350, 90, vol); delay(90); 
+      beep(450, 110, vol); delay(90); beep(350, 90, vol); delay(90); 
+      beep(650, 130, vol); delay(90); beep(850, 160, vol);
       break;
-    case 11: // Maze
-      beep(550, 60); delay(60); beep(750, 60); delay(60); beep(950, 80);
+    case 11:
+      beep(550, 70, vol); delay(70); beep(650, 70, vol); delay(70); 
+      beep(750, 90, vol); delay(70); beep(850, 70, vol); delay(70); 
+      beep(950, 110, vol); delay(70); beep(1050, 140, vol);
       break;
-    case 12: // RPS
-      beep(300, 100); delay(80); beep(500, 100); delay(80); beep(700, 120);
+    case 12:
+      beep(300, 110, vol); delay(90); beep(400, 110, vol); delay(90); 
+      beep(500, 130, vol); delay(90); beep(600, 110, vol); delay(90); 
+      beep(700, 150, vol); delay(90); beep(800, 180, vol);
       break;
-    case 13: // Car
-      beep(450, 60); delay(60); beep(650, 60); delay(60); beep(850, 80);
+    case 13:
+      beep(400, 70, vol); delay(70); beep(500, 70, vol); delay(70); 
+      beep(600, 90, vol); delay(70); beep(700, 70, vol); delay(70); 
+      beep(800, 110, vol); delay(70); beep(900, 140, vol);
       break;
   }
 }
@@ -287,7 +398,6 @@ bool isFavorite(int gameIndex) {
 
 void toggleFavorite(int gameIndex) {
   if (isFavorite(gameIndex)) {
-    // Remove from favorites
     for (int i = 0; i < favoriteCount; i++) {
       if (favoriteGames[i] == gameIndex) {
         for (int j = i; j < favoriteCount - 1; j++) {
@@ -298,7 +408,6 @@ void toggleFavorite(int gameIndex) {
       }
     }
   } else {
-    // Add to favorites
     if (favoriteCount < MAX_FAVORITES) {
       favoriteGames[favoriteCount++] = gameIndex;
     }
@@ -313,8 +422,9 @@ void toggleFavorite(int gameIndex) {
 void loadBrightness() {
   EEPROM.begin(EEPROM_SIZE);
   EEPROM.get(450, brightnessLevel);
-  if (brightnessLevel < 0 || brightnessLevel > 255) brightnessLevel = 200;
-  u8g2.setContrast(brightnessLevel);
+  if (brightnessLevel < 1 || brightnessLevel > 7) brightnessLevel = 4;
+  uint8_t contrast = map(brightnessLevel, 1, 7, 30, 255);
+  u8g2.setContrast(contrast);
   EEPROM.end();
 }
 
@@ -323,21 +433,24 @@ void saveBrightness() {
   EEPROM.put(450, brightnessLevel);
   EEPROM.commit();
   EEPROM.end();
-  u8g2.setContrast(brightnessLevel);
+  uint8_t contrast = map(brightnessLevel, 1, 7, 30, 255);
+  u8g2.setContrast(contrast);
 }
 
 void loadSoundSetting() {
   EEPROM.begin(EEPROM_SIZE);
-  EEPROM.get(460, soundEnabled);
-  if (soundEnabled != 0 && soundEnabled != 1) soundEnabled = true;
+  EEPROM.get(460, soundLevel);
+  if (soundLevel > 3) soundLevel = 3;
+  soundEnabled = (soundLevel > 0);
   EEPROM.end();
 }
 
 void saveSoundSetting() {
   EEPROM.begin(EEPROM_SIZE);
-  EEPROM.put(460, soundEnabled);
+  EEPROM.put(460, soundLevel);
   EEPROM.commit();
   EEPROM.end();
+  soundEnabled = (soundLevel > 0);
 }
 
 // ============================================================
@@ -389,11 +502,11 @@ void saveHighScore(int gameIndex, uint16_t score) {
       EEPROM.commit();
       EEPROM.end();
       if (soundEnabled) {
-        beep(1200, 50);
+        beep(1200, 50, soundLevel);
         delay(80);
-        beep(1500, 50);
+        beep(1500, 50, soundLevel);
         delay(80);
-        beep(1800, 100);
+        beep(1800, 100, soundLevel);
       }
     }
   } else {
@@ -404,11 +517,11 @@ void saveHighScore(int gameIndex, uint16_t score) {
       EEPROM.commit();
       EEPROM.end();
       if (soundEnabled) {
-        beep(1200, 50);
+        beep(1200, 50, soundLevel);
         delay(80);
-        beep(1500, 50);
+        beep(1500, 50, soundLevel);
         delay(80);
-        beep(1800, 100);
+        beep(1800, 100, soundLevel);
       }
     }
   }
@@ -430,6 +543,7 @@ bool checkPause(const char* gameName) {
     gamePaused = !gamePaused;
     if (gamePaused) {
       playPauseSound();
+      stopGameMusic();
       u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_ncenB10_tr);
       centreStr("** PAUSED **", 20);
@@ -446,9 +560,11 @@ bool checkPause(const char* gameName) {
         if (btnPressed(BTN_PAUSE)) {
           gamePaused = false;
           playResumeSound();
+          gameMusicPlaying = true;
         }
         if (btnPressed(BTN_MENU)) {
           gamePaused = false;
+          stopGameMusic();
           playMenuButtonSound();
           return true;
         }
@@ -457,6 +573,7 @@ bool checkPause(const char* gameName) {
       return false;
     } else {
       playResumeSound();
+      gameMusicPlaying = true;
     }
   }
   return false;
@@ -464,6 +581,7 @@ bool checkPause(const char* gameName) {
 
 bool checkMenuAndReturn() {
   if (btnPressed(BTN_MENU)) {
+    stopGameMusic();
     playMenuButtonSound();
     menuPressed = true;
     return true;
@@ -476,6 +594,7 @@ bool checkMenuAndReturn() {
 // ============================================================
 
 void gameOverScreen(uint16_t score, int gameIndex, bool isWin) {
+  stopGameMusic();
   char buf[20];
   snprintf(buf, sizeof(buf), "Score: %u", score);
   
@@ -514,208 +633,230 @@ void gameOverScreen(uint16_t score, int gameIndex, bool isWin) {
   waitRelease();
 }
 
-int showGameMenu(const char* gameName, int gameIndex) {
-  const char* options[] = {"1. PLAY GAME", "2. HIGH SCORE", "3. GAME RULES", "4. FAVORITE"};
+void showGameMenu(const char* gameName, int gameIndex, GameFunction game) {
+  const char* options[] = {"A. PLAY GAME", "B. HIGH SCORE", "C. GAME RULES", "D. ADD FAVORITE"};
   int sel = 0;
+  int top = 0;
+  const int VISIBLE = 3;
   
   while (true) {
-    u8g2.clearBuffer();
+    if (sel < top) top = sel;
+    if (sel >= top + VISIBLE) top = sel - VISIBLE + 1;
     
+    u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawRBox(5, 2, SCREEN_W - 10, 12, 2);
     u8g2.setDrawColor(0);
-    centreStr(gameName, 11);
+    
+    char displayName[30];
+    if (isFavorite(gameIndex)) {
+      snprintf(displayName, sizeof(displayName), "⭐ %s", gameName);
+    } else {
+      snprintf(displayName, sizeof(displayName), "%s", gameName);
+    }
+    centreStr(displayName, 11);
     u8g2.setDrawColor(1);
     
-    u8g2.setFont(u8g2_font_ncenB08_tr);
-    for (int i = 0; i < 4; i++) {
-      int y = 33 + i * 13;
-      if (i == sel) {
+    for (int i = 0; i < VISIBLE; i++) {
+      int idx = top + i;
+      if (idx >= 4) break;
+      int y = 21 + i * 13;
+      if (idx == sel) {
         u8g2.drawRBox(10, y - 8, SCREEN_W - 20, 12, 2);
         u8g2.setDrawColor(0);
-        centreStr(options[i], y + 3);
+        centreStr(options[idx], y + 3);
         u8g2.setDrawColor(1);
       } else {
-        centreStr(options[i], y + 3);
+        centreStr(options[idx], y + 3);
       }
     }
     
-    // Show favorite status
-    u8g2.setFont(u8g2_font_5x7_tr);
-    if (isFavorite(gameIndex)) {
-      centreStr("⭐ FAVORITE", 62);
-    }
+    if (top > 0) u8g2.drawStr(SCREEN_W - 8, 25, "^");
+    if (top + VISIBLE < 4) u8g2.drawStr(SCREEN_W - 8, 62, "v");
     
     u8g2.sendBuffer();
     
-    if (btnPressed(BTN_UP)) { sel = (sel + 3) % 4; beep(800, 25); }
-    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 4; beep(800, 25); }
-    else if (btnPressed(BTN_ENTER)) { beep(1000, 40); waitRelease(); return sel; }
-    else if (btnPressed(BTN_MENU)) { beep(600, 50); waitRelease(); return -1; }
+    if (btnPressed(BTN_UP)) { 
+      if (sel > 0) { sel--; beep(800, 25, soundLevel); }
+      else if (top > 0) { top--; sel = top; }
+    }
+    else if (btnPressed(BTN_DOWN)) { 
+      if (sel < 3) { 
+        if (sel < top + VISIBLE - 1) { sel++; beep(800, 25, soundLevel); }
+        else if (top + VISIBLE < 4) { top++; sel = top + VISIBLE - 1; }
+      }
+    }
+    else if (btnPressed(BTN_ENTER)) { 
+      beep(1000, 40, soundLevel); 
+      waitRelease();
+      
+      if (sel == 0) {
+        menuPressed = false;
+        gamePaused = false;
+        gameMusicPlaying = true;
+        currentMusicNote = 0;
+        lastMusicNote = 0;
+        uniqueGameStartSound(gameIndex);
+        game();
+        stopGameMusic();
+        
+        if (menuPressed) {
+          menuPressed = false;
+          continue;
+        }
+        
+        delay(500);
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_ncenB10_tr);
+        centreStr("GAME OVER", 20);
+        u8g2.setFont(u8g2_font_6x10_tr);
+        centreStr("ENTER to replay", 38);
+        centreStr("MENU to game menu", 50);
+        u8g2.sendBuffer();
+        
+        bool waitForInput = true;
+        while (waitForInput) {
+          if (btnPressed(BTN_MENU)) {
+            playMenuButtonSound();
+            waitRelease();
+            waitForInput = false;
+            break;
+          }
+          if (btnPressed(BTN_ENTER)) {
+            beep(800, 25, soundLevel);
+            waitRelease();
+            waitForInput = false;
+            break;
+          }
+          delay(50);
+        }
+      }
+      else if (sel == 1) {
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_ncenB10_tr);
+        centreStr("HIGH SCORE", 20);
+        u8g2.setFont(u8g2_font_ncenB08_tr);
+        
+        if (gameIndex == 12) {
+          centreStr("🌟 You are a", 38);
+          centreStr("Rock Paper", 48);
+          centreStr("Scissors Champion! 🏆", 58);
+        } else {
+          char hs[30];
+          snprintf(hs, sizeof(hs), "%u", highScores[gameIndex]);
+          centreStr(hs, 38);
+          char total[30];
+          snprintf(total, sizeof(total), "Total Games: %u", totalGamesPlayed[gameIndex]);
+          centreStr(total, 50);
+        }
+        u8g2.sendBuffer();
+        waitRelease();
+        while (!btnHeld(BTN_UP) && !btnHeld(BTN_DOWN) && !btnHeld(BTN_LEFT) &&
+               !btnHeld(BTN_RIGHT) && !btnHeld(BTN_MENU) && !btnHeld(BTN_ENTER))
+          delay(15);
+        waitRelease();
+      }
+      else if (sel == 2) {
+        const char* rules[14] = {
+          "Dodge asteroids and survive as long as possible!",
+          "Break all bricks using the bouncing ball!",
+          "Jump over cacti and run as far as you can!",
+          "Flap through pipes and avoid hitting them!",
+          "Eat food to grow and avoid self-collision!",
+          "Eat food within boundary and shrink after 10!",
+          "First to score 7 wins! Move your paddle!",
+          "Eat all dots while avoiding the ghost!",
+          "Shoot all aliens while dodging their fire!",
+          "Complete lines to score and prevent stacking!",
+          "Destroy enemy tanks with your cannon!",
+          "Find the exit in each maze as fast as possible!",
+          "Beat the computer in unlimited rounds!",
+          "Avoid obstacles and stay alive on 3 lanes!"
+        };
+        
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_6x10_tr);
+        centreStr("RULES", 10);
+        
+        const char* ruleText = rules[gameIndex];
+        int len = strlen(ruleText);
+        int y = 22;
+        int lineStart = 0;
+        
+        while (lineStart < len && y < 60) {
+          int lineEnd = lineStart;
+          int lastSpace = lineStart;
+          
+          while (lineEnd < len && (lineEnd - lineStart) < 16) {
+            if (ruleText[lineEnd] == ' ') lastSpace = lineEnd;
+            lineEnd++;
+          }
+          
+          if (lineEnd < len && lastSpace > lineStart) {
+            lineEnd = lastSpace;
+          }
+          
+          char line[25];
+          int idx = 0;
+          for (int i = lineStart; i < lineEnd && idx < 24; i++) {
+            if (ruleText[i] != ' ') {
+              line[idx++] = ruleText[i];
+            } else if (i > lineStart && ruleText[i-1] != ' ') {
+              line[idx++] = ' ';
+            }
+          }
+          line[idx] = '\0';
+          
+          if (strlen(line) > 0) {
+            centreStr(line, y);
+            y += 11;
+          }
+          
+          lineStart = lineEnd + 1;
+          while (lineStart < len && ruleText[lineStart] == ' ') lineStart++;
+        }
+        
+        u8g2.sendBuffer();
+        waitRelease();
+        while (!btnHeld(BTN_UP) && !btnHeld(BTN_DOWN) && !btnHeld(BTN_LEFT) &&
+               !btnHeld(BTN_RIGHT) && !btnHeld(BTN_MENU) && !btnHeld(BTN_ENTER))
+          delay(15);
+        waitRelease();
+      }
+      else if (sel == 3) {
+        toggleFavorite(gameIndex);
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_ncenB10_tr);
+        if (isFavorite(gameIndex)) {
+          centreStr("⭐ ADDED TO", 24);
+          centreStr("FAVORITES!", 40);
+          beep(1200, 50, soundLevel);
+          delay(100);
+          beep(1500, 50, soundLevel);
+        } else {
+          centreStr("❌ REMOVED", 24);
+          centreStr("FROM FAVORITES", 40);
+          beep(600, 50, soundLevel);
+          delay(100);
+          beep(500, 50, soundLevel);
+        }
+        u8g2.sendBuffer();
+        delay(800);
+        waitRelease();
+      }
+    }
+    else if (btnPressed(BTN_MENU)) { 
+      beep(600, 50, soundLevel); 
+      waitRelease(); 
+      return; 
+    }
     delay(100);
   }
 }
 
 void runGameWithMenu(GameFunction game, const char* gameName, int gameIndex) {
   lastGameIndex = gameIndex;
-  while (true) {
-    int choice = showGameMenu(gameName, gameIndex);
-    if (choice == -1) return;
-    
-    else if (choice == 0) {
-      menuPressed = false;
-      gamePaused = false;
-      uniqueGameStartSound(gameIndex);
-      game();
-      
-      if (menuPressed) {
-        menuPressed = false;
-        continue;
-      }
-      
-      delay(500);
-      u8g2.clearBuffer();
-      u8g2.setFont(u8g2_font_ncenB10_tr);
-      centreStr("GAME OVER", 20);
-      u8g2.setFont(u8g2_font_6x10_tr);
-      centreStr("ENTER to replay", 38);
-      centreStr("MENU to game menu", 50);
-      u8g2.sendBuffer();
-      
-      bool waitForInput = true;
-      while (waitForInput) {
-        if (btnPressed(BTN_MENU)) {
-          playMenuButtonSound();
-          waitRelease();
-          waitForInput = false;
-          break;
-        }
-        if (btnPressed(BTN_ENTER)) {
-          beep(800, 25);
-          waitRelease();
-          waitForInput = false;
-          break;
-        }
-        delay(50);
-      }
-    }
-    
-    else if (choice == 1) {
-      u8g2.clearBuffer();
-      u8g2.setFont(u8g2_font_ncenB10_tr);
-      centreStr("HIGH SCORE", 20);
-      u8g2.setFont(u8g2_font_ncenB08_tr);
-      
-      if (gameIndex == 12) {
-        centreStr("🌟 You are a", 38);
-        centreStr("Rock Paper", 48);
-        centreStr("Scissors Champion! 🏆", 58);
-      } else {
-        char hs[30];
-        snprintf(hs, sizeof(hs), "%u", highScores[gameIndex]);
-        centreStr(hs, 38);
-        char total[30];
-        snprintf(total, sizeof(total), "Total Games: %u", totalGamesPlayed[gameIndex]);
-        centreStr(total, 50);
-      }
-      u8g2.sendBuffer();
-      waitRelease();
-      while (!btnHeld(BTN_UP) && !btnHeld(BTN_DOWN) && !btnHeld(BTN_LEFT) &&
-             !btnHeld(BTN_RIGHT) && !btnHeld(BTN_MENU) && !btnHeld(BTN_ENTER))
-        delay(15);
-      waitRelease();
-    }
-    
-    else if (choice == 2) {
-      const char* rules[14] = {
-        "Dodge asteroids and survive as long as possible!",
-        "Break all bricks using the bouncing ball!",
-        "Jump over cacti and run as far as you can!",
-        "Flap through pipes and avoid hitting them!",
-        "Eat food to grow and avoid self-collision!",
-        "Eat food within boundary and shrink after 10!",
-        "First to score 7 wins! Move your paddle!",
-        "Eat all dots while avoiding the ghost!",
-        "Shoot all aliens while dodging their fire!",
-        "Complete lines to score and prevent stacking!",
-        "Destroy enemy tanks with your cannon!",
-        "Find the exit in each maze as fast as possible!",
-        "Beat the computer in unlimited rounds!",
-        "Avoid obstacles and stay alive on 3 lanes!"
-      };
-      
-      u8g2.clearBuffer();
-      u8g2.setFont(u8g2_font_6x10_tr);
-      centreStr("RULES", 10);
-      
-      const char* ruleText = rules[gameIndex];
-      int len = strlen(ruleText);
-      int y = 22;
-      int lineStart = 0;
-      
-      while (lineStart < len && y < 60) {
-        int lineEnd = lineStart;
-        int lastSpace = lineStart;
-        
-        while (lineEnd < len && (lineEnd - lineStart) < 16) {
-          if (ruleText[lineEnd] == ' ') lastSpace = lineEnd;
-          lineEnd++;
-        }
-        
-        if (lineEnd < len && lastSpace > lineStart) {
-          lineEnd = lastSpace;
-        }
-        
-        char line[25];
-        int idx = 0;
-        for (int i = lineStart; i < lineEnd && idx < 24; i++) {
-          if (ruleText[i] != ' ') {
-            line[idx++] = ruleText[i];
-          } else if (i > lineStart && ruleText[i-1] != ' ') {
-            line[idx++] = ' ';
-          }
-        }
-        line[idx] = '\0';
-        
-        if (strlen(line) > 0) {
-          centreStr(line, y);
-          y += 11;
-        }
-        
-        lineStart = lineEnd + 1;
-        while (lineStart < len && ruleText[lineStart] == ' ') lineStart++;
-      }
-      
-      u8g2.sendBuffer();
-      waitRelease();
-      while (!btnHeld(BTN_UP) && !btnHeld(BTN_DOWN) && !btnHeld(BTN_LEFT) &&
-             !btnHeld(BTN_RIGHT) && !btnHeld(BTN_MENU) && !btnHeld(BTN_ENTER))
-        delay(15);
-      waitRelease();
-    }
-    
-    else if (choice == 3) {
-      toggleFavorite(gameIndex);
-      u8g2.clearBuffer();
-      u8g2.setFont(u8g2_font_ncenB10_tr);
-      if (isFavorite(gameIndex)) {
-        centreStr("⭐ ADDED TO", 24);
-        centreStr("FAVORITES!", 40);
-        beep(1200, 50);
-        delay(100);
-        beep(1500, 50);
-      } else {
-        centreStr("❌ REMOVED", 24);
-        centreStr("FROM FAVORITES", 40);
-        beep(600, 50);
-        delay(100);
-        beep(500, 50);
-      }
-      u8g2.sendBuffer();
-      delay(800);
-      waitRelease();
-    }
-  }
+  showGameMenu(gameName, gameIndex, game);
 }
 
 // ============================================================
@@ -729,10 +870,45 @@ void showSplash() {
   u8g2.setFont(u8g2_font_ncenB10_tr);
   centreStr("MADE BY Rahul", 40);
   u8g2.sendBuffer();
-  playStartMusic();
-  while (!btnHeld(BTN_UP) && !btnHeld(BTN_DOWN) && !btnHeld(BTN_LEFT) &&
-         !btnHeld(BTN_RIGHT) && !btnHeld(BTN_ENTER))
-    delay(15);
+  
+  if (soundEnabled) {
+    beep(523, 150, soundLevel); delay(200);
+    beep(659, 150, soundLevel); delay(200);
+    beep(784, 150, soundLevel); delay(200);
+    beep(523, 150, soundLevel); delay(200);
+  }
+  
+  for (int i = 0; i <= 100; i += 5) {
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    centreStr("🎮 GAME CONSOLE", 20);
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    centreStr("MADE BY Rahul", 40);
+    
+    u8g2.drawFrame(14, 50, 100, 8);
+    u8g2.drawBox(14, 50, i, 8);
+    
+    char loadText[10];
+    snprintf(loadText, sizeof(loadText), "%d%%", i);
+    u8g2.setFont(u8g2_font_5x7_tr);
+    u8g2.drawStr(60 - u8g2.getStrWidth(loadText)/2, 58, loadText);
+    
+    u8g2.sendBuffer();
+    
+    if (i % 10 == 0 && soundEnabled) {
+      beep(440 + i, 30, soundLevel);
+    }
+    delay(50);
+  }
+  
+  if (soundEnabled) {
+    delay(200);
+    beep(1046, 300, soundLevel); delay(400);
+    beep(880, 150, soundLevel); delay(200);
+    beep(1046, 500, soundLevel);
+  }
+  
+  delay(300);
   waitRelease();
 }
 
@@ -740,41 +916,8 @@ void showSplash() {
 // MAIN MENU FUNCTIONS
 // ============================================================
 
-void showButtonConfig() {
-  u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_ncenB08_tr);
-  centreStr("BUTTON CONFIG", 10);
-  
-  u8g2.setFont(u8g2_font_6x10_tr);
-  u8g2.drawStr(10, 25, "UP    : Move Up");
-  u8g2.drawStr(10, 35, "DOWN  : Move Down");
-  u8g2.drawStr(10, 45, "LEFT  : Move Left");
-  u8g2.drawStr(10, 55, "RIGHT : Move Right");
-  
-  u8g2.sendBuffer();
-  waitRelease();
-  
-  // Second page for additional buttons
-  u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_ncenB08_tr);
-  centreStr("BUTTON CONFIG (2)", 10);
-  
-  u8g2.setFont(u8g2_font_6x10_tr);
-  u8g2.drawStr(10, 25, "ENTER : Select/Play");
-  u8g2.drawStr(10, 35, "MENU  : Back");
-  u8g2.drawStr(10, 45, "PAUSE : Pause/Resume");
-  
-  u8g2.sendBuffer();
-  waitRelease();
-  
-  while (!btnHeld(BTN_UP) && !btnHeld(BTN_DOWN) && !btnHeld(BTN_LEFT) &&
-         !btnHeld(BTN_RIGHT) && !btnHeld(BTN_MENU) && !btnHeld(BTN_ENTER))
-    delay(15);
-  waitRelease();
-}
-
 void showSettingsMenu() {
-  const char* options[] = {"1. Brightness", "2. Sound", "3. Back"};
+  const char* options[] = {"Brightness", "Sound", "Back"};
   int sel = 0;
   
   while (true) {
@@ -795,14 +938,13 @@ void showSettingsMenu() {
     }
     u8g2.sendBuffer();
     
-    if (btnPressed(BTN_UP)) { sel = (sel + 2) % 3; beep(800, 25); }
-    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 3; beep(800, 25); }
+    if (btnPressed(BTN_UP)) { sel = (sel + 2) % 3; beep(800, 25, soundLevel); }
+    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 3; beep(800, 25, soundLevel); }
     else if (btnPressed(BTN_ENTER)) { 
-      beep(1000, 40); 
+      beep(1000, 40, soundLevel); 
       waitRelease();
       
       if (sel == 0) {
-        // Brightness control
         bool adjusting = true;
         while (adjusting) {
           u8g2.clearBuffer();
@@ -811,31 +953,45 @@ void showSettingsMenu() {
           
           char buf[20];
           snprintf(buf, sizeof(buf), "Level: %d", brightnessLevel);
-          centreStr(buf, 30);
+          centreStr(buf, 28);
           
-          // Draw visual bar
-          int barWidth = map(brightnessLevel, 0, 255, 0, 100);
-          u8g2.drawBox(14, 40, barWidth, 10);
-          u8g2.drawFrame(14, 40, 100, 10);
+          for (int i = 0; i < 7; i++) {
+            int x = 12 + i * 15;
+            int h = (i < brightnessLevel) ? 14 : 4;
+            u8g2.drawBox(x, 42 - h/2, 11, h);
+            u8g2.drawFrame(x, 42 - 7, 11, 14);
+          }
+          
+          char levelText[20];
+          if (brightnessLevel == 1) snprintf(levelText, sizeof(levelText), "Very Low");
+          else if (brightnessLevel == 2) snprintf(levelText, sizeof(levelText), "Low");
+          else if (brightnessLevel == 3) snprintf(levelText, sizeof(levelText), "Med-Low");
+          else if (brightnessLevel == 4) snprintf(levelText, sizeof(levelText), "Medium");
+          else if (brightnessLevel == 5) snprintf(levelText, sizeof(levelText), "Med-High");
+          else if (brightnessLevel == 6) snprintf(levelText, sizeof(levelText), "High");
+          else snprintf(levelText, sizeof(levelText), "Very High");
+          u8g2.setFont(u8g2_font_5x7_tr);
+          centreStr(levelText, 55);
           
           u8g2.setFont(u8g2_font_5x7_tr);
-          centreStr("UP/DOWN adjust", 56);
           centreStr("ENTER save  MENU back", 63);
           u8g2.sendBuffer();
           
           if (btnPressed(BTN_UP)) { 
-            brightnessLevel = min(255, brightnessLevel + 10); 
-            u8g2.setContrast(brightnessLevel);
-            beep(800, 20);
+            brightnessLevel = min(7, brightnessLevel + 1); 
+            uint8_t contrast = map(brightnessLevel, 1, 7, 30, 255);
+            u8g2.setContrast(contrast);
+            beep(800, 20, soundLevel);
           }
           else if (btnPressed(BTN_DOWN)) { 
-            brightnessLevel = max(0, brightnessLevel - 10); 
-            u8g2.setContrast(brightnessLevel);
-            beep(800, 20);
+            brightnessLevel = max(1, brightnessLevel - 1); 
+            uint8_t contrast = map(brightnessLevel, 1, 7, 30, 255);
+            u8g2.setContrast(contrast);
+            beep(800, 20, soundLevel);
           }
           else if (btnPressed(BTN_ENTER)) { 
             saveBrightness();
-            beep(1000, 40);
+            beep(1000, 40, soundLevel);
             waitRelease();
             adjusting = false;
           }
@@ -847,40 +1003,54 @@ void showSettingsMenu() {
         }
       }
       else if (sel == 1) {
-        // Sound control
-        u8g2.clearBuffer();
-        u8g2.setFont(u8g2_font_ncenB08_tr);
-        centreStr("SOUND", 20);
-        u8g2.setFont(u8g2_font_ncenB10_tr);
-        centreStr(soundEnabled ? "🔊 ON" : "🔇 OFF", 40);
-        u8g2.setFont(u8g2_font_6x10_tr);
-        centreStr("ENTER to toggle", 55);
-        u8g2.sendBuffer();
-        
-        waitRelease();
-        while (true) {
-          if (btnPressed(BTN_ENTER)) {
-            soundEnabled = !soundEnabled;
-            saveSoundSetting();
-            if (soundEnabled) {
-              beep(1000, 50);
-              delay(100);
-              beep(1200, 50);
-            }
-            u8g2.clearBuffer();
-            u8g2.setFont(u8g2_font_ncenB08_tr);
-            centreStr("SOUND", 20);
-            u8g2.setFont(u8g2_font_ncenB10_tr);
-            centreStr(soundEnabled ? "🔊 ON" : "🔇 OFF", 40);
-            u8g2.setFont(u8g2_font_6x10_tr);
-            centreStr("ENTER to toggle", 55);
-            u8g2.sendBuffer();
-            waitRelease();
+        bool adjusting = true;
+        while (adjusting) {
+          u8g2.clearBuffer();
+          u8g2.setFont(u8g2_font_ncenB08_tr);
+          centreStr("SOUND", 10);
+          
+          u8g2.setFont(u8g2_font_ncenB10_tr);
+          char soundText[20];
+          if (soundLevel == 0) snprintf(soundText, sizeof(soundText), "🔇 MUTE");
+          else if (soundLevel == 1) snprintf(soundText, sizeof(soundText), "🔊 LOW");
+          else if (soundLevel == 2) snprintf(soundText, sizeof(soundText), "🔊 MEDIUM");
+          else if (soundLevel == 3) snprintf(soundText, sizeof(soundText), "🔊 HIGH");
+          centreStr(soundText, 28);
+          
+          for (int i = 0; i < 4; i++) {
+            int x = 22 + i * 22;
+            int h = (i < soundLevel) ? 12 : 3;
+            u8g2.drawBox(x, 42 - h/2, 14, h);
+            u8g2.drawFrame(x, 42 - 6, 14, 12);
           }
-          else if (btnPressed(BTN_MENU)) {
-            playMenuButtonSound();
+          
+          u8g2.setFont(u8g2_font_5x7_tr);
+          centreStr("UP/DOWN adjust", 56);
+          centreStr("ENTER save  MENU back", 63);
+          u8g2.sendBuffer();
+          
+          if (btnPressed(BTN_UP)) { 
+            soundLevel = min(3, soundLevel + 1); 
+            soundEnabled = (soundLevel > 0);
+            if (soundEnabled) {
+              beep(1000, 30, soundLevel);
+              delay(100);
+              beep(1200, 30, soundLevel);
+            }
+          }
+          else if (btnPressed(BTN_DOWN)) { 
+            soundLevel = max(0, soundLevel - 1); 
+            soundEnabled = (soundLevel > 0);
+          }
+          else if (btnPressed(BTN_ENTER)) { 
+            saveSoundSetting();
+            beep(1000, 40, soundLevel);
             waitRelease();
-            break;
+            adjusting = false;
+          }
+          else if (btnPressed(BTN_MENU)) { 
+            playMenuButtonSound();
+            adjusting = false;
           }
           delay(50);
         }
@@ -960,14 +1130,14 @@ void showFavoritesMenu() {
     
     if (btnPressed(BTN_UP)) { 
       sel = (sel + favoriteCount - 1) % favoriteCount; 
-      beep(800, 25); 
+      beep(800, 25, soundLevel); 
     }
     else if (btnPressed(BTN_DOWN)) { 
       sel = (sel + 1) % favoriteCount; 
-      beep(800, 25); 
+      beep(800, 25, soundLevel); 
     }
     else if (btnPressed(BTN_ENTER)) { 
-      beep(1200, 60); 
+      beep(1200, 60, soundLevel); 
       waitRelease();
       int gameIdx = favoriteGames[sel];
       runGameWithMenu(games[gameIdx], gameNames[gameIdx], gameIdx);
@@ -982,7 +1152,7 @@ void showFavoritesMenu() {
 }
 
 void showMainMenu() {
-  const char* options[] = {"1. GAME MENU", "2. ⭐ FAVORITES", "3. SETTINGS", "4. BUTTON CONFIG"};
+  const char* options[] = {"GAME MENU", "⭐ FAVORITES", "SETTINGS"};
   int sel = 0;
   
   const char* gameNames[GAME_COUNT] = {
@@ -1007,10 +1177,11 @@ void showMainMenu() {
     centreStr("🎮 MAIN MENU 🎮", 9);
     u8g2.setDrawColor(1);
     
-    for (int i = 0; i < 4; i++) {
-      int y = 25 + i * 13;
+    u8g2.setFont(u8g2_font_6x10_tr);
+    for (int i = 0; i < 3; i++) {
+      int y = 21 + i * 13;
       if (i == sel) {
-        u8g2.drawRBox(10, y - 8, SCREEN_W - 20, 12, 2);
+        u8g2.drawRBox(10, y - 7, SCREEN_W - 20, 11, 2);
         u8g2.setDrawColor(0);
         centreStr(options[i], y + 3);
         u8g2.setDrawColor(1);
@@ -1019,19 +1190,13 @@ void showMainMenu() {
       }
     }
     
-    // Show favorite count
-    u8g2.setFont(u8g2_font_5x7_tr);
-    char favCount[20];
-    snprintf(favCount, sizeof(favCount), "Favorites: %d", favoriteCount);
-    centreStr(favCount, 63);
-    
     u8g2.sendBuffer();
     delay(100);
     
-    if (btnPressed(BTN_UP)) { sel = (sel + 3) % 4; beep(800, 25); }
-    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 4; beep(800, 25); }
+    if (btnPressed(BTN_UP)) { sel = (sel + 2) % 3; beep(800, 25, soundLevel); }
+    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 3; beep(800, 25, soundLevel); }
     else if (btnPressed(BTN_ENTER)) { 
-      beep(1200, 60); 
+      beep(1200, 60, soundLevel); 
       waitRelease();
       
       if (sel == 0) {
@@ -1045,9 +1210,6 @@ void showMainMenu() {
       }
       else if (sel == 2) {
         showSettingsMenu();
-      }
-      else if (sel == 3) {
-        showButtonConfig();
       }
     }
     else if (btnPressed(BTN_MENU)) { 
@@ -1098,6 +1260,10 @@ void game_asteroids() {
     float dt = (now - lastFrame) / 30.0f;
     lastFrame = now;
     
+    if (gameMusicPlaying) {
+      playGameMusic(0);
+    }
+    
     if (invincible && (now - invincibleStart) > INVINCIBLE_DURATION) {
       invincible = false;
     }
@@ -1138,7 +1304,7 @@ void game_asteroids() {
           gameOverScreen(score / 10, 0, false);
           return;
         }
-        beep(200, 100);
+        beep(200, 100, soundLevel);
         invincible = true;
         invincibleStart = now;
         shipY = respawnY;
@@ -1229,15 +1395,19 @@ void game_breakout() {
     float dt = (now - lastFrame) / 30.0f;
     lastFrame = now;
     
+    if (gameMusicPlaying) {
+      playGameMusic(1);
+    }
+    
     if (btnHeld(BTN_LEFT)) padX = max(0, padX - 4);
     if (btnHeld(BTN_RIGHT)) padX = min(SCREEN_W - 20, padX + 4);
     
     bx += vx * dt;
     by += vy * dt;
     
-    if (bx <= 1) { vx = fabsf(vx); bx = 1; beep(600, 15); }
-    if (bx >= SCREEN_W - 4) { vx = -fabsf(vx); bx = SCREEN_W - 4; beep(600, 15); }
-    if (by <= 1) { vy = fabsf(vy); by = 1; beep(600, 15); }
+    if (bx <= 1) { vx = fabsf(vx); bx = 1; beep(600, 15, soundLevel); }
+    if (bx >= SCREEN_W - 4) { vx = -fabsf(vx); bx = SCREEN_W - 4; beep(600, 15, soundLevel); }
+    if (by <= 1) { vy = fabsf(vy); by = 1; beep(600, 15, soundLevel); }
     
     if (vy > 0 && by + 3 >= padY && by + 3 <= padY + 3 + 2 &&
         bx + 2 >= padX && bx <= padX + 20) {
@@ -1246,12 +1416,12 @@ void game_breakout() {
       vx = rel * 3.0f;
       if (fabsf(vx) < 0.5f) vx = (vx >= 0) ? 0.5f : -0.5f;
       by = padY - 3;
-      beep(900, 20);
+      beep(900, 20, soundLevel);
     }
     
     if (by > SCREEN_H + 2) {
       lives--;
-      beep(200, 300);
+      beep(200, 300, soundLevel);
       if (lives <= 0) {
         gameOverScreen(score, 1, false);
         return;
@@ -1276,7 +1446,7 @@ void game_breakout() {
             vx = -vx;
           else
             vy = -vy;
-          beep(1200 + r * 120, 25);
+          beep(1200 + r * 120, 25, soundLevel);
           goto brick_done;
         }
       }
@@ -1292,9 +1462,9 @@ void game_breakout() {
       snprintf(buf, sizeof(buf), "Score: %u", score);
       centreStr(buf, 44);
       u8g2.sendBuffer();
-      beep(1760, 100); delay(110);
-      beep(1760, 100); delay(110);
-      beep(2093, 300);
+      beep(1760, 100, soundLevel); delay(110);
+      beep(1760, 100, soundLevel); delay(110);
+      beep(2093, 300, soundLevel);
       delay(400);
       waitRelease();
       gameOverScreen(score, 1, true);
@@ -1361,12 +1531,16 @@ void game_dino() {
     if (dt > 2.0f) dt = 2.0f;
     lastFrame = now;
 
+    if (gameMusicPlaying) {
+      playGameMusic(2);
+    }
+
     bool anyBtn = btnPressed(BTN_UP) || btnPressed(BTN_DOWN) ||
                   btnPressed(BTN_LEFT) || btnPressed(BTN_RIGHT);
     if (anyBtn && !isJumping) {
       velY = JUMP_FORCE;
       isJumping = true;
-      beep(1000, 20);
+      beep(1000, 20, soundLevel);
     }
 
     velY += GRAVITY * dt;
@@ -1468,7 +1642,7 @@ void game_flappy() {
          !btnPressed(BTN_LEFT) && !btnPressed(BTN_RIGHT))
     delay(10);
   vel = FLAP_VEL;
-  beep(900, 35);
+  beep(900, 35, soundLevel);
   lastFrame = millis();
 
   while (true) {
@@ -1479,6 +1653,10 @@ void game_flappy() {
     float dt = (now - lastFrame) / 30.0f;
     if (dt > 3.0f) dt = 3.0f;
     lastFrame = now;
+
+    if (gameMusicPlaying) {
+      playGameMusic(3);
+    }
 
     int minRange, maxRange;
     if(score >= 0 && score <= 20) { minRange = 30; maxRange = 60; }
@@ -1492,7 +1670,7 @@ void game_flappy() {
 
     bool anyBtn = btnPressed(BTN_UP) || btnPressed(BTN_DOWN) ||
                   btnPressed(BTN_LEFT) || btnPressed(BTN_RIGHT);
-    if (anyBtn) { vel = FLAP_VEL; beep(900, 30); }
+    if (anyBtn) { vel = FLAP_VEL; beep(900, 30, soundLevel); }
 
     vel += GRAVITY * dt;
     birdY += vel * dt;
@@ -1522,7 +1700,7 @@ void game_flappy() {
       if (!scored[i] && pX[i] + PIPE_W < BIRD_X) {
         score++;
         scored[i] = true;
-        beep(1300, 25);
+        beep(1300, 25, soundLevel);
       }
     }
 
@@ -1564,7 +1742,7 @@ void game_flappy() {
 }
 
 // ============================================================
-// GAME: SNAKE 1 (Original - No Boundary)
+// GAME: SNAKE 1
 // ============================================================
 
 #define SN_COLS 21
@@ -1613,6 +1791,10 @@ void game_snake1() {
     if (checkPause("SNAKE 1")) return;
     if (checkMenuAndReturn()) return;
     
+    if (gameMusicPlaying) {
+      playGameMusic(4);
+    }
+    
     if (btnHeld(BTN_UP) && dy == 0) { next_dx = 0; next_dy = -1; }
     if (btnHeld(BTN_DOWN) && dy == 0) { next_dx = 0; next_dy = 1; }
     if (btnHeld(BTN_LEFT) && dx == 0) { next_dx = -1; next_dy = 0; }
@@ -1642,7 +1824,7 @@ void game_snake1() {
       score++;
       if (len < SN_MAXLEN) len++;
       spd = max(70, (int)spd - 7);
-      beep(1400, 35);
+      beep(1400, 35, soundLevel);
       placeFood();
     }
 
@@ -1665,7 +1847,7 @@ void game_snake1() {
 }
 
 // ============================================================
-// GAME: SNAKE 2 (With Boundary - Shrink at 10 Food)
+// GAME: SNAKE 2
 // ============================================================
 
 #define SN2_COLS 20
@@ -1717,6 +1899,10 @@ void game_snake2() {
     if (checkPause("SNAKE 2")) return;
     if (checkMenuAndReturn()) return;
     
+    if (gameMusicPlaying) {
+      playGameMusic(5);
+    }
+    
     if (btnHeld(BTN_UP) && dy == 0) { next_dx = 0; next_dy = -1; }
     if (btnHeld(BTN_DOWN) && dy == 0) { next_dx = 0; next_dy = 1; }
     if (btnHeld(BTN_LEFT) && dx == 0) { next_dx = -1; next_dy = 0; }
@@ -1730,7 +1916,6 @@ void game_snake2() {
     int nx = sx[0] + dx;
     int ny = sy[0] + dy;
 
-    // Check boundary collision - full screen boundary
     if (nx < 0 || nx >= SN2_COLS || ny < 0 || ny >= SN2_ROWS) {
       gameOverScreen(score, 5, false);
       return;
@@ -1753,7 +1938,7 @@ void game_snake2() {
       foodEaten++;
       if (len < SN2_MAXLEN) len++;
       spd = max(70, (int)spd - 7);
-      beep(1400, 35);
+      beep(1400, 35, soundLevel);
       placeFood();
       
       if (foodEaten >= 10) {
@@ -1767,7 +1952,6 @@ void game_snake2() {
 
     u8g2.clearBuffer();
     
-    // Draw boundary - full screen
     int bx = SN2_OX - 1, by = SN2_OY - 1;
     int bw = SN2_COLS * SN2_SZ + 2, bh = SN2_ROWS * SN2_SZ + 2;
     u8g2.drawFrame(bx, by, bw, bh);
@@ -1820,6 +2004,10 @@ void game_pong() {
     if (checkPause("PONG")) return;
     if (checkMenuAndReturn()) return;
     
+    if (gameMusicPlaying) {
+      playGameMusic(6);
+    }
+    
     if (btnHeld(BTN_UP)) pY = max(0, pY - 3);
     if (btnHeld(BTN_DOWN)) pY = min(SCREEN_H - PAD_H, pY + 3);
 
@@ -1829,8 +2017,8 @@ void game_pong() {
 
     bx += vx; by += vy;
 
-    if (by <= 0) { vy = fabsf(vy); by = 0; beep(500, 15); }
-    if (by >= SCREEN_H - 3) { vy = -fabsf(vy); by = SCREEN_H - 3; beep(500, 15); }
+    if (by <= 0) { vy = fabsf(vy); by = 0; beep(500, 15, soundLevel); }
+    if (by >= SCREEN_H - 3) { vy = -fabsf(vy); by = SCREEN_H - 3; beep(500, 15, soundLevel); }
 
     if (vx < 0 && bx <= 4 + PAD_W && bx >= 4 && by + 2 >= cY && by <= cY + PAD_H) {
       vx = fabsf(vx) * 1.05f;
@@ -1838,7 +2026,7 @@ void game_pong() {
       vy = constrain(vy, -4.0f, 4.0f);
       vx = min(vx, 5.0f);
       bx = 4 + PAD_W;
-      beep(900, 20);
+      beep(900, 20, soundLevel);
     }
 
     if (bx >= 121 - PAD_W && bx <= 122 && by + 2 >= pY && by <= pY + PAD_H) {
@@ -1847,11 +2035,11 @@ void game_pong() {
       vy = constrain(vy, -4.5f, 4.5f);
       vx = max(vx, -5.0f);
       bx = 121 - PAD_W - 1;
-      beep(1000, 20);
+      beep(1000, 20, soundLevel);
     }
 
-    if (bx < 0) { pScore++; beep(1400, 100); bx = 64; by = 32; vx = 2.5f; vy = 1.8f; pY = 25; cY = 25; delay(600); }
-    if (bx > SCREEN_W) { cScore++; beep(200, 250); bx = 64; by = 32; vx = -2.5f; vy = 1.8f; pY = 25; cY = 25; delay(600); }
+    if (bx < 0) { pScore++; beep(1400, 100, soundLevel); bx = 64; by = 32; vx = 2.5f; vy = 1.8f; pY = 25; cY = 25; delay(600); }
+    if (bx > SCREEN_W) { cScore++; beep(200, 250, soundLevel); bx = 64; by = 32; vx = -2.5f; vy = 1.8f; pY = 25; cY = 25; delay(600); }
 
     if (pScore >= WIN || cScore >= WIN) {
       u8g2.clearBuffer();
@@ -1916,6 +2104,10 @@ void game_pacman() {
     if (checkPause("PACMAN")) return;
     if (checkMenuAndReturn()) return;
     
+    if (gameMusicPlaying) {
+      playGameMusic(7);
+    }
+    
     uint32_t start = millis();
 
     if (btnHeld(BTN_UP)) { pdx = 0; pdy = -2; }
@@ -1935,7 +2127,7 @@ void game_pacman() {
       if (maze[my][mx]) {
         maze[my][mx] = false;
         score += 10;
-        beep(1000, 10);
+        beep(1000, 10, soundLevel);
       }
     }
 
@@ -2030,6 +2222,10 @@ void game_spaceinvaders() {
     if (checkPause("SPACE INVADERS")) return;
     if (checkMenuAndReturn()) return;
     
+    if (gameMusicPlaying) {
+      playGameMusic(8);
+    }
+    
     uint32_t now = millis();
     float dt = (now - lastFrame) / 20.0f;
     lastFrame = now;
@@ -2042,7 +2238,7 @@ void game_spaceinvaders() {
       for (auto &b : pb)
         if (!b.on) {
           b.x = shipX + 4; b.y = shipY - 1; b.on = true;
-          beep(1500, 15);
+          beep(1500, 15, soundLevel);
           break;
         }
       lastShoot = now;
@@ -2060,7 +2256,7 @@ void game_spaceinvaders() {
           invLeft--;
           score += (3 - br) * 10;
           b.on = false;
-          beep(800 - br * 100, 40);
+          beep(800 - br * 100, 40, soundLevel);
         }
       }
     }
@@ -2124,8 +2320,8 @@ void game_spaceinvaders() {
           inv[r][c] = true;
       invLeft = 24;
       gridX = 4; gridY = 4; gridDX = 1;
-      beep(1760, 100); delay(110);
-      beep(2093, 200); delay(400);
+      beep(1760, 100, soundLevel); delay(110);
+      beep(2093, 200, soundLevel); delay(400);
     }
     
     u8g2.clearBuffer();
@@ -2241,12 +2437,16 @@ void game_tetris() {
     if (checkPause("TETRIS")) return;
     if (checkMenuAndReturn()) return;
     
+    if (gameMusicPlaying) {
+      playGameMusic(9);
+    }
+    
     uint32_t now = millis();
     if (now - lastMove > 130) {
-      if (btnHeld(BTN_LEFT) && ttFits(cur, -1, 0)) { cur.x--; lastMove = now; beep(700, 15); }
-      if (btnHeld(BTN_RIGHT) && ttFits(cur, 1, 0)) { cur.x++; lastMove = now; beep(700, 15); }
+      if (btnHeld(BTN_LEFT) && ttFits(cur, -1, 0)) { cur.x--; lastMove = now; beep(700, 15, soundLevel); }
+      if (btnHeld(BTN_RIGHT) && ttFits(cur, 1, 0)) { cur.x++; lastMove = now; beep(700, 15, soundLevel); }
     }
-    if (btnPressed(BTN_UP)) { ttRotate(cur); beep(900, 15); }
+    if (btnPressed(BTN_UP)) { ttRotate(cur); beep(900, 15, soundLevel); }
     
     uint32_t interval = btnHeld(BTN_DOWN) ? 60 : dropInterval;
     if (now - lastDrop > interval) {
@@ -2260,7 +2460,7 @@ void game_tetris() {
           abs[i][1] = cur.y + cur.cells[i][1];
           if (abs[i][1] >= 0) board[abs[i][1]][abs[i][0]] = 1;
         }
-        beep(500, 20);
+        beep(500, 20, soundLevel);
         int cleared = 0;
         for (int r = TT_ROWS - 1; r >= 0; r--) {
           bool full = true;
@@ -2275,7 +2475,7 @@ void game_tetris() {
         if (cleared) {
           static const uint16_t pts[5] = {0, 40, 100, 300, 1200};
           score += pts[min(cleared, 4)] * level;
-          beep(1200, 40); delay(45); beep(1400, 40);
+          beep(1200, 40, soundLevel); delay(45); beep(1400, 40, soundLevel);
           level = 1 + score / 200;
           dropInterval = max(80U, 600U - (level - 1) * 60);
         }
@@ -2350,6 +2550,10 @@ void game_tank() {
     if (checkPause("TANK BATTLE")) return;
     if (checkMenuAndReturn()) return;
     
+    if (gameMusicPlaying) {
+      playGameMusic(10);
+    }
+    
     uint32_t now = millis();
     float dt = (now - lastFrame) / 20.0f;
     lastFrame = now;
@@ -2368,7 +2572,7 @@ void game_tank() {
           pBullet[i].x = player.x + 3; pBullet[i].y = player.y + 3;
           pBullet[i].dx = player.dx; pBullet[i].dy = player.dy;
           pBullet[i].active = true;
-          beep(1200, 20);
+          beep(1200, 20, soundLevel);
           lastFire = now;
           break;
         }
@@ -2441,7 +2645,7 @@ void game_tank() {
           enemies[j].active = false;
           pBullet[i].active = false;
           score += 50;
-          beep(800, 40);
+          beep(800, 40, soundLevel);
           break;
         }
       }
@@ -2512,6 +2716,10 @@ void game_maze() {
     if (checkPause("MAZE RUNNER")) return;
     if (checkMenuAndReturn()) return;
     
+    if (gameMusicPlaying) {
+      playGameMusic(11);
+    }
+    
     uint32_t now = millis();
     if (now - lastMove > moveDelay) {
       uint8_t walls = pgm_read_byte(&MAZE_L1[py][px]);
@@ -2520,14 +2728,14 @@ void game_maze() {
       if (btnHeld(BTN_RIGHT) && !(walls & 2) && px < 15) { px++; moved = true; }
       if (btnHeld(BTN_DOWN) && !(walls & 4) && py < 7) { py++; moved = true; }
       if (btnHeld(BTN_LEFT) && !(walls & 8) && px > 0) { px--; moved = true; }
-      if (moved) { beep(900, 15); lastMove = now; }
+      if (moved) { beep(900, 15, soundLevel); lastMove = now; }
     }
 
     if (px == ex && py == ey) {
       uint16_t secs = (millis() - startTime) / 1000;
-      beep(1047, 80); delay(90);
-      beep(1319, 80); delay(90);
-      beep(1568, 200); delay(300);
+      beep(1047, 80, soundLevel); delay(90);
+      beep(1319, 80, soundLevel); delay(90);
+      beep(1568, 200, soundLevel); delay(300);
       
       u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_ncenB10_tr);
@@ -2572,7 +2780,7 @@ void game_maze() {
 }
 
 // ============================================================
-// GAME: ROCK PAPER SCISSORS (RPS Game - Unlimited)
+// GAME: ROCK PAPER SCISSORS
 // ============================================================
 
 void game_rps() {
@@ -2598,15 +2806,19 @@ void game_rps() {
     if (checkPause("RPS")) return;
     if (checkMenuAndReturn()) return;
     
+    if (gameMusicPlaying) {
+      playGameMusic(12);
+    }
+    
     if (state == 0) {
-      if (btnPressed(BTN_UP)) { playerChoice = (playerChoice + 2) % 3; beep(600, 15); }
-      if (btnPressed(BTN_DOWN)) { playerChoice = (playerChoice + 1) % 3; beep(600, 15); }
+      if (btnPressed(BTN_UP)) { playerChoice = (playerChoice + 2) % 3; beep(600, 15, soundLevel); }
+      if (btnPressed(BTN_DOWN)) { playerChoice = (playerChoice + 1) % 3; beep(600, 15, soundLevel); }
       
       if (btnPressed(BTN_ENTER)) {
         cpuChoice = random(0, 3);
         state = 1;
         resultTime = millis();
-        beep(900, 30);
+        beep(900, 30, soundLevel);
         totalRounds++;
       }
       
@@ -2655,7 +2867,7 @@ void game_rps() {
       
       int result = (playerChoice - cpuChoice + 3) % 3;
       const char* resultText;
-      if (result == 0) { resultText = "DRAW!"; beep(500, 50); }
+      if (result == 0) { resultText = "DRAW!"; beep(500, 50, soundLevel); }
       else if (result == 1) { 
         resultText = "YOU WIN! 🎉"; 
         playerScore++;
@@ -2663,14 +2875,14 @@ void game_rps() {
         saveTotalGames(12);
         saveRPSWin(12);
         saveHighScore(12, playerScore);
-        beep(1200, 40); delay(100); beep(1500, 40); 
+        beep(1200, 40, soundLevel); delay(100); beep(1500, 40, soundLevel); 
       }
       else { 
         resultText = "CPU WINS! 😢"; 
         cpuScore++; 
         saveTotalGames(12);
         saveHighScore(12, playerScore);
-        beep(300, 100); 
+        beep(300, 100, soundLevel); 
       }
       
       u8g2.setFont(u8g2_font_ncenB08_tr);
@@ -2688,7 +2900,7 @@ void game_rps() {
 }
 
 // ============================================================
-// GAME: CAR RACER (Full Width, Reduced Speed)
+// GAME: CAR RACER
 // ============================================================
 
 void game_car() {
@@ -2724,6 +2936,10 @@ void game_car() {
     if (checkPause("CAR RACER")) return;
     if (checkMenuAndReturn()) return;
     
+    if (gameMusicPlaying) {
+      playGameMusic(13);
+    }
+    
     uint32_t now = millis();
     float dt = (now - lastFrame) / 20.0f;
     lastFrame = now;
@@ -2755,14 +2971,14 @@ void game_car() {
       if (obs[i].y > SCREEN_H) {
         obs[i].active = false;
         score++;
-        if (score % 5 == 0) beep(1500, 20);
+        if (score % 5 == 0) beep(1500, 20, soundLevel);
         continue;
       }
       
       if (obs[i].y + 10 > SCREEN_H - 12 && obs[i].y < SCREEN_H - 6 + 6 &&
           obs[i].x < playerX + CAR_W && obs[i].x + 12 > playerX) {
         lives--;
-        beep(200, 200);
+        beep(200, 200, soundLevel);
         if (lives <= 0) {
           gameOverScreen(score, 13, false);
           return;
@@ -2838,12 +3054,13 @@ int menuSelect() {
     centreStr("🎮 GAME MENU 🎮", 9);
     u8g2.setDrawColor(1);
 
+    u8g2.setFont(u8g2_font_6x10_tr);
     for (int i = 0; i < VISIBLE; i++) {
       int idx = top + i;
       if (idx >= TOTAL_GAMES) break;
-      int y = 14 + i * 13;
+      int y = 14 + i * 12;
       if (idx == sel) {
-        u8g2.drawRBox(0, y-1, SCREEN_W, 12, 2);
+        u8g2.drawRBox(0, y-1, SCREEN_W, 11, 2);
         u8g2.setDrawColor(0);
         u8g2.drawStr(6, y + 9, names[idx]);
         u8g2.setDrawColor(1);
@@ -2863,9 +3080,9 @@ int menuSelect() {
     u8g2.sendBuffer();
     delay(100);
     
-    if (btnPressed(BTN_UP)) { sel = (sel + TOTAL_GAMES - 1) % TOTAL_GAMES; beep(800, 25); }
-    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % TOTAL_GAMES; beep(800, 25); }
-    else if (btnPressed(BTN_ENTER)) { beep(1200, 60); waitRelease(); return sel; }
+    if (btnPressed(BTN_UP)) { sel = (sel + TOTAL_GAMES - 1) % TOTAL_GAMES; beep(800, 25, soundLevel); }
+    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % TOTAL_GAMES; beep(800, 25, soundLevel); }
+    else if (btnPressed(BTN_ENTER)) { beep(1200, 60, soundLevel); waitRelease(); return sel; }
     else if (btnPressed(BTN_MENU)) { playMenuButtonSound(); waitRelease(); return -1; }
   }
 }
@@ -2892,7 +3109,8 @@ void setup() {
   loadHighScores();
 
   u8g2.begin();
-  u8g2.setContrast(brightnessLevel);
+  uint8_t contrast = map(brightnessLevel, 1, 7, 30, 255);
+  u8g2.setContrast(contrast);
   u8g2.setFont(u8g2_font_6x10_tr);
   u8g2.setDrawColor(1);
   u8g2.setBitmapMode(0);
