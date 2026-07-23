@@ -42,12 +42,10 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, OLED_SCL, OLED_
 #define MUSIC_COUNT 30
 
 #define NOTE_REST 0
- 
-// ── Octave 2 ──────────────────────────────────────────────
+
+// ── Note Definitions ──────────────────
 #define NOTE_G2   98
 #define NOTE_AS2  117
- 
-// ── Octave 3 ──────────────────────────────────────────────
 #define NOTE_C3   131
 #define NOTE_CS3  139
 #define NOTE_D3   147
@@ -60,8 +58,6 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, OLED_SCL, OLED_
 #define NOTE_A3   220
 #define NOTE_AS3  233
 #define NOTE_B3   247
- 
-// ── Octave 4 ──────────────────────────────────────────────
 #define NOTE_C4   262
 #define NOTE_CS4  277
 #define NOTE_D4   294
@@ -74,8 +70,6 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, OLED_SCL, OLED_
 #define NOTE_A4   440
 #define NOTE_AS4  466
 #define NOTE_B4   494
- 
-// ── Octave 5 ──────────────────────────────────────────────
 #define NOTE_C5   523
 #define NOTE_CS5  554
 #define NOTE_D5   587
@@ -88,8 +82,6 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, OLED_SCL, OLED_
 #define NOTE_A5   880
 #define NOTE_AS5  932
 #define NOTE_B5   988
- 
-// ── Octave 6 ──────────────────────────────────────────────
 #define NOTE_C6   1047
 #define NOTE_CS6  1109
 #define NOTE_D6   1175
@@ -102,31 +94,22 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, OLED_SCL, OLED_
 #define NOTE_A6   1760
 #define NOTE_AS6  1865
 #define NOTE_B6   1976
- 
-// ── Octave 7 ──────────────────────────────────────────────
 #define NOTE_C7   2093
- 
-// ═══════════════════════════════════════════════════════════
-//  DURATIONS (in milliseconds), tempo = 120 BPM (quarter = 500ms)
-//  Change QTR below to retune the whole song set's tempo — every
-//  other duration is derived from it so relative timing stays
-//  correct (e.g. set QTR to 400 for a faster ~150 BPM feel).
-// ═══════════════════════════════════════════════════════════
-#define D_QTR   500                 // quarter note
-#define D_WHL   (D_QTR * 4)         // whole note        = 2000 ms
-#define D_HLF   (D_QTR * 2)         // half note         = 1000 ms
-#define D_EIT   (D_QTR / 2)         // eighth note       =  250 ms
-#define D_SXT   (D_QTR / 4)         // sixteenth note    =  125 ms
-#define D_QTRD  (D_QTR + D_QTR / 2) // dotted quarter    =  750 ms
- 
+
+// ── Music Duration ────────────────────
+#define D_QTR   500
+#define D_WHL   (D_QTR * 4)
+#define D_HLF   (D_QTR * 2)
+#define D_EIT   (D_QTR / 2)
+#define D_SXT   (D_QTR / 4)
+#define D_QTRD  (D_QTR + D_QTR / 2)
 
 struct MelodyNote {
   uint16_t freq;
   uint16_t duration;
 };
 
-// ── 30 Music Songs ────────────────────
-
+// ── Music Songs ────────────────────────
 const MelodyNote SONG_01[] = {
   {NOTE_C5,D_EIT},{NOTE_E5,D_EIT},{NOTE_G5,D_EIT},{NOTE_C6,D_EIT},
   {NOTE_G5,D_EIT},{NOTE_E5,D_EIT},{NOTE_C5,D_QTR},{NOTE_REST,D_EIT},
@@ -140,7 +123,6 @@ const MelodyNote SONG_01[] = {
   {NOTE_G5,D_QTR},{NOTE_C6,D_HLF},
 };
  
-// 2. Tetris Theme (Korobeiniki-style, public-domain folk tune)
 const MelodyNote SONG_02[] = {
   {NOTE_E5,D_QTR},{NOTE_B4,D_EIT},{NOTE_C5,D_EIT},{NOTE_D5,D_QTR},{NOTE_C5,D_EIT},{NOTE_B4,D_EIT},
   {NOTE_A4,D_QTR},{NOTE_A4,D_EIT},{NOTE_C5,D_EIT},{NOTE_E5,D_QTR},{NOTE_D5,D_EIT},{NOTE_C5,D_EIT},
@@ -150,7 +132,6 @@ const MelodyNote SONG_02[] = {
   {NOTE_E5,D_QTRD},{NOTE_C5,D_EIT},{NOTE_E5,D_QTR},{NOTE_D5,D_EIT},{NOTE_C5,D_EIT},
   {NOTE_B4,D_QTR},{NOTE_B4,D_EIT},{NOTE_C5,D_EIT},{NOTE_D5,D_QTR},{NOTE_E5,D_QTR},
   {NOTE_C5,D_QTR},{NOTE_A4,D_QTR},{NOTE_A4,D_HLF},
-  // -- extended B-section (folk-tune continuation) --
   {NOTE_REST,D_EIT},
   {NOTE_E5,D_QTR},{NOTE_C5,D_QTR},{NOTE_D5,D_QTR},{NOTE_B4,D_QTR},
   {NOTE_C5,D_QTR},{NOTE_A4,D_QTR},{NOTE_GS4,D_QTR},{NOTE_B4,D_QTRD},
@@ -159,39 +140,33 @@ const MelodyNote SONG_02[] = {
   {NOTE_GS5,D_QTR},{NOTE_A5,D_WHL},
 };
  
-// 3. Happy Birthday (public-domain melody)
 const MelodyNote SONG_03[] = {
   {NOTE_G4,D_EIT},{NOTE_G4,D_EIT},{NOTE_A4,D_QTR},{NOTE_G4,D_QTR},{NOTE_C5,D_QTR},{NOTE_B4,D_HLF},
   {NOTE_G4,D_EIT},{NOTE_G4,D_EIT},{NOTE_A4,D_QTR},{NOTE_G4,D_QTR},{NOTE_D5,D_QTR},{NOTE_C5,D_HLF},
   {NOTE_G4,D_EIT},{NOTE_G4,D_EIT},{NOTE_G5,D_QTR},{NOTE_E5,D_QTR},{NOTE_C5,D_QTR},{NOTE_B4,D_QTR},{NOTE_A4,D_HLF},
   {NOTE_F5,D_EIT},{NOTE_F5,D_EIT},{NOTE_E5,D_QTR},{NOTE_C5,D_QTR},{NOTE_D5,D_QTR},{NOTE_C5,D_WHL},
-  // -- reprise, one octave up for a bright finish --
   {NOTE_REST,D_QTR},
   {NOTE_G5,D_EIT},{NOTE_G5,D_EIT},{NOTE_A5,D_QTR},{NOTE_G5,D_QTR},{NOTE_C6,D_QTR},{NOTE_B5,D_HLF},
   {NOTE_A5,D_QTR},{NOTE_F5,D_QTR},{NOTE_D5,D_QTR},{NOTE_C5,D_WHL},
 };
  
-// 4. Joyful Melody
 const MelodyNote SONG_04[] = {
   {NOTE_C5,D_QTR},{NOTE_D5,D_QTR},{NOTE_E5,D_QTR},{NOTE_C5,D_QTR},
   {NOTE_E5,D_QTR},{NOTE_F5,D_QTR},{NOTE_G5,D_HLF},
   {NOTE_G5,D_EIT},{NOTE_A5,D_EIT},{NOTE_G5,D_EIT},{NOTE_F5,D_EIT},{NOTE_E5,D_QTR},{NOTE_C5,D_QTR},
   {NOTE_D5,D_QTR},{NOTE_C5,D_HLF},
-  // -- new lifted variation --
   {NOTE_E5,D_QTR},{NOTE_F5,D_QTR},{NOTE_G5,D_QTR},{NOTE_E5,D_QTR},
   {NOTE_G5,D_QTR},{NOTE_A5,D_QTR},{NOTE_C6,D_HLF},
   {NOTE_B5,D_EIT},{NOTE_C6,D_EIT},{NOTE_B5,D_EIT},{NOTE_A5,D_EIT},{NOTE_G5,D_QTR},{NOTE_E5,D_QTR},
   {NOTE_F5,D_QTR},{NOTE_D5,D_QTR},{NOTE_C5,D_WHL},
 };
  
-// 5. Retro Wave
 const MelodyNote SONG_05[] = {
   {NOTE_A4,D_SXT},{NOTE_C5,D_SXT},{NOTE_E5,D_SXT},{NOTE_A5,D_SXT},
   {NOTE_G4,D_SXT},{NOTE_B4,D_SXT},{NOTE_D5,D_SXT},{NOTE_G5,D_SXT},
   {NOTE_F4,D_SXT},{NOTE_A4,D_SXT},{NOTE_C5,D_SXT},{NOTE_F5,D_SXT},
   {NOTE_E4,D_SXT},{NOTE_G4,D_SXT},{NOTE_C5,D_SXT},{NOTE_E5,D_QTRD},
   {NOTE_A4,D_HLF},
-  // -- rising second wave, up a fourth --
   {NOTE_D5,D_SXT},{NOTE_F5,D_SXT},{NOTE_A5,D_SXT},{NOTE_D6,D_SXT},
   {NOTE_C5,D_SXT},{NOTE_E5,D_SXT},{NOTE_G5,D_SXT},{NOTE_C6,D_SXT},
   {NOTE_B4,D_SXT},{NOTE_D5,D_SXT},{NOTE_F5,D_SXT},{NOTE_B5,D_SXT},
@@ -199,51 +174,43 @@ const MelodyNote SONG_05[] = {
   {NOTE_D5,D_QTR},{NOTE_A4,D_WHL},
 };
  
-// 6. Deep Bass
 const MelodyNote SONG_06[] = {
   {NOTE_C3,D_QTR},{NOTE_C3,D_EIT},{NOTE_G3,D_EIT},{NOTE_C3,D_QTR},
   {NOTE_A3,D_QTR},{NOTE_A3,D_EIT},{NOTE_F3,D_EIT},{NOTE_G3,D_QTR},
   {NOTE_C3,D_QTR},{NOTE_C3,D_EIT},{NOTE_G3,D_EIT},{NOTE_C3,D_QTRD},
   {NOTE_D3,D_QTR},{NOTE_G3,D_HLF},
-  // -- lower answering phrase --
   {NOTE_F3,D_QTR},{NOTE_F3,D_EIT},{NOTE_C3,D_EIT},{NOTE_F3,D_QTR},
   {NOTE_D3,D_QTR},{NOTE_D3,D_EIT},{NOTE_AS2,D_EIT},{NOTE_C3,D_QTR},
   {NOTE_G3,D_QTR},{NOTE_E3,D_QTR},{NOTE_C3,D_QTRD},{NOTE_G2,D_QTR},
   {NOTE_C3,D_WHL},
 };
  
-// 7. Funky Beat
 const MelodyNote SONG_07[] = {
   {NOTE_E4,D_EIT},{NOTE_REST,D_SXT},{NOTE_G4,D_EIT},{NOTE_A4,D_SXT},
   {NOTE_E4,D_EIT},{NOTE_REST,D_SXT},{NOTE_G4,D_EIT},{NOTE_C5,D_SXT},
   {NOTE_B4,D_EIT},{NOTE_REST,D_SXT},{NOTE_G4,D_EIT},{NOTE_A4,D_SXT},
   {NOTE_E4,D_QTR},{NOTE_REST,D_EIT},{NOTE_D4,D_EIT},{NOTE_E4,D_QTRD},
-  // -- syncopated bridge --
   {NOTE_REST,D_SXT},{NOTE_G4,D_SXT},{NOTE_REST,D_SXT},{NOTE_A4,D_SXT},{NOTE_REST,D_SXT},{NOTE_C5,D_SXT},
   {NOTE_B4,D_EIT},{NOTE_G4,D_EIT},{NOTE_E4,D_EIT},{NOTE_D4,D_EIT},
   {NOTE_E4,D_EIT},{NOTE_REST,D_SXT},{NOTE_G4,D_EIT},{NOTE_A4,D_SXT},
   {NOTE_B4,D_QTR},{NOTE_E4,D_HLF},
 };
  
-// 8. Sporty Anthem
 const MelodyNote SONG_08[] = {
   {NOTE_C5,D_QTR},{NOTE_C5,D_EIT},{NOTE_C5,D_EIT},{NOTE_G4,D_QTR},{NOTE_A4,D_QTR},
   {NOTE_C5,D_QTR},{NOTE_C5,D_EIT},{NOTE_C5,D_EIT},{NOTE_D5,D_QTR},{NOTE_C5,D_QTR},
   {NOTE_B4,D_QTR},{NOTE_C5,D_QTR},{NOTE_D5,D_QTR},{NOTE_E5,D_HLF},
-  // -- triumphant continuation --
   {NOTE_E5,D_QTR},{NOTE_E5,D_EIT},{NOTE_E5,D_EIT},{NOTE_D5,D_QTR},{NOTE_C5,D_QTR},
   {NOTE_D5,D_QTR},{NOTE_E5,D_QTR},{NOTE_F5,D_QTR},{NOTE_E5,D_QTR},
   {NOTE_D5,D_QTR},{NOTE_C5,D_QTR},{NOTE_G4,D_QTR},{NOTE_C5,D_WHL},
 };
  
-// 9. Chiptune Classic
 const MelodyNote SONG_09[] = {
   {NOTE_G5,D_SXT},{NOTE_E5,D_SXT},{NOTE_C5,D_SXT},{NOTE_E5,D_SXT},
   {NOTE_G5,D_SXT},{NOTE_E5,D_SXT},{NOTE_C5,D_SXT},{NOTE_E5,D_SXT},
   {NOTE_A5,D_SXT},{NOTE_F5,D_SXT},{NOTE_D5,D_SXT},{NOTE_F5,D_SXT},
   {NOTE_A5,D_SXT},{NOTE_F5,D_SXT},{NOTE_D5,D_SXT},{NOTE_F5,D_SXT},
   {NOTE_G5,D_QTRD},{NOTE_C6,D_HLF},
-  // -- fast run + resolve --
   {NOTE_B5,D_SXT},{NOTE_G5,D_SXT},{NOTE_D5,D_SXT},{NOTE_G5,D_SXT},
   {NOTE_C6,D_SXT},{NOTE_G5,D_SXT},{NOTE_E5,D_SXT},{NOTE_G5,D_SXT},
   {NOTE_A5,D_SXT},{NOTE_G5,D_SXT},{NOTE_F5,D_SXT},{NOTE_E5,D_SXT},
@@ -251,14 +218,12 @@ const MelodyNote SONG_09[] = {
   {NOTE_C6,D_QTRD},{NOTE_G5,D_EIT},{NOTE_C6,D_WHL},
 };
  
-// 10. Alien Invasion
 const MelodyNote SONG_10[] = {
   {NOTE_A4,D_EIT},{NOTE_GS4,D_EIT},{NOTE_G4,D_EIT},{NOTE_FS4,D_EIT},
   {NOTE_F4,D_EIT},{NOTE_E4,D_EIT},{NOTE_DS4,D_EIT},{NOTE_D4,D_QTR},
   {NOTE_REST,D_EIT},
   {NOTE_A3,D_EIT},{NOTE_GS3,D_EIT},{NOTE_G3,D_EIT},{NOTE_FS3,D_EIT},
   {NOTE_F3,D_HLF},
-  // -- descending answer, lower still, then a stinger --
   {NOTE_REST,D_EIT},
   {NOTE_D4,D_EIT},{NOTE_CS4,D_EIT},{NOTE_C4,D_EIT},{NOTE_B3,D_EIT},
   {NOTE_AS3,D_EIT},{NOTE_A3,D_EIT},{NOTE_GS3,D_EIT},{NOTE_G3,D_QTR},
@@ -267,25 +232,21 @@ const MelodyNote SONG_10[] = {
   {NOTE_C3,D_HLF},
 };
  
-// 11. Russian Dance
 const MelodyNote SONG_11[] = {
   {NOTE_A4,D_QTR},{NOTE_A4,D_EIT},{NOTE_B4,D_EIT},{NOTE_C5,D_QTR},{NOTE_C5,D_EIT},{NOTE_B4,D_EIT},
   {NOTE_A4,D_QTR},{NOTE_G4,D_EIT},{NOTE_A4,D_EIT},{NOTE_A4,D_HLF},
   {NOTE_E5,D_SXT},{NOTE_E5,D_SXT},{NOTE_E5,D_SXT},{NOTE_F5,D_SXT},{NOTE_G5,D_SXT},{NOTE_F5,D_SXT},{NOTE_E5,D_SXT},{NOTE_D5,D_SXT},
   {NOTE_C5,D_QTR},{NOTE_A4,D_QTR},{NOTE_A4,D_HLF},
-  // -- faster whirling finale --
   {NOTE_A5,D_SXT},{NOTE_G5,D_SXT},{NOTE_F5,D_SXT},{NOTE_E5,D_SXT},{NOTE_D5,D_SXT},{NOTE_C5,D_SXT},{NOTE_B4,D_SXT},{NOTE_A4,D_SXT},
   {NOTE_G4,D_SXT},{NOTE_A4,D_SXT},{NOTE_B4,D_SXT},{NOTE_C5,D_SXT},{NOTE_D5,D_SXT},{NOTE_E5,D_SXT},{NOTE_F5,D_SXT},{NOTE_G5,D_SXT},
   {NOTE_A5,D_QTR},{NOTE_A4,D_WHL},
 };
  
-// 12. Mysterious
 const MelodyNote SONG_12[] = {
   {NOTE_D4,D_QTR},{NOTE_F4,D_EIT},{NOTE_GS4,D_QTR},{NOTE_REST,D_EIT},
   {NOTE_G4,D_QTR},{NOTE_D4,D_EIT},{NOTE_AS3,D_QTRD},
   {NOTE_C4,D_QTR},{NOTE_D4,D_EIT},{NOTE_F4,D_QTR},{NOTE_REST,D_EIT},
   {NOTE_E4,D_HLF},
-  // -- deeper, more unsettled continuation --
   {NOTE_REST,D_QTR},
   {NOTE_CS4,D_QTR},{NOTE_E4,D_EIT},{NOTE_GS4,D_QTR},{NOTE_REST,D_EIT},
   {NOTE_A4,D_QTR},{NOTE_FS4,D_EIT},{NOTE_D4,D_QTRD},
@@ -293,27 +254,23 @@ const MelodyNote SONG_12[] = {
   {NOTE_GS3,D_WHL},
 };
  
-// 13. Boxing Fight
 const MelodyNote SONG_13[] = {
   {NOTE_C4,D_EIT},{NOTE_C4,D_EIT},{NOTE_C4,D_EIT},{NOTE_F4,D_QTRD},
   {NOTE_C4,D_EIT},{NOTE_C4,D_EIT},{NOTE_C4,D_EIT},{NOTE_G4,D_QTRD},
   {NOTE_F4,D_EIT},{NOTE_E4,D_EIT},{NOTE_D4,D_EIT},{NOTE_C4,D_QTR},{NOTE_REST,D_EIT},
   {NOTE_G3,D_QTR},{NOTE_C4,D_HLF},
-  // -- second round, higher & more urgent --
   {NOTE_E4,D_EIT},{NOTE_E4,D_EIT},{NOTE_E4,D_EIT},{NOTE_A4,D_QTRD},
   {NOTE_E4,D_EIT},{NOTE_E4,D_EIT},{NOTE_E4,D_EIT},{NOTE_C5,D_QTRD},
   {NOTE_A4,D_EIT},{NOTE_G4,D_EIT},{NOTE_F4,D_EIT},{NOTE_E4,D_QTR},{NOTE_REST,D_EIT},
   {NOTE_C4,D_QTR},{NOTE_G3,D_QTR},{NOTE_C4,D_WHL},
 };
  
-// 14. Racing Speed
 const MelodyNote SONG_14[] = {
   {NOTE_C5,D_SXT},{NOTE_D5,D_SXT},{NOTE_E5,D_SXT},{NOTE_F5,D_SXT},
   {NOTE_G5,D_SXT},{NOTE_A5,D_SXT},{NOTE_B5,D_SXT},{NOTE_C6,D_SXT},
   {NOTE_B5,D_SXT},{NOTE_A5,D_SXT},{NOTE_G5,D_SXT},{NOTE_F5,D_SXT},
   {NOTE_E5,D_SXT},{NOTE_D5,D_SXT},{NOTE_C5,D_QTRD},
   {NOTE_G5,D_QTR},{NOTE_C6,D_HLF},
-  // -- second gear, faster & wider run --
   {NOTE_D5,D_SXT},{NOTE_F5,D_SXT},{NOTE_A5,D_SXT},{NOTE_C6,D_SXT},
   {NOTE_D6,D_SXT},{NOTE_C6,D_SXT},{NOTE_A5,D_SXT},{NOTE_F5,D_SXT},
   {NOTE_G5,D_SXT},{NOTE_B5,D_SXT},{NOTE_D6,D_SXT},{NOTE_G6,D_SXT},
@@ -321,12 +278,10 @@ const MelodyNote SONG_14[] = {
   {NOTE_C6,D_QTR},{NOTE_G5,D_WHL},
 };
  
-// 15. Epic Victory
 const MelodyNote SONG_15[] = {
   {NOTE_C5,D_EIT},{NOTE_E5,D_EIT},{NOTE_G5,D_EIT},{NOTE_C6,D_QTR},
   {NOTE_G5,D_EIT},{NOTE_C6,D_QTRD},
   {NOTE_A5,D_EIT},{NOTE_C6,D_EIT},{NOTE_F6,D_QTR},{NOTE_E6,D_HLF},
-  // -- grand restatement, full octave higher launch --
   {NOTE_REST,D_EIT},
   {NOTE_G5,D_EIT},{NOTE_C6,D_EIT},{NOTE_E6,D_QTR},
   {NOTE_D6,D_EIT},{NOTE_C6,D_EIT},{NOTE_B5,D_EIT},{NOTE_C6,D_QTRD},
@@ -334,13 +289,11 @@ const MelodyNote SONG_15[] = {
   {NOTE_C7,D_WHL},
 };
  
-// 16. Old Phone Ring 1
 const MelodyNote SONG_16[] = {
   {NOTE_A5,D_QTRD},{NOTE_REST,D_SXT},{NOTE_A5,D_QTRD},{NOTE_REST,D_QTRD},
   {NOTE_A5,D_QTRD},{NOTE_REST,D_SXT},{NOTE_A5,D_QTRD},{NOTE_REST,D_HLF},
   {NOTE_A5,D_QTRD},{NOTE_REST,D_SXT},{NOTE_A5,D_QTRD},{NOTE_REST,D_QTRD},
   {NOTE_A5,D_QTRD},{NOTE_REST,D_SXT},{NOTE_A5,D_QTRD},
-  // -- second ring cycle, a touch longer --
   {NOTE_REST,D_HLF},
   {NOTE_A5,D_QTRD},{NOTE_REST,D_SXT},{NOTE_A5,D_QTRD},{NOTE_REST,D_QTRD},
   {NOTE_A5,D_QTRD},{NOTE_REST,D_SXT},{NOTE_A5,D_QTRD},{NOTE_REST,D_HLF},
@@ -348,23 +301,19 @@ const MelodyNote SONG_16[] = {
   {NOTE_A5,D_QTRD},{NOTE_REST,D_SXT},{NOTE_A5,D_QTRD},
 };
  
-// 17. Old Phone Ring 2
 const MelodyNote SONG_17[] = {
   {NOTE_G5,D_HLF},{NOTE_REST,D_QTR},{NOTE_G5,D_HLF},{NOTE_REST,D_HLF},
   {NOTE_G5,D_HLF},{NOTE_REST,D_QTR},{NOTE_G5,D_HLF},
-  // -- second cycle --
   {NOTE_REST,D_HLF},
   {NOTE_G5,D_HLF},{NOTE_REST,D_QTR},{NOTE_G5,D_HLF},{NOTE_REST,D_HLF},
   {NOTE_G5,D_HLF},{NOTE_REST,D_QTR},{NOTE_G5,D_HLF},
 };
  
-// 18. Classical Piano
 const MelodyNote SONG_18[] = {
   {NOTE_E5,D_EIT},{NOTE_DS5,D_EIT},{NOTE_E5,D_EIT},{NOTE_DS5,D_EIT},{NOTE_E5,D_EIT},{NOTE_B4,D_EIT},{NOTE_D5,D_EIT},{NOTE_C5,D_EIT},
   {NOTE_A4,D_QTR},{NOTE_REST,D_EIT},{NOTE_C4,D_EIT},{NOTE_E4,D_EIT},{NOTE_A4,D_EIT},
   {NOTE_B4,D_QTR},{NOTE_REST,D_EIT},{NOTE_E4,D_EIT},{NOTE_GS4,D_EIT},{NOTE_B4,D_EIT},
   {NOTE_C5,D_HLF},
-  // -- second variation, brighter register --
   {NOTE_REST,D_EIT},
   {NOTE_A5,D_EIT},{NOTE_GS5,D_EIT},{NOTE_A5,D_EIT},{NOTE_GS5,D_EIT},{NOTE_A5,D_EIT},{NOTE_E5,D_EIT},{NOTE_G5,D_EIT},{NOTE_F5,D_EIT},
   {NOTE_D5,D_QTR},{NOTE_REST,D_EIT},{NOTE_F4,D_EIT},{NOTE_A4,D_EIT},{NOTE_D5,D_EIT},
@@ -372,26 +321,22 @@ const MelodyNote SONG_18[] = {
   {NOTE_A4,D_WHL},
 };
  
-// 19. Rock Guitar
 const MelodyNote SONG_19[] = {
   {NOTE_E4,D_EIT},{NOTE_E4,D_EIT},{NOTE_G4,D_EIT},{NOTE_E4,D_EIT},
   {NOTE_D4,D_EIT},{NOTE_D4,D_EIT},{NOTE_E4,D_QTR},
   {NOTE_E4,D_EIT},{NOTE_E4,D_EIT},{NOTE_G4,D_EIT},{NOTE_A4,D_EIT},
   {NOTE_B4,D_QTRD},{NOTE_G4,D_QTR},{NOTE_E4,D_HLF},
-  // -- power-chord riff repeat a fourth up, plus solo lick --
   {NOTE_A4,D_EIT},{NOTE_A4,D_EIT},{NOTE_C5,D_EIT},{NOTE_A4,D_EIT},
   {NOTE_G4,D_EIT},{NOTE_G4,D_EIT},{NOTE_A4,D_QTR},
   {NOTE_E5,D_SXT},{NOTE_D5,D_SXT},{NOTE_C5,D_SXT},{NOTE_B4,D_SXT},{NOTE_A4,D_QTR},{NOTE_E4,D_QTR},
   {NOTE_G4,D_QTRD},{NOTE_E4,D_QTR},{NOTE_E4,D_WHL},
 };
  
-// 20. Jazz Club
 const MelodyNote SONG_20[] = {
   {NOTE_C4,D_EIT},{NOTE_E4,D_EIT},{NOTE_G4,D_EIT},{NOTE_AS4,D_EIT},
   {NOTE_A4,D_EIT},{NOTE_F4,D_EIT},{NOTE_D4,D_EIT},{NOTE_G4,D_QTR},
   {NOTE_E4,D_EIT},{NOTE_G4,D_EIT},{NOTE_AS4,D_EIT},{NOTE_D5,D_EIT},
   {NOTE_C5,D_HLF},
-  // -- ii-V-I turnaround, swung feel --
   {NOTE_REST,D_EIT},
   {NOTE_D4,D_EIT},{NOTE_F4,D_EIT},{NOTE_A4,D_EIT},{NOTE_C5,D_EIT},
   {NOTE_G4,D_EIT},{NOTE_B4,D_EIT},{NOTE_D5,D_EIT},{NOTE_F5,D_QTR},
@@ -399,7 +344,6 @@ const MelodyNote SONG_20[] = {
   {NOTE_C4,D_WHL},
 };
  
-// 21. Christmas Bell
 const MelodyNote SONG_21[] = {
   {NOTE_E5,D_QTR},{NOTE_E5,D_QTR},{NOTE_E5,D_HLF},
   {NOTE_E5,D_QTR},{NOTE_E5,D_QTR},{NOTE_E5,D_HLF},
@@ -407,20 +351,17 @@ const MelodyNote SONG_21[] = {
   {NOTE_F5,D_QTR},{NOTE_F5,D_QTR},{NOTE_F5,D_QTRD},{NOTE_F5,D_EIT},
   {NOTE_F5,D_QTR},{NOTE_E5,D_QTR},{NOTE_E5,D_EIT},{NOTE_E5,D_EIT},
   {NOTE_E5,D_QTR},{NOTE_D5,D_QTR},{NOTE_D5,D_QTR},{NOTE_E5,D_QTR},{NOTE_D5,D_HLF},{NOTE_G5,D_HLF},
-  // -- second verse, jingling higher --
   {NOTE_G5,D_QTR},{NOTE_F5,D_QTR},{NOTE_E5,D_QTR},{NOTE_D5,D_QTR},
   {NOTE_C5,D_HLF},{NOTE_REST,D_QTR},
   {NOTE_E5,D_QTR},{NOTE_E5,D_QTR},{NOTE_E5,D_HLF},
   {NOTE_E5,D_QTR},{NOTE_G5,D_QTR},{NOTE_C5,D_QTR},{NOTE_D5,D_EIT},{NOTE_E5,D_WHL},
 };
  
-// 22. Reggae Beat
 const MelodyNote SONG_22[] = {
   {NOTE_REST,D_EIT},{NOTE_C4,D_EIT},{NOTE_REST,D_EIT},{NOTE_C4,D_EIT},
   {NOTE_REST,D_EIT},{NOTE_F4,D_EIT},{NOTE_REST,D_EIT},{NOTE_F4,D_EIT},
   {NOTE_REST,D_EIT},{NOTE_G4,D_EIT},{NOTE_REST,D_EIT},{NOTE_G4,D_EIT},
   {NOTE_REST,D_EIT},{NOTE_F4,D_EIT},{NOTE_C4,D_QTRD},
-  // -- verse two, walking up --
   {NOTE_REST,D_EIT},{NOTE_D4,D_EIT},{NOTE_REST,D_EIT},{NOTE_D4,D_EIT},
   {NOTE_REST,D_EIT},{NOTE_G4,D_EIT},{NOTE_REST,D_EIT},{NOTE_G4,D_EIT},
   {NOTE_REST,D_EIT},{NOTE_A4,D_EIT},{NOTE_REST,D_EIT},{NOTE_A4,D_EIT},
@@ -428,13 +369,11 @@ const MelodyNote SONG_22[] = {
   {NOTE_C4,D_WHL},
 };
  
-// 23. Electronic Dance
 const MelodyNote SONG_23[] = {
   {NOTE_A4,D_SXT},{NOTE_A5,D_SXT},{NOTE_A4,D_SXT},{NOTE_A5,D_SXT},
   {NOTE_C5,D_SXT},{NOTE_C6,D_SXT},{NOTE_C5,D_SXT},{NOTE_C6,D_SXT},
   {NOTE_E5,D_SXT},{NOTE_E6,D_SXT},{NOTE_E5,D_SXT},{NOTE_E6,D_SXT},
   {NOTE_A5,D_QTRD},{NOTE_REST,D_EIT},{NOTE_A5,D_QTRD},
-  // -- drop / build section --
   {NOTE_G5,D_SXT},{NOTE_G6,D_SXT},{NOTE_G5,D_SXT},{NOTE_G6,D_SXT},
   {NOTE_F5,D_SXT},{NOTE_F6,D_SXT},{NOTE_F5,D_SXT},{NOTE_F6,D_SXT},
   {NOTE_E5,D_SXT},{NOTE_E6,D_SXT},{NOTE_D5,D_SXT},{NOTE_D6,D_SXT},
@@ -442,89 +381,75 @@ const MelodyNote SONG_23[] = {
   {NOTE_A5,D_QTR},{NOTE_A5,D_WHL},
 };
  
-// 24. Folk Tune
 const MelodyNote SONG_24[] = {
   {NOTE_C5,D_EIT},{NOTE_D5,D_EIT},{NOTE_E5,D_QTR},{NOTE_G4,D_QTR},{NOTE_G4,D_QTRD},
   {NOTE_E4,D_EIT},{NOTE_G4,D_QTR},{NOTE_A4,D_QTR},{NOTE_A4,D_QTR},{NOTE_G4,D_QTRD},
   {NOTE_E4,D_EIT},{NOTE_D4,D_QTR},{NOTE_C4,D_QTR},{NOTE_C4,D_QTR},{NOTE_D4,D_QTR},{NOTE_E4,D_QTR},
   {NOTE_C4,D_HLF},
-  // -- second stanza, wandering higher then home --
   {NOTE_E4,D_EIT},{NOTE_F4,D_EIT},{NOTE_G4,D_QTR},{NOTE_A4,D_QTR},{NOTE_A4,D_QTRD},
   {NOTE_G4,D_EIT},{NOTE_E4,D_QTR},{NOTE_D4,D_QTR},{NOTE_C4,D_QTR},{NOTE_D4,D_QTRD},
   {NOTE_E4,D_EIT},{NOTE_G4,D_QTR},{NOTE_E4,D_QTR},{NOTE_D4,D_QTR},{NOTE_C4,D_QTR},
   {NOTE_C4,D_WHL},
 };
  
-// 25. 8-Bit Adventure
 const MelodyNote SONG_25[] = {
   {NOTE_C5,D_QTR},{NOTE_E5,D_QTR},{NOTE_G5,D_QTR},{NOTE_C6,D_QTRD},
   {NOTE_B5,D_EIT},{NOTE_A5,D_EIT},{NOTE_G5,D_QTR},{NOTE_E5,D_QTR},
   {NOTE_F5,D_QTR},{NOTE_A5,D_QTR},{NOTE_C6,D_HLF},
-  // -- next area, new key centre, then triumphant return --
   {NOTE_D5,D_QTR},{NOTE_F5,D_QTR},{NOTE_A5,D_QTR},{NOTE_D6,D_QTRD},
   {NOTE_C6,D_EIT},{NOTE_B5,D_EIT},{NOTE_A5,D_QTR},{NOTE_F5,D_QTR},
   {NOTE_G5,D_QTR},{NOTE_C6,D_QTR},{NOTE_E6,D_HLF},
   {NOTE_C6,D_QTR},{NOTE_G5,D_QTR},{NOTE_C6,D_WHL},
 };
  
-// 26. Space Odyssey
 const MelodyNote SONG_26[] = {
   {NOTE_C4,D_HLF},{NOTE_G4,D_HLF},{NOTE_C5,D_QTRD},
   {NOTE_REST,D_EIT},{NOTE_D5,D_SXT},{NOTE_C5,D_QTRD},
   {NOTE_REST,D_QTR},{NOTE_G3,D_WHL},
-  // -- ascending drift into the second phrase --
   {NOTE_REST,D_QTR},
   {NOTE_E4,D_HLF},{NOTE_B4,D_HLF},{NOTE_E5,D_QTRD},
   {NOTE_REST,D_EIT},{NOTE_FS5,D_SXT},{NOTE_E5,D_QTRD},
   {NOTE_REST,D_QTR},{NOTE_C4,D_WHL},
 };
  
-// 27. Circus Theme
 const MelodyNote SONG_27[] = {
   {NOTE_G4,D_SXT},{NOTE_C5,D_SXT},{NOTE_E5,D_SXT},{NOTE_G5,D_SXT},
   {NOTE_E5,D_SXT},{NOTE_C5,D_SXT},{NOTE_G4,D_QTR},
   {NOTE_A4,D_SXT},{NOTE_D5,D_SXT},{NOTE_F5,D_SXT},{NOTE_A5,D_SXT},
   {NOTE_F5,D_SXT},{NOTE_D5,D_SXT},{NOTE_A4,D_QTR},
   {NOTE_G4,D_EIT},{NOTE_G4,D_EIT},{NOTE_G4,D_QTR},{NOTE_G4,D_HLF},
-  // -- ringmaster's flourish --
   {NOTE_C5,D_SXT},{NOTE_E5,D_SXT},{NOTE_G5,D_SXT},{NOTE_C6,D_SXT},
   {NOTE_G5,D_SXT},{NOTE_E5,D_SXT},{NOTE_C5,D_QTR},
   {NOTE_D5,D_EIT},{NOTE_E5,D_EIT},{NOTE_F5,D_EIT},{NOTE_G5,D_EIT},
   {NOTE_G5,D_QTR},{NOTE_G4,D_WHL},
 };
  
-// 28. Medieval Dance
 const MelodyNote SONG_28[] = {
   {NOTE_D5,D_QTR},{NOTE_F5,D_EIT},{NOTE_G5,D_EIT},{NOTE_A5,D_QTRD},
   {NOTE_AS5,D_EIT},{NOTE_A5,D_QTR},{NOTE_G5,D_EIT},{NOTE_F5,D_QTRD},
   {NOTE_D5,D_EIT},{NOTE_D5,D_QTR},{NOTE_F5,D_QTR},{NOTE_A5,D_QTRD},
   {NOTE_G5,D_EIT},{NOTE_F5,D_QTR},{NOTE_E5,D_HLF},
-  // -- lively second turn of the dance --
   {NOTE_A5,D_QTR},{NOTE_G5,D_EIT},{NOTE_F5,D_EIT},{NOTE_E5,D_QTRD},
   {NOTE_D5,D_EIT},{NOTE_E5,D_QTR},{NOTE_F5,D_EIT},{NOTE_G5,D_QTRD},
   {NOTE_A5,D_EIT},{NOTE_A5,D_QTR},{NOTE_G5,D_QTR},{NOTE_F5,D_QTRD},
   {NOTE_E5,D_EIT},{NOTE_D5,D_QTR},{NOTE_D5,D_WHL},
 };
  
-// 29. Cinematic Score
 const MelodyNote SONG_29[] = {
   {NOTE_C4,D_HLF},{NOTE_E4,D_QTR},{NOTE_G4,D_QTRD},
   {NOTE_C5,D_HLF},{NOTE_G4,D_QTR},{NOTE_E4,D_QTRD},
   {NOTE_F4,D_QTR},{NOTE_A4,D_QTR},{NOTE_C5,D_WHL},
-  // -- development, modulates up, then broad final statement --
   {NOTE_REST,D_QTR},
   {NOTE_F4,D_HLF},{NOTE_A4,D_QTR},{NOTE_C5,D_QTRD},
   {NOTE_F5,D_HLF},{NOTE_C5,D_QTR},{NOTE_A4,D_QTRD},
   {NOTE_G4,D_QTR},{NOTE_C5,D_QTR},{NOTE_E5,D_QTR},{NOTE_G5,D_WHL},
 };
  
-// 30. Victory Fanfare
 const MelodyNote SONG_30[] = {
   {NOTE_G4,D_EIT},{NOTE_C5,D_EIT},{NOTE_E5,D_EIT},{NOTE_G5,D_QTR},
   {NOTE_E5,D_EIT},{NOTE_G5,D_QTRD},
   {NOTE_REST,D_EIT},
   {NOTE_G4,D_EIT},{NOTE_C5,D_EIT},{NOTE_E5,D_EIT},{NOTE_C6,D_HLF},
-  // -- second fanfare call, answered and topped --
   {NOTE_REST,D_EIT},
   {NOTE_A4,D_EIT},{NOTE_D5,D_EIT},{NOTE_F5,D_EIT},{NOTE_A5,D_QTR},
   {NOTE_F5,D_EIT},{NOTE_A5,D_QTRD},
@@ -540,6 +465,40 @@ const MelodyNote *const MUSIC_SONGS[MUSIC_COUNT] = {
   SONG_17, SONG_18, SONG_19, SONG_20, SONG_21, SONG_22, SONG_23, SONG_24,
   SONG_25, SONG_26, SONG_27, SONG_28, SONG_29, SONG_30,
 };
+
+// ── Song Lengths ──────────────────────
+const uint16_t SONG_LENGTHS[MUSIC_COUNT] = {
+  sizeof(SONG_01)/sizeof(MelodyNote),
+  sizeof(SONG_02)/sizeof(MelodyNote),
+  sizeof(SONG_03)/sizeof(MelodyNote),
+  sizeof(SONG_04)/sizeof(MelodyNote),
+  sizeof(SONG_05)/sizeof(MelodyNote),
+  sizeof(SONG_06)/sizeof(MelodyNote),
+  sizeof(SONG_07)/sizeof(MelodyNote),
+  sizeof(SONG_08)/sizeof(MelodyNote),
+  sizeof(SONG_09)/sizeof(MelodyNote),
+  sizeof(SONG_10)/sizeof(MelodyNote),
+  sizeof(SONG_11)/sizeof(MelodyNote),
+  sizeof(SONG_12)/sizeof(MelodyNote),
+  sizeof(SONG_13)/sizeof(MelodyNote),
+  sizeof(SONG_14)/sizeof(MelodyNote),
+  sizeof(SONG_15)/sizeof(MelodyNote),
+  sizeof(SONG_16)/sizeof(MelodyNote),
+  sizeof(SONG_17)/sizeof(MelodyNote),
+  sizeof(SONG_18)/sizeof(MelodyNote),
+  sizeof(SONG_19)/sizeof(MelodyNote),
+  sizeof(SONG_20)/sizeof(MelodyNote),
+  sizeof(SONG_21)/sizeof(MelodyNote),
+  sizeof(SONG_22)/sizeof(MelodyNote),
+  sizeof(SONG_23)/sizeof(MelodyNote),
+  sizeof(SONG_24)/sizeof(MelodyNote),
+  sizeof(SONG_25)/sizeof(MelodyNote),
+  sizeof(SONG_26)/sizeof(MelodyNote),
+  sizeof(SONG_27)/sizeof(MelodyNote),
+  sizeof(SONG_28)/sizeof(MelodyNote),
+  sizeof(SONG_29)/sizeof(MelodyNote),
+  sizeof(SONG_30)/sizeof(MelodyNote),
+};
  
 const char* MUSIC_NAMES[MUSIC_COUNT] = {
   "1. Classic Arcade", "2. Tetris Theme", "3. Happy Birthday",
@@ -553,7 +512,8 @@ const char* MUSIC_NAMES[MUSIC_COUNT] = {
   "25. 8-Bit Adventure", "26. Space Odyssey", "27. Circus Theme",
   "28. Medieval Dance", "29. Cinematic Score", "30. Victory Fanfare"
 };
- 
+
+// ── Game Variables ────────────────────
 uint16_t highScores[GAME_COUNT];
 uint16_t totalGamesPlayed[GAME_COUNT];
 uint16_t rpsWins[GAME_COUNT];
@@ -562,21 +522,21 @@ uint8_t favoriteCount = 0;
 uint8_t brightnessLevel = 4;
 uint8_t soundLevel = 3;
 bool soundEnabled = true;
-bool gameMusicPlaying = false;
-uint32_t lastMusicNote = 0;
-uint8_t currentMusicNote = 0;
 bool musicPlaying = false;
 bool musicPaused = false;
 int musicNoteIndex = 0;
+uint32_t lastMusicTime = 0;
+uint32_t musicNoteDuration = 0;
 
-// ============================================================
-// FORWARD DECLARATIONS
-// ============================================================
+// Menu navigation state
+int lastGameIndex = 0;
 
+// ── Forward Declarations ──────────────
 typedef void (*GameFunction)();
 
 bool btnPressed(uint8_t pin);
 bool btnHeld(uint8_t pin);
+bool btnLongPressed(uint8_t pin, uint16_t holdTime = 200);
 void beep(uint16_t freq, uint16_t ms, uint8_t volume = 3);
 void playMenuButtonSound();
 void waitRelease();
@@ -611,8 +571,6 @@ void saveBrightness();
 void loadBrightness();
 void saveSoundSetting();
 void loadSoundSetting();
-void playGameMusic(int gameIndex);
-void stopGameMusic();
 void playMusicSong(int songIndex);
 void stopMusicPlayer();
 
@@ -655,7 +613,7 @@ bool btnPressed(uint8_t pin) {
   else return false;
 
   bool cur = (digitalRead(pin) == LOW);
-  bool edge = cur && !lastSt[idx] && (millis() - lastTime[idx] > 40);
+  bool edge = cur && !lastSt[idx] && (millis() - lastTime[idx] > 80);
   if (cur != lastSt[idx]) lastTime[idx] = millis();
   lastSt[idx] = cur;
   return edge;
@@ -665,22 +623,56 @@ bool btnHeld(uint8_t pin) {
   return digitalRead(pin) == LOW; 
 }
 
+bool btnLongPressed(uint8_t pin, uint16_t holdTime) {
+  static uint32_t pressStart[8] = {0};
+  static bool wasPressed[8] = {false};
+  uint8_t idx;
+  if (pin == BTN_UP) idx = 0;
+  else if (pin == BTN_DOWN) idx = 1;
+  else if (pin == BTN_LEFT) idx = 2;
+  else if (pin == BTN_RIGHT) idx = 3;
+  else if (pin == BTN_MENU) idx = 4;
+  else if (pin == BTN_PAUSE) idx = 5;
+  else if (pin == BTN_ENTER) idx = 6;
+  else return false;
+
+  bool cur = (digitalRead(pin) == LOW);
+  
+  if (cur && !wasPressed[idx]) {
+    pressStart[idx] = millis();
+    wasPressed[idx] = true;
+  }
+  
+  if (!cur) {
+    wasPressed[idx] = false;
+    return false;
+  }
+  
+  if (cur && wasPressed[idx] && (millis() - pressStart[idx] > holdTime)) {
+    wasPressed[idx] = false; // Reset to avoid multiple triggers
+    return true;
+  }
+  
+  return false;
+}
+
 void beep(uint16_t freq, uint16_t ms, uint8_t volume) {
   if (!soundEnabled || volume == 0 || freq == 0 || ms == 0) return;
-  if (volume == 1) {
-    tone(BUZZER_PIN, freq * 0.8, ms * 0.6);
-  } else if (volume == 2) {
-    tone(BUZZER_PIN, freq * 0.9, ms * 0.8);
-  } else {
-    tone(BUZZER_PIN, freq, ms);
-  }
+  uint16_t actualMs = ms;
+  if (volume == 1) actualMs = ms * 0.6;
+  else if (volume == 2) actualMs = ms * 0.8;
+  else actualMs = ms;
+  
+  tone(BUZZER_PIN, freq, actualMs);
+  delay(actualMs);
+  noTone(BUZZER_PIN);
 }
 
 void playMenuButtonSound() {
   if (!soundEnabled) return;
-  beep(600, 150, soundLevel);
-  delay(150);
-  beep(800, 150, soundLevel);
+  beep(600, 80, soundLevel);
+  delay(80);
+  beep(800, 80, soundLevel);
 }
 
 void waitRelease() {
@@ -698,62 +690,80 @@ void centreStr(const char *s, uint8_t y) {
 
 void playStartMusic() {
   if (!soundEnabled) return;
-  beep(523, 150, soundLevel); delay(200);
-  beep(659, 150, soundLevel); delay(200);
-  beep(784, 150, soundLevel); delay(200);
-  beep(523, 150, soundLevel); delay(200);
-  beep(784, 150, soundLevel); delay(200);
-  beep(1046, 300, soundLevel); delay(400);
-  beep(880, 150, soundLevel); delay(200);
-  beep(1046, 500, soundLevel);
+  beep(523, 100, soundLevel); delay(150);
+  beep(659, 100, soundLevel); delay(150);
+  beep(784, 100, soundLevel); delay(150);
+  beep(523, 100, soundLevel); delay(150);
+  beep(784, 100, soundLevel); delay(150);
+  beep(1046, 200, soundLevel); delay(300);
+  beep(880, 100, soundLevel); delay(150);
+  beep(1046, 300, soundLevel);
 }
 
 void playGameOverMusic() {
   if (!soundEnabled) return;
-  beep(392, 250, soundLevel); delay(300);
-  beep(349, 250, soundLevel); delay(300);
-  beep(329, 250, soundLevel); delay(300);
-  beep(261, 500, soundLevel); delay(600);
-  beep(196, 700, soundLevel);
+  beep(392, 150, soundLevel); delay(200);
+  beep(349, 150, soundLevel); delay(200);
+  beep(329, 150, soundLevel); delay(200);
+  beep(261, 300, soundLevel); delay(400);
+  beep(196, 500, soundLevel);
 }
 
 void playPauseSound() {
   if (!soundEnabled) return;
-  beep(500, 100, soundLevel);
-  delay(120);
-  beep(400, 100, soundLevel);
+  beep(500, 80, soundLevel);
+  delay(100);
+  beep(400, 80, soundLevel);
 }
 
 void playResumeSound() {
   if (!soundEnabled) return;
-  beep(400, 100, soundLevel);
-  delay(120);
-  beep(500, 100, soundLevel);
+  beep(400, 80, soundLevel);
+  delay(100);
+  beep(500, 80, soundLevel);
 }
 
 void levelCompleteMusic() {
   if (!soundEnabled) return;
-  beep(523, 150, soundLevel); delay(150);
-  beep(659, 150, soundLevel); delay(150);
-  beep(784, 150, soundLevel); delay(150);
-  beep(1047, 300, soundLevel);
+  beep(523, 100, soundLevel); delay(120);
+  beep(659, 100, soundLevel); delay(120);
+  beep(784, 100, soundLevel); delay(120);
+  beep(1047, 200, soundLevel);
 }
+
+void uniqueGameStartSound(int gameIndex) {
+  if (!soundEnabled) return;
+  beep(500, 60, soundLevel); delay(60);
+  beep(600, 60, soundLevel); delay(60);
+  beep(700, 80, soundLevel); delay(60);
+  beep(800, 60, soundLevel); delay(60);
+  beep(900, 100, soundLevel);
+}
+
+// ============================================================
+// MUSIC PLAYER
+// ============================================================
 
 void playMusicSong(int songIndex) {
   if (!soundEnabled || songIndex < 0 || songIndex >= MUSIC_COUNT || musicPaused) return;
+  if (MUSIC_SONGS[songIndex] == nullptr) return;
   
   const MelodyNote* song = MUSIC_SONGS[songIndex];
+  uint16_t songLen = SONG_LENGTHS[songIndex];
+  
+  uint32_t now = millis();
+  if (musicNoteIndex >= songLen) {
+    musicNoteIndex = 0;
+  }
+  
   uint16_t freq = song[musicNoteIndex].freq;
   uint16_t dur = song[musicNoteIndex].duration;
   
-  if (freq == 0 || musicNoteIndex >= 20) {
-    musicNoteIndex = 0;
-    freq = song[0].freq;
-    dur = song[0].duration;
+  if (freq != 0) {
+    beep(freq, dur, soundLevel);
+  } else {
+    delay(dur + 20);
   }
-  
-  beep(freq, dur, soundLevel);
-  delay(dur + 20);
   musicNoteIndex++;
 }
 
@@ -762,25 +772,6 @@ void stopMusicPlayer() {
   musicPaused = false;
   musicNoteIndex = 0;
   noTone(BUZZER_PIN);
-}
-
-void playGameMusic(int gameIndex) {
-  if (!soundEnabled) return;
-  // Game music would play here
-}
-
-void stopGameMusic() {
-  gameMusicPlaying = false;
-  noTone(BUZZER_PIN);
-}
-
-void uniqueGameStartSound(int gameIndex) {
-  if (!soundEnabled) return;
-  beep(500, 80, soundLevel); delay(80);
-  beep(600, 80, soundLevel); delay(80);
-  beep(700, 100, soundLevel); delay(80);
-  beep(800, 80, soundLevel); delay(80);
-  beep(900, 120, soundLevel);
 }
 
 // ============================================================
@@ -879,12 +870,18 @@ void saveSoundSetting() {
 void loadHighScores() {
   EEPROM.begin(EEPROM_SIZE);
   for (int i = 0; i < GAME_COUNT; i++) {
-    EEPROM.get(i * sizeof(uint16_t), highScores[i]);
-    if (highScores[i] > 10000) highScores[i] = 0;
-    EEPROM.get((i + GAME_COUNT) * sizeof(uint16_t), totalGamesPlayed[i]);
-    if (totalGamesPlayed[i] > 10000) totalGamesPlayed[i] = 0;
-    EEPROM.get((i + GAME_COUNT*2) * sizeof(uint16_t), rpsWins[i]);
-    if (rpsWins[i] > 10000) rpsWins[i] = 0;
+    uint16_t temp;
+    EEPROM.get(i * sizeof(uint16_t), temp);
+    if (temp > 9999 || temp == 0xFFFF) temp = 0;
+    highScores[i] = temp;
+    
+    EEPROM.get((i + GAME_COUNT) * sizeof(uint16_t), temp);
+    if (temp > 9999 || temp == 0xFFFF) temp = 0;
+    totalGamesPlayed[i] = temp;
+    
+    EEPROM.get((i + GAME_COUNT*2) * sizeof(uint16_t), temp);
+    if (temp > 9999 || temp == 0xFFFF) temp = 0;
+    rpsWins[i] = temp;
   }
   EEPROM.end();
   loadFavorites();
@@ -921,11 +918,11 @@ void saveHighScore(int gameIndex, uint16_t score) {
       EEPROM.commit();
       EEPROM.end();
       if (soundEnabled) {
-        beep(1200, 50, soundLevel);
-        delay(80);
-        beep(1500, 50, soundLevel);
-        delay(80);
-        beep(1800, 100, soundLevel);
+        beep(1200, 40, soundLevel);
+        delay(60);
+        beep(1500, 40, soundLevel);
+        delay(60);
+        beep(1800, 80, soundLevel);
       }
     }
   } else {
@@ -936,11 +933,11 @@ void saveHighScore(int gameIndex, uint16_t score) {
       EEPROM.commit();
       EEPROM.end();
       if (soundEnabled) {
-        beep(1200, 50, soundLevel);
-        delay(80);
-        beep(1500, 50, soundLevel);
-        delay(80);
-        beep(1800, 100, soundLevel);
+        beep(1200, 40, soundLevel);
+        delay(60);
+        beep(1500, 40, soundLevel);
+        delay(60);
+        beep(1800, 80, soundLevel);
       }
     }
   }
@@ -953,8 +950,6 @@ void saveHighScore(int gameIndex, uint16_t score) {
 volatile bool menuPressed = false;
 volatile bool gamePaused = false;
 String currentGameName = "";
-int lastGameIndex = 0;
-bool returningFromGameSubmenu = false;
 
 bool checkPause(const char* gameName) {
   currentGameName = String(gameName);
@@ -963,7 +958,7 @@ bool checkPause(const char* gameName) {
     gamePaused = !gamePaused;
     if (gamePaused) {
       playPauseSound();
-      stopGameMusic();
+      
       u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_ncenB10_tr);
       centreStr("** PAUSED **", 20);
@@ -980,11 +975,9 @@ bool checkPause(const char* gameName) {
         if (btnPressed(BTN_PAUSE)) {
           gamePaused = false;
           playResumeSound();
-          gameMusicPlaying = true;
         }
         if (btnPressed(BTN_MENU)) {
           gamePaused = false;
-          stopGameMusic();
           playMenuButtonSound();
           return true;
         }
@@ -993,7 +986,6 @@ bool checkPause(const char* gameName) {
       return false;
     } else {
       playResumeSound();
-      gameMusicPlaying = true;
     }
   }
   return false;
@@ -1001,7 +993,6 @@ bool checkPause(const char* gameName) {
 
 bool checkMenuAndReturn() {
   if (btnPressed(BTN_MENU)) {
-    stopGameMusic();
     playMenuButtonSound();
     menuPressed = true;
     return true;
@@ -1014,17 +1005,50 @@ bool checkMenuAndReturn() {
 // ============================================================
 
 void gameOverScreen(uint16_t score, int gameIndex, bool isWin) {
-  stopGameMusic();
   char buf[20];
   snprintf(buf, sizeof(buf), "Score: %u", score);
   
-  if (isWin) saveTotalGames(gameIndex);
-  
+  // Only save total games for RPS (index 12)
   if (gameIndex == 12 && isWin) {
-    saveRPSWin(gameIndex);
+    saveTotalGames(12);
+    saveRPSWin(12);
   }
   
-  saveHighScore(gameIndex, score);
+  if (gameIndex == 12) {
+    uint16_t winRate = 0;
+    if (totalGamesPlayed[12] > 0) {
+      winRate = (rpsWins[12] * 100) / totalGamesPlayed[12];
+    }
+    if (winRate > highScores[12]) {
+      highScores[12] = winRate;
+      EEPROM.begin(EEPROM_SIZE);
+      EEPROM.put(12 * sizeof(uint16_t), highScores[12]);
+      EEPROM.commit();
+      EEPROM.end();
+      if (soundEnabled) {
+        beep(1200, 40, soundLevel);
+        delay(60);
+        beep(1500, 40, soundLevel);
+        delay(60);
+        beep(1800, 80, soundLevel);
+      }
+    }
+  } else {
+    if (score > highScores[gameIndex]) {
+      highScores[gameIndex] = score;
+      EEPROM.begin(EEPROM_SIZE);
+      EEPROM.put(gameIndex * sizeof(uint16_t), highScores[gameIndex]);
+      EEPROM.commit();
+      EEPROM.end();
+      if (soundEnabled) {
+        beep(1200, 40, soundLevel);
+        delay(60);
+        beep(1500, 40, soundLevel);
+        delay(60);
+        beep(1800, 80, soundLevel);
+      }
+    }
+  }
   
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
@@ -1035,8 +1059,8 @@ void gameOverScreen(uint16_t score, int gameIndex, bool isWin) {
   char hs[30];
   if (gameIndex == 12) {
     uint16_t winRate = 0;
-    if (totalGamesPlayed[gameIndex] > 0) {
-      winRate = (rpsWins[gameIndex] * 100) / totalGamesPlayed[gameIndex];
+    if (totalGamesPlayed[12] > 0) {
+      winRate = (rpsWins[12] * 100) / totalGamesPlayed[12];
     }
     snprintf(hs, sizeof(hs), "Win Rate: %u%%", winRate);
   } else {
@@ -1051,7 +1075,7 @@ void gameOverScreen(uint16_t score, int gameIndex, bool isWin) {
 }
 
 // ============================================================
-// GAME SUBMENU - MODIFIED TO MATCH REQUEST
+// GAME SUBMENU (FIXED - Back goes directly to Game Select)
 // ============================================================
 
 void showGameMenu(const char* gameName, int gameIndex, GameFunction game) {
@@ -1061,6 +1085,12 @@ void showGameMenu(const char* gameName, int gameIndex, GameFunction game) {
   const int VISIBLE = 3;
   
   while (true) {
+    // Check for long press on MENU button - Direct to Game Select
+    if (btnLongPressed(BTN_MENU, 200)) {
+      playMenuButtonSound();
+      return;
+    }
+    
     if (sel < top) top = sel;
     if (sel >= top + VISIBLE) top = sel - VISIBLE + 1;
     
@@ -1078,11 +1108,10 @@ void showGameMenu(const char* gameName, int gameIndex, GameFunction game) {
     centreStr(displayName, 11);
     u8g2.setDrawColor(1);
     
-    // Shift everything down by 7 pixels
     for (int i = 0; i < VISIBLE; i++) {
       int idx = top + i;
       if (idx >= 4) break;
-      int y = 28 + i * 13;  // Changed from 21 to 28
+      int y = 28 + i * 13;
       if (idx == sel) {
         u8g2.drawRBox(10, y - 8, SCREEN_W - 20, 12, 2);
         u8g2.setDrawColor(0);
@@ -1099,31 +1128,25 @@ void showGameMenu(const char* gameName, int gameIndex, GameFunction game) {
     u8g2.sendBuffer();
     
     if (btnPressed(BTN_UP)) { 
-      if (sel > 0) { sel--; beep(800, 25, soundLevel); }
+      if (sel > 0) { sel--; beep(800, 20, soundLevel); }
       else if (top > 0) { top--; sel = top; }
     }
     else if (btnPressed(BTN_DOWN)) { 
       if (sel < 3) { 
-        if (sel < top + VISIBLE - 1) { sel++; beep(800, 25, soundLevel); }
+        if (sel < top + VISIBLE - 1) { sel++; beep(800, 20, soundLevel); }
         else if (top + VISIBLE < 4) { top++; sel = top + VISIBLE - 1; }
       }
     }
     else if (btnPressed(BTN_ENTER)) { 
-      beep(1000, 40, soundLevel); 
+      beep(1000, 30, soundLevel); 
       waitRelease();
       
       if (sel == 0) {
         menuPressed = false;
         gamePaused = false;
-        gameMusicPlaying = true;
-        currentMusicNote = 0;
-        lastMusicNote = 0;
         uniqueGameStartSound(gameIndex);
         game();
-        stopGameMusic();
         
-        // After game ends, return to game submenu (not game select)
-        // This is the key change: we stay in the submenu after game over
         if (menuPressed) {
           menuPressed = false;
           continue;
@@ -1147,7 +1170,7 @@ void showGameMenu(const char* gameName, int gameIndex, GameFunction game) {
             break;
           }
           if (btnPressed(BTN_ENTER)) {
-            beep(800, 25, soundLevel);
+            beep(800, 20, soundLevel);
             waitRelease();
             waitForInput = false;
             break;
@@ -1162,12 +1185,19 @@ void showGameMenu(const char* gameName, int gameIndex, GameFunction game) {
         u8g2.setFont(u8g2_font_ncenB08_tr);
         
         if (gameIndex == 12) {
-          centreStr("🌟 You are a", 38);
-          centreStr("Rock Paper", 48);
-          centreStr("Scissors Champion! 🏆", 58);
+          uint16_t winRate = 0;
+          if (totalGamesPlayed[12] > 0) {
+            winRate = (rpsWins[12] * 100) / totalGamesPlayed[12];
+          }
+          char hs[30];
+          snprintf(hs, sizeof(hs), "Win Rate: %u%%", winRate);
+          centreStr(hs, 41);
+          char total[30];
+          snprintf(total, sizeof(total), "Total Games: %u", totalGamesPlayed[12]);
+          centreStr(total, 53);
         } else {
           char hs[30];
-          snprintf(hs, sizeof(hs), "%u", highScores[gameIndex]);
+          snprintf(hs, sizeof(hs), "Score: %u", highScores[gameIndex]);
           centreStr(hs, 41);
           char total[30];
           snprintf(total, sizeof(total), "Total Games: %u", totalGamesPlayed[gameIndex]);
@@ -1254,25 +1284,26 @@ void showGameMenu(const char* gameName, int gameIndex, GameFunction game) {
         if (isFavorite(gameIndex)) {
           centreStr("⭐ ADDED TO", 24);
           centreStr("FAVORITES!", 40);
-          beep(1200, 50, soundLevel);
-          delay(100);
-          beep(1500, 50, soundLevel);
+          beep(1200, 40, soundLevel);
+          delay(80);
+          beep(1500, 40, soundLevel);
         } else {
           centreStr("❌ REMOVED", 24);
           centreStr("FROM FAVORITES", 40);
-          beep(600, 50, soundLevel);
-          delay(100);
-          beep(500, 50, soundLevel);
+          beep(600, 40, soundLevel);
+          delay(80);
+          beep(500, 40, soundLevel);
         }
         u8g2.sendBuffer();
         delay(800);
         waitRelease();
       }
     }
+    // BACK button pressed - Go DIRECTLY to Game Select (NOT Game Main Menu)
     else if (btnPressed(BTN_MENU)) { 
-      beep(600, 50, soundLevel); 
-      waitRelease(); 
-      return;  // Return to game select menu
+      beep(600, 40, soundLevel); 
+      waitRelease();
+      return;  // Returns to menuSelect() which shows Game Select list
     }
     delay(100);
   }
@@ -1296,10 +1327,10 @@ void showSplash() {
   u8g2.sendBuffer();
   
   if (soundEnabled) {
-    beep(523, 150, soundLevel); delay(200);
-    beep(659, 150, soundLevel); delay(200);
-    beep(784, 150, soundLevel); delay(200);
-    beep(523, 150, soundLevel); delay(200);
+    beep(523, 100, soundLevel); delay(150);
+    beep(659, 100, soundLevel); delay(150);
+    beep(784, 100, soundLevel); delay(150);
+    beep(523, 100, soundLevel); delay(150);
   }
   
   for (int i = 0; i <= 100; i += 5) {
@@ -1320,16 +1351,16 @@ void showSplash() {
     u8g2.sendBuffer();
     
     if (i % 10 == 0 && soundEnabled) {
-      beep(440 + i, 30, soundLevel);
+      beep(440 + i, 20, soundLevel);
     }
     delay(50);
   }
   
   if (soundEnabled) {
     delay(200);
-    beep(1046, 300, soundLevel); delay(400);
-    beep(880, 150, soundLevel); delay(200);
-    beep(1046, 500, soundLevel);
+    beep(1046, 200, soundLevel); delay(300);
+    beep(880, 100, soundLevel); delay(150);
+    beep(1046, 300, soundLevel);
   }
   
   delay(300);
@@ -1340,7 +1371,6 @@ void showSplash() {
 // MAIN GRID MENU
 // ============================================================
 
-// Helper: center text INSIDE a given box (not the whole screen)
 void centreStrBox(const char *s, int boxX, int boxW, int y) {
   uint8_t w = u8g2.getStrWidth(s);
   u8g2.drawStr(boxX + (boxW - w) / 2, y, s);
@@ -1355,18 +1385,16 @@ void showMainGridMenu() {
   while (true) {
     u8g2.clearBuffer();
 
-    // হেডার - ছোট করে দিন
-    u8g2.setFont(u8g2_font_5x7_tr);
-    u8g2.drawBox(0, 0, SCREEN_W, 10);
+    u8g2.setFont(u8g2_font_6x10_tr);
+    u8g2.drawBox(0, 0, SCREEN_W, 11);
     u8g2.setDrawColor(0);
-    centreStr("MAIN MENU", 8);
+    centreStr("MAIN MENU", 9);
     u8g2.setDrawColor(1);
 
-    // বক্সের সাইজ বাড়ান - 0.96" এর জন্য আরামদায়ক
     int gridX = 4;
-    int gridY = 14;      // হেডারের নিচে থেকে শুরু
-    int boxW = 58;       // চওড়া বক্স
-    int boxH = 22;       // লম্বা বক্স
+    int gridY = 15;
+    int boxW = 58;
+    int boxH = 22;
     int spacing = 4;
 
     for (int r = 0; r < 2; r++) {
@@ -1375,8 +1403,8 @@ void showMainGridMenu() {
         int x = gridX + c * (boxW + spacing);
         int y = gridY + r * (boxH + spacing);
 
-        u8g2.setFont(u8g2_font_5x7_tr);
-        int textY = y + boxH / 2 + 2;  // 2 পিক্সেল অফসেট
+        u8g2.setFont(u8g2_font_ncenB08_tr);
+        int textY = y + boxH / 2 + 3;
 
         if (idx == sel) {
           u8g2.drawRBox(x, y, boxW, boxH, 2);
@@ -1393,21 +1421,20 @@ void showMainGridMenu() {
     u8g2.sendBuffer();
     delay(100);
 
-    // Navigation logic (unchanged)
     if (btnPressed(BTN_UP)) {
-      if (row > 0) { row--; sel = row * 2 + col; beep(800, 25, soundLevel); }
+      if (row > 0) { row--; sel = row * 2 + col; beep(800, 20, soundLevel); }
     }
     else if (btnPressed(BTN_DOWN)) {
-      if (row < 1) { row++; sel = row * 2 + col; beep(800, 25, soundLevel); }
+      if (row < 1) { row++; sel = row * 2 + col; beep(800, 20, soundLevel); }
     }
     else if (btnPressed(BTN_LEFT)) {
-      if (col > 0) { col--; sel = row * 2 + col; beep(800, 25, soundLevel); }
+      if (col > 0) { col--; sel = row * 2 + col; beep(800, 20, soundLevel); }
     }
     else if (btnPressed(BTN_RIGHT)) {
-      if (col < 1) { col++; sel = row * 2 + col; beep(800, 25, soundLevel); }
+      if (col < 1) { col++; sel = row * 2 + col; beep(800, 20, soundLevel); }
     }
     else if (btnPressed(BTN_ENTER)) {
-      beep(1200, 60, soundLevel);
+      beep(1200, 40, soundLevel);
       waitRelease();
 
       if (sel == 0) {
@@ -1430,8 +1457,9 @@ void showMainGridMenu() {
     }
   }
 }
+
 // ============================================================
-// GAME MAIN MENU (GAME MENU, FAVORITES, SETTINGS)
+// GAME MAIN MENU (UPDATED - Shows Game Select on ENTER)
 // ============================================================
 
 void showGameMainMenu() {
@@ -1453,6 +1481,11 @@ void showGameMainMenu() {
   };
   
   while (true) {
+    if (btnLongPressed(BTN_MENU, 200)) {
+      playMenuButtonSound();
+      return;
+    }
+    
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawBox(0, 0, SCREEN_W, 11);
@@ -1476,13 +1509,14 @@ void showGameMainMenu() {
     u8g2.sendBuffer();
     delay(100);
     
-    if (btnPressed(BTN_UP)) { sel = (sel + 2) % 3; beep(800, 25, soundLevel); }
-    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 3; beep(800, 25, soundLevel); }
+    if (btnPressed(BTN_UP)) { sel = (sel + 2) % 3; beep(800, 20, soundLevel); }
+    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 3; beep(800, 20, soundLevel); }
     else if (btnPressed(BTN_ENTER)) { 
-      beep(1200, 60, soundLevel); 
+      beep(1200, 40, soundLevel); 
       waitRelease();
       
       if (sel == 0) {
+        // This shows the Game Select list (all games with favorites)
         int gameSel = menuSelect();
         if (gameSel >= 0 && gameSel < GAME_COUNT) {
           runGameWithMenu(games[gameSel], gameNames[gameSel], gameSel);
@@ -1497,8 +1531,8 @@ void showGameMainMenu() {
     }
     else if (btnPressed(BTN_MENU)) { 
       playMenuButtonSound(); 
-      waitRelease(); 
-      return;  // Return to main grid
+      waitRelease();
+      return;
     }
   }
 }
@@ -1513,6 +1547,14 @@ void showMusicMenu() {
   const int VISIBLE = 4;
   
   while (true) {
+    if (btnLongPressed(BTN_MENU, 200)) {
+      if (musicPlaying) {
+        stopMusicPlayer();
+      }
+      playMenuButtonSound();
+      return;
+    }
+    
     if (sel < top) top = sel;
     if (sel >= top + VISIBLE) top = sel - VISIBLE + 1;
     
@@ -1541,7 +1583,6 @@ void showMusicMenu() {
     if (top > 0) u8g2.drawStr(SCREEN_W - 8, 13, "^");
     if (top + VISIBLE < MUSIC_COUNT) u8g2.drawStr(SCREEN_W - 8, 62, "v");
     
-    
     u8g2.sendBuffer();
     delay(50);
     
@@ -1551,24 +1592,18 @@ void showMusicMenu() {
     
     if (btnPressed(BTN_UP)) { 
       sel = (sel + MUSIC_COUNT - 1) % MUSIC_COUNT; 
-      beep(800, 25, soundLevel);
+      beep(800, 20, soundLevel);
       if (musicPlaying) {
-        musicPlaying = false;
-        musicPaused = false;
         stopMusicPlayer();
-        musicNoteIndex = 0;
         musicPlaying = true;
         musicNoteIndex = 0;
       }
     }
     else if (btnPressed(BTN_DOWN)) { 
       sel = (sel + 1) % MUSIC_COUNT; 
-      beep(800, 25, soundLevel);
+      beep(800, 20, soundLevel);
       if (musicPlaying) {
-        musicPlaying = false;
-        musicPaused = false;
         stopMusicPlayer();
-        musicNoteIndex = 0;
         musicPlaying = true;
         musicNoteIndex = 0;
       }
@@ -1577,16 +1612,16 @@ void showMusicMenu() {
       if (musicPlaying && !musicPaused) {
         musicPaused = true;
         noTone(BUZZER_PIN);
-        beep(500, 50, soundLevel);
+        beep(500, 40, soundLevel);
       } else if (musicPaused) {
         musicPaused = false;
         musicNoteIndex = 0;
-        beep(1000, 40, soundLevel);
+        beep(1000, 30, soundLevel);
       } else {
         musicPlaying = true;
         musicPaused = false;
         musicNoteIndex = 0;
-        beep(1000, 40, soundLevel);
+        beep(1000, 30, soundLevel);
       }
       waitRelease();
     }
@@ -1595,24 +1630,22 @@ void showMusicMenu() {
         if (musicPaused) {
           musicPaused = false;
           musicNoteIndex = 0;
-          beep(1000, 40, soundLevel);
+          beep(1000, 30, soundLevel);
         } else {
           musicPaused = true;
           noTone(BUZZER_PIN);
-          beep(500, 50, soundLevel);
+          beep(500, 40, soundLevel);
         }
       } else {
         musicPlaying = true;
         musicPaused = false;
         musicNoteIndex = 0;
-        beep(1000, 40, soundLevel);
+        beep(1000, 30, soundLevel);
       }
       waitRelease();
     }
     else if (btnPressed(BTN_MENU)) { 
       if (musicPlaying) {
-        musicPlaying = false;
-        musicPaused = false;
         stopMusicPlayer();
       }
       playMenuButtonSound(); 
@@ -1627,15 +1660,20 @@ void showMusicMenu() {
 // ============================================================
 
 void showImageMenu() {
-  u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_ncenB10_tr);
-  centreStr("📷 IMAGE", 24);
-  u8g2.setFont(u8g2_font_6x10_tr);
-  centreStr("Coming Soon!", 40);
-  centreStr("Press MENU to go back", 55);
-  u8g2.sendBuffer();
-  
   while (true) {
+    if (btnLongPressed(BTN_MENU, 200)) {
+      playMenuButtonSound();
+      return;
+    }
+    
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    centreStr("📷 IMAGE", 24);
+    u8g2.setFont(u8g2_font_6x10_tr);
+    centreStr("Coming Soon!", 40);
+    centreStr("Press MENU to go back", 55);
+    u8g2.sendBuffer();
+    
     if (btnPressed(BTN_MENU)) {
       playMenuButtonSound();
       waitRelease();
@@ -1646,15 +1684,20 @@ void showImageMenu() {
 }
 
 void showVideoMenu() {
-  u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_ncenB10_tr);
-  centreStr("🎬 VIDEO", 24);
-  u8g2.setFont(u8g2_font_6x10_tr);
-  centreStr("Coming Soon!", 40);
-  centreStr("Press MENU to go back", 55);
-  u8g2.sendBuffer();
-  
   while (true) {
+    if (btnLongPressed(BTN_MENU, 200)) {
+      playMenuButtonSound();
+      return;
+    }
+    
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    centreStr("🎬 VIDEO", 24);
+    u8g2.setFont(u8g2_font_6x10_tr);
+    centreStr("Coming Soon!", 40);
+    centreStr("Press MENU to go back", 55);
+    u8g2.sendBuffer();
+    
     if (btnPressed(BTN_MENU)) {
       playMenuButtonSound();
       waitRelease();
@@ -1673,6 +1716,11 @@ void showSettingsMenu() {
   int sel = 0;
   
   while (true) {
+    if (btnLongPressed(BTN_MENU, 200)) {
+      playMenuButtonSound();
+      return;
+    }
+    
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
     centreStr("SETTINGS", 10);
@@ -1690,15 +1738,21 @@ void showSettingsMenu() {
     }
     u8g2.sendBuffer();
     
-    if (btnPressed(BTN_UP)) { sel = (sel + 2) % 3; beep(800, 25, soundLevel); }
-    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 3; beep(800, 25, soundLevel); }
+    if (btnPressed(BTN_UP)) { sel = (sel + 2) % 3; beep(800, 20, soundLevel); }
+    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 3; beep(800, 20, soundLevel); }
     else if (btnPressed(BTN_ENTER)) { 
-      beep(1000, 40, soundLevel); 
+      beep(1000, 30, soundLevel); 
       waitRelease();
       
       if (sel == 0) {
         bool adjusting = true;
         while (adjusting) {
+          if (btnLongPressed(BTN_MENU, 200)) {
+            playMenuButtonSound();
+            adjusting = false;
+            break;
+          }
+          
           u8g2.clearBuffer();
           u8g2.setFont(u8g2_font_ncenB08_tr);
           centreStr("BRIGHTNESS", 10);
@@ -1733,17 +1787,17 @@ void showSettingsMenu() {
             brightnessLevel = max(1, brightnessLevel - 1); 
             uint8_t contrast = map(brightnessLevel, 1, 7, 30, 255);
             u8g2.setContrast(contrast);
-            beep(800, 20, soundLevel);
+            beep(800, 15, soundLevel);
           }
           else if (btnPressed(BTN_RIGHT)) { 
             brightnessLevel = min(7, brightnessLevel + 1); 
             uint8_t contrast = map(brightnessLevel, 1, 7, 30, 255);
             u8g2.setContrast(contrast);
-            beep(800, 20, soundLevel);
+            beep(800, 15, soundLevel);
           }
           else if (btnPressed(BTN_ENTER)) { 
             saveBrightness();
-            beep(1000, 40, soundLevel);
+            beep(1000, 30, soundLevel);
             waitRelease();
             adjusting = false;
           }
@@ -1757,6 +1811,12 @@ void showSettingsMenu() {
       else if (sel == 1) {
         bool adjusting = true;
         while (adjusting) {
+          if (btnLongPressed(BTN_MENU, 200)) {
+            playMenuButtonSound();
+            adjusting = false;
+            break;
+          }
+          
           u8g2.clearBuffer();
           u8g2.setFont(u8g2_font_ncenB08_tr);
           centreStr("SOUND", 10);
@@ -1788,14 +1848,14 @@ void showSettingsMenu() {
             soundLevel = min(3, soundLevel + 1); 
             soundEnabled = (soundLevel > 0);
             if (soundEnabled) {
-              beep(1000, 30, soundLevel);
-              delay(100);
-              beep(1200, 30, soundLevel);
+              beep(1000, 20, soundLevel);
+              delay(80);
+              beep(1200, 20, soundLevel);
             }
           }
           else if (btnPressed(BTN_ENTER)) { 
             saveSoundSetting();
-            beep(1000, 40, soundLevel);
+            beep(1000, 30, soundLevel);
             waitRelease();
             adjusting = false;
           }
@@ -1816,7 +1876,7 @@ void showSettingsMenu() {
 }
 
 // ============================================================
-// FAVORITES MENU
+// FAVORITES MENU (UPDATED - Back goes to Game Select)
 // ============================================================
 
 void showFavoritesMenu() {
@@ -1855,6 +1915,13 @@ void showFavoritesMenu() {
   const int VISIBLE = 4;
   
   while (true) {
+    if (btnLongPressed(BTN_MENU, 200)) {
+      playMenuButtonSound();
+      return; // Returns to Game Select
+    }
+    
+    if (favoriteCount == 0) return;
+    if (sel >= favoriteCount) sel = favoriteCount - 1;
     if (sel < top) top = sel;
     if (sel >= top + VISIBLE) top = sel - VISIBLE + 1;
     
@@ -1885,29 +1952,29 @@ void showFavoritesMenu() {
     
     if (btnPressed(BTN_UP)) { 
       sel = (sel + favoriteCount - 1) % favoriteCount; 
-      beep(800, 25, soundLevel); 
+      beep(800, 20, soundLevel); 
     }
     else if (btnPressed(BTN_DOWN)) { 
       sel = (sel + 1) % favoriteCount; 
-      beep(800, 25, soundLevel); 
+      beep(800, 20, soundLevel); 
     }
     else if (btnPressed(BTN_ENTER)) { 
-      beep(1200, 60, soundLevel); 
+      beep(1200, 40, soundLevel); 
       waitRelease();
       int gameIdx = favoriteGames[sel];
       runGameWithMenu(games[gameIdx], gameNames[gameIdx], gameIdx);
-      return;
+      // After game submenu returns, stay in favorites list
     }
     else if (btnPressed(BTN_MENU)) { 
       playMenuButtonSound(); 
       waitRelease(); 
-      return; 
+      return; // Returns to Game Select
     }
   }
 }
 
 // ============================================================
-// GAME SELECTION MENU
+// GAME SELECTION MENU (Shows all games with favorites)
 // ============================================================
 
 int menuSelect() {
@@ -1923,6 +1990,11 @@ int menuSelect() {
   const int VISIBLE = 4;
 
   while (true) {
+    if (btnLongPressed(BTN_MENU, 200)) {
+      playMenuButtonSound();
+      return -1;
+    }
+    
     if (sel < top) top = sel;
     if (sel >= top + VISIBLE) top = sel - VISIBLE + 1;
 
@@ -1967,10 +2039,24 @@ int menuSelect() {
     u8g2.sendBuffer();
     delay(100);
     
-    if (btnPressed(BTN_UP)) { sel = (sel + GAME_COUNT - 1) % GAME_COUNT; beep(800, 25, soundLevel); }
-    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % GAME_COUNT; beep(800, 25, soundLevel); }
-    else if (btnPressed(BTN_ENTER)) { beep(1200, 60, soundLevel); waitRelease(); return sel; }
-    else if (btnPressed(BTN_MENU)) { playMenuButtonSound(); waitRelease(); return -1; }
+    if (btnPressed(BTN_UP)) { 
+      sel = (sel + GAME_COUNT - 1) % GAME_COUNT; 
+      beep(800, 20, soundLevel); 
+    }
+    else if (btnPressed(BTN_DOWN)) { 
+      sel = (sel + 1) % GAME_COUNT; 
+      beep(800, 20, soundLevel); 
+    }
+    else if (btnPressed(BTN_ENTER)) { 
+      beep(1200, 40, soundLevel); 
+      waitRelease(); 
+      return sel; 
+    }
+    else if (btnPressed(BTN_MENU)) { 
+      playMenuButtonSound(); 
+      waitRelease();
+      return -1; 
+    }
   }
 }
 
@@ -2015,10 +2101,6 @@ void game_asteroids() {
     float dt = (now - lastFrame) / 30.0f;
     lastFrame = now;
     
-    if (gameMusicPlaying) {
-      // Game music would play here
-    }
-    
     if (invincible && (now - invincibleStart) > INVINCIBLE_DURATION) {
       invincible = false;
     }
@@ -2059,7 +2141,7 @@ void game_asteroids() {
           gameOverScreen(score / 10, 0, false);
           return;
         }
-        beep(200, 100, soundLevel);
+        beep(200, 80, soundLevel);
         invincible = true;
         invincibleStart = now;
         shipY = respawnY;
@@ -2150,19 +2232,15 @@ void game_breakout() {
     float dt = (now - lastFrame) / 30.0f;
     lastFrame = now;
     
-    if (gameMusicPlaying) {
-      // Game music would play here
-    }
-    
     if (btnHeld(BTN_LEFT)) padX = max(0, padX - 4);
     if (btnHeld(BTN_RIGHT)) padX = min(SCREEN_W - 20, padX + 4);
     
     bx += vx * dt;
     by += vy * dt;
     
-    if (bx <= 1) { vx = fabsf(vx); bx = 1; beep(600, 15, soundLevel); }
-    if (bx >= SCREEN_W - 4) { vx = -fabsf(vx); bx = SCREEN_W - 4; beep(600, 15, soundLevel); }
-    if (by <= 1) { vy = fabsf(vy); by = 1; beep(600, 15, soundLevel); }
+    if (bx <= 1) { vx = fabsf(vx); bx = 1; beep(600, 10, soundLevel); }
+    if (bx >= SCREEN_W - 4) { vx = -fabsf(vx); bx = SCREEN_W - 4; beep(600, 10, soundLevel); }
+    if (by <= 1) { vy = fabsf(vy); by = 1; beep(600, 10, soundLevel); }
     
     if (vy > 0 && by + 3 >= padY && by + 3 <= padY + 3 + 2 &&
         bx + 2 >= padX && bx <= padX + 20) {
@@ -2171,12 +2249,12 @@ void game_breakout() {
       vx = rel * 3.0f;
       if (fabsf(vx) < 0.5f) vx = (vx >= 0) ? 0.5f : -0.5f;
       by = padY - 3;
-      beep(900, 20, soundLevel);
+      beep(900, 15, soundLevel);
     }
     
     if (by > SCREEN_H + 2) {
       lives--;
-      beep(200, 300, soundLevel);
+      beep(200, 200, soundLevel);
       if (lives <= 0) {
         gameOverScreen(score, 1, false);
         return;
@@ -2201,7 +2279,7 @@ void game_breakout() {
             vx = -vx;
           else
             vy = -vy;
-          beep(1200 + r * 120, 25, soundLevel);
+          beep(1200 + r * 120, 20, soundLevel);
           goto brick_done;
         }
       }
@@ -2217,9 +2295,9 @@ void game_breakout() {
       snprintf(buf, sizeof(buf), "Score: %u", score);
       centreStr(buf, 44);
       u8g2.sendBuffer();
-      beep(1760, 100, soundLevel); delay(110);
-      beep(1760, 100, soundLevel); delay(110);
-      beep(2093, 300, soundLevel);
+      beep(1760, 80, soundLevel); delay(90);
+      beep(1760, 80, soundLevel); delay(90);
+      beep(2093, 200, soundLevel);
       delay(400);
       waitRelease();
       gameOverScreen(score, 1, true);
@@ -2286,16 +2364,12 @@ void game_dino() {
     if (dt > 2.0f) dt = 2.0f;
     lastFrame = now;
 
-    if (gameMusicPlaying) {
-      // Game music would play here
-    }
-
     bool anyBtn = btnPressed(BTN_UP) || btnPressed(BTN_DOWN) ||
                   btnPressed(BTN_LEFT) || btnPressed(BTN_RIGHT);
     if (anyBtn && !isJumping) {
       velY = JUMP_FORCE;
       isJumping = true;
-      beep(1000, 20, soundLevel);
+      beep(1000, 15, soundLevel);
     }
 
     velY += GRAVITY * dt;
@@ -2397,7 +2471,7 @@ void game_flappy() {
          !btnPressed(BTN_LEFT) && !btnPressed(BTN_RIGHT))
     delay(10);
   vel = FLAP_VEL;
-  beep(900, 35, soundLevel);
+  beep(900, 25, soundLevel);
   lastFrame = millis();
 
   while (true) {
@@ -2408,10 +2482,6 @@ void game_flappy() {
     float dt = (now - lastFrame) / 30.0f;
     if (dt > 3.0f) dt = 3.0f;
     lastFrame = now;
-
-    if (gameMusicPlaying) {
-      // Game music would play here
-    }
 
     int minRange, maxRange;
     if(score >= 0 && score <= 20) { minRange = 30; maxRange = 60; }
@@ -2425,7 +2495,7 @@ void game_flappy() {
 
     bool anyBtn = btnPressed(BTN_UP) || btnPressed(BTN_DOWN) ||
                   btnPressed(BTN_LEFT) || btnPressed(BTN_RIGHT);
-    if (anyBtn) { vel = FLAP_VEL; beep(900, 30, soundLevel); }
+    if (anyBtn) { vel = FLAP_VEL; beep(900, 20, soundLevel); }
 
     vel += GRAVITY * dt;
     birdY += vel * dt;
@@ -2455,7 +2525,7 @@ void game_flappy() {
       if (!scored[i] && pX[i] + PIPE_W < BIRD_X) {
         score++;
         scored[i] = true;
-        beep(1300, 25, soundLevel);
+        beep(1300, 20, soundLevel);
       }
     }
 
@@ -2546,10 +2616,6 @@ void game_snake1() {
     if (checkPause("SNAKE 1")) return;
     if (checkMenuAndReturn()) return;
     
-    if (gameMusicPlaying) {
-      // Game music would play here
-    }
-    
     if (btnHeld(BTN_UP) && dy == 0) { next_dx = 0; next_dy = -1; }
     if (btnHeld(BTN_DOWN) && dy == 0) { next_dx = 0; next_dy = 1; }
     if (btnHeld(BTN_LEFT) && dx == 0) { next_dx = -1; next_dy = 0; }
@@ -2579,7 +2645,7 @@ void game_snake1() {
       score++;
       if (len < SN_MAXLEN) len++;
       spd = max(70, (int)spd - 7);
-      beep(1400, 35, soundLevel);
+      beep(1400, 25, soundLevel);
       placeFood();
     }
 
@@ -2654,10 +2720,6 @@ void game_snake2() {
     if (checkPause("SNAKE 2")) return;
     if (checkMenuAndReturn()) return;
     
-    if (gameMusicPlaying) {
-      // Game music would play here
-    }
-    
     if (btnHeld(BTN_UP) && dy == 0) { next_dx = 0; next_dy = -1; }
     if (btnHeld(BTN_DOWN) && dy == 0) { next_dx = 0; next_dy = 1; }
     if (btnHeld(BTN_LEFT) && dx == 0) { next_dx = -1; next_dy = 0; }
@@ -2693,15 +2755,15 @@ void game_snake2() {
       foodEaten++;
       if (len < SN2_MAXLEN) len++;
       spd = max(70, (int)spd - 7);
-      beep(1400, 35, soundLevel);
+      beep(1400, 25, soundLevel);
       placeFood();
       
       if (foodEaten >= 10) {
         foodEaten = 0;
         if (len > 4) {
           len = 4;
-          levelCompleteMusic();
         }
+        levelCompleteMusic();
       }
     }
 
@@ -2759,10 +2821,6 @@ void game_pong() {
     if (checkPause("PONG")) return;
     if (checkMenuAndReturn()) return;
     
-    if (gameMusicPlaying) {
-      // Game music would play here
-    }
-    
     if (btnHeld(BTN_UP)) pY = max(0, pY - 3);
     if (btnHeld(BTN_DOWN)) pY = min(SCREEN_H - PAD_H, pY + 3);
 
@@ -2772,8 +2830,8 @@ void game_pong() {
 
     bx += vx; by += vy;
 
-    if (by <= 0) { vy = fabsf(vy); by = 0; beep(500, 15, soundLevel); }
-    if (by >= SCREEN_H - 3) { vy = -fabsf(vy); by = SCREEN_H - 3; beep(500, 15, soundLevel); }
+    if (by <= 0) { vy = fabsf(vy); by = 0; beep(500, 10, soundLevel); }
+    if (by >= SCREEN_H - 3) { vy = -fabsf(vy); by = SCREEN_H - 3; beep(500, 10, soundLevel); }
 
     if (vx < 0 && bx <= 4 + PAD_W && bx >= 4 && by + 2 >= cY && by <= cY + PAD_H) {
       vx = fabsf(vx) * 1.05f;
@@ -2781,7 +2839,7 @@ void game_pong() {
       vy = constrain(vy, -4.0f, 4.0f);
       vx = min(vx, 5.0f);
       bx = 4 + PAD_W;
-      beep(900, 20, soundLevel);
+      beep(900, 15, soundLevel);
     }
 
     if (bx >= 121 - PAD_W && bx <= 122 && by + 2 >= pY && by <= pY + PAD_H) {
@@ -2790,11 +2848,11 @@ void game_pong() {
       vy = constrain(vy, -4.5f, 4.5f);
       vx = max(vx, -5.0f);
       bx = 121 - PAD_W - 1;
-      beep(1000, 20, soundLevel);
+      beep(1000, 15, soundLevel);
     }
 
-    if (bx < 0) { pScore++; beep(1400, 100, soundLevel); bx = 64; by = 32; vx = 2.5f; vy = 1.8f; pY = 25; cY = 25; delay(600); }
-    if (bx > SCREEN_W) { cScore++; beep(200, 250, soundLevel); bx = 64; by = 32; vx = -2.5f; vy = 1.8f; pY = 25; cY = 25; delay(600); }
+    if (bx < 0) { pScore++; beep(1400, 80, soundLevel); bx = 64; by = 32; vx = 2.5f; vy = 1.8f; pY = 25; cY = 25; delay(600); }
+    if (bx > SCREEN_W) { cScore++; beep(200, 200, soundLevel); bx = 64; by = 32; vx = -2.5f; vy = 1.8f; pY = 25; cY = 25; delay(600); }
 
     if (pScore >= WIN || cScore >= WIN) {
       u8g2.clearBuffer();
@@ -2859,10 +2917,6 @@ void game_pacman() {
     if (checkPause("PACMAN")) return;
     if (checkMenuAndReturn()) return;
     
-    if (gameMusicPlaying) {
-      // Game music would play here
-    }
-    
     uint32_t start = millis();
 
     if (btnHeld(BTN_UP)) { pdx = 0; pdy = -2; }
@@ -2882,7 +2936,7 @@ void game_pacman() {
       if (maze[my][mx]) {
         maze[my][mx] = false;
         score += 10;
-        beep(1000, 10, soundLevel);
+        beep(1000, 8, soundLevel);
       }
     }
 
@@ -2977,10 +3031,6 @@ void game_spaceinvaders() {
     if (checkPause("SPACE INVADERS")) return;
     if (checkMenuAndReturn()) return;
     
-    if (gameMusicPlaying) {
-      // Game music would play here
-    }
-    
     uint32_t now = millis();
     float dt = (now - lastFrame) / 20.0f;
     lastFrame = now;
@@ -2993,7 +3043,7 @@ void game_spaceinvaders() {
       for (auto &b : pb)
         if (!b.on) {
           b.x = shipX + 4; b.y = shipY - 1; b.on = true;
-          beep(1500, 15, soundLevel);
+          beep(1500, 10, soundLevel);
           break;
         }
       lastShoot = now;
@@ -3011,7 +3061,7 @@ void game_spaceinvaders() {
           invLeft--;
           score += (3 - br) * 10;
           b.on = false;
-          beep(800 - br * 100, 40, soundLevel);
+          beep(800 - br * 100, 30, soundLevel);
         }
       }
     }
@@ -3075,8 +3125,8 @@ void game_spaceinvaders() {
           inv[r][c] = true;
       invLeft = 24;
       gridX = 4; gridY = 4; gridDX = 1;
-      beep(1760, 100, soundLevel); delay(110);
-      beep(2093, 200, soundLevel); delay(400);
+      beep(1760, 80, soundLevel); delay(90);
+      beep(2093, 160, soundLevel); delay(300);
     }
     
     u8g2.clearBuffer();
@@ -3192,16 +3242,12 @@ void game_tetris() {
     if (checkPause("TETRIS")) return;
     if (checkMenuAndReturn()) return;
     
-    if (gameMusicPlaying) {
-      // Game music would play here
-    }
-    
     uint32_t now = millis();
     if (now - lastMove > 130) {
-      if (btnHeld(BTN_LEFT) && ttFits(cur, -1, 0)) { cur.x--; lastMove = now; beep(700, 15, soundLevel); }
-      if (btnHeld(BTN_RIGHT) && ttFits(cur, 1, 0)) { cur.x++; lastMove = now; beep(700, 15, soundLevel); }
+      if (btnHeld(BTN_LEFT) && ttFits(cur, -1, 0)) { cur.x--; lastMove = now; beep(700, 10, soundLevel); }
+      if (btnHeld(BTN_RIGHT) && ttFits(cur, 1, 0)) { cur.x++; lastMove = now; beep(700, 10, soundLevel); }
     }
-    if (btnPressed(BTN_UP)) { ttRotate(cur); beep(900, 15, soundLevel); }
+    if (btnPressed(BTN_UP)) { ttRotate(cur); beep(900, 10, soundLevel); }
     
     uint32_t interval = btnHeld(BTN_DOWN) ? 60 : dropInterval;
     if (now - lastDrop > interval) {
@@ -3215,7 +3261,7 @@ void game_tetris() {
           abs[i][1] = cur.y + cur.cells[i][1];
           if (abs[i][1] >= 0) board[abs[i][1]][abs[i][0]] = 1;
         }
-        beep(500, 20, soundLevel);
+        beep(500, 15, soundLevel);
         int cleared = 0;
         for (int r = TT_ROWS - 1; r >= 0; r--) {
           bool full = true;
@@ -3230,7 +3276,7 @@ void game_tetris() {
         if (cleared) {
           static const uint16_t pts[5] = {0, 40, 100, 300, 1200};
           score += pts[min(cleared, 4)] * level;
-          beep(1200, 40, soundLevel); delay(45); beep(1400, 40, soundLevel);
+          beep(1200, 30, soundLevel); delay(35); beep(1400, 30, soundLevel);
           level = 1 + score / 200;
           dropInterval = max(80U, 600U - (level - 1) * 60);
         }
@@ -3305,10 +3351,6 @@ void game_tank() {
     if (checkPause("TANK BATTLE")) return;
     if (checkMenuAndReturn()) return;
     
-    if (gameMusicPlaying) {
-      // Game music would play here
-    }
-    
     uint32_t now = millis();
     float dt = (now - lastFrame) / 20.0f;
     lastFrame = now;
@@ -3327,7 +3369,7 @@ void game_tank() {
           pBullet[i].x = player.x + 3; pBullet[i].y = player.y + 3;
           pBullet[i].dx = player.dx; pBullet[i].dy = player.dy;
           pBullet[i].active = true;
-          beep(1200, 20, soundLevel);
+          beep(1200, 15, soundLevel);
           lastFire = now;
           break;
         }
@@ -3400,7 +3442,7 @@ void game_tank() {
           enemies[j].active = false;
           pBullet[i].active = false;
           score += 50;
-          beep(800, 40, soundLevel);
+          beep(800, 30, soundLevel);
           break;
         }
       }
@@ -3471,10 +3513,6 @@ void game_maze() {
     if (checkPause("MAZE RUNNER")) return;
     if (checkMenuAndReturn()) return;
     
-    if (gameMusicPlaying) {
-      // Game music would play here
-    }
-    
     uint32_t now = millis();
     if (now - lastMove > moveDelay) {
       uint8_t walls = pgm_read_byte(&MAZE_L1[py][px]);
@@ -3483,14 +3521,14 @@ void game_maze() {
       if (btnHeld(BTN_RIGHT) && !(walls & 2) && px < 15) { px++; moved = true; }
       if (btnHeld(BTN_DOWN) && !(walls & 4) && py < 7) { py++; moved = true; }
       if (btnHeld(BTN_LEFT) && !(walls & 8) && px > 0) { px--; moved = true; }
-      if (moved) { beep(900, 15, soundLevel); lastMove = now; }
+      if (moved) { beep(900, 10, soundLevel); lastMove = now; }
     }
 
     if (px == ex && py == ey) {
       uint16_t secs = (millis() - startTime) / 1000;
-      beep(1047, 80, soundLevel); delay(90);
-      beep(1319, 80, soundLevel); delay(90);
-      beep(1568, 200, soundLevel); delay(300);
+      beep(1047, 60, soundLevel); delay(70);
+      beep(1319, 60, soundLevel); delay(70);
+      beep(1568, 160, soundLevel); delay(200);
       
       u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_ncenB10_tr);
@@ -3561,19 +3599,15 @@ void game_rps() {
     if (checkPause("RPS")) return;
     if (checkMenuAndReturn()) return;
     
-    if (gameMusicPlaying) {
-      // Game music would play here
-    }
-    
     if (state == 0) {
-      if (btnPressed(BTN_UP)) { playerChoice = (playerChoice + 2) % 3; beep(600, 15, soundLevel); }
-      if (btnPressed(BTN_DOWN)) { playerChoice = (playerChoice + 1) % 3; beep(600, 15, soundLevel); }
+      if (btnPressed(BTN_UP)) { playerChoice = (playerChoice + 2) % 3; beep(600, 10, soundLevel); }
+      if (btnPressed(BTN_DOWN)) { playerChoice = (playerChoice + 1) % 3; beep(600, 10, soundLevel); }
       
       if (btnPressed(BTN_ENTER)) {
         cpuChoice = random(0, 3);
         state = 1;
         resultTime = millis();
-        beep(900, 30, soundLevel);
+        beep(900, 20, soundLevel);
         totalRounds++;
       }
       
@@ -3622,22 +3656,37 @@ void game_rps() {
       
       int result = (playerChoice - cpuChoice + 3) % 3;
       const char* resultText;
-      if (result == 0) { resultText = "DRAW!"; beep(500, 50, soundLevel); }
+      if (result == 0) { 
+        resultText = "DRAW!"; 
+        beep(500, 40, soundLevel);
+        saveTotalGames(12);
+      }
       else if (result == 1) { 
         resultText = "YOU WIN! 🎉"; 
         playerScore++;
         playerWins++;
         saveTotalGames(12);
         saveRPSWin(12);
-        saveHighScore(12, playerScore);
-        beep(1200, 40, soundLevel); delay(100); beep(1500, 40, soundLevel); 
+        uint16_t winRate = 0;
+        if (totalGamesPlayed[12] > 0) {
+          winRate = (rpsWins[12] * 100) / totalGamesPlayed[12];
+        }
+        if (winRate > highScores[12]) {
+          highScores[12] = winRate;
+          EEPROM.begin(EEPROM_SIZE);
+          EEPROM.put(12 * sizeof(uint16_t), highScores[12]);
+          EEPROM.commit();
+          EEPROM.end();
+        }
+        beep(1200, 30, soundLevel); 
+        delay(80); 
+        beep(1500, 30, soundLevel); 
       }
       else { 
         resultText = "CPU WINS! 😢"; 
         cpuScore++; 
         saveTotalGames(12);
-        saveHighScore(12, playerScore);
-        beep(300, 100, soundLevel); 
+        beep(300, 80, soundLevel); 
       }
       
       u8g2.setFont(u8g2_font_ncenB08_tr);
@@ -3691,10 +3740,6 @@ void game_car() {
     if (checkPause("CAR RACER")) return;
     if (checkMenuAndReturn()) return;
     
-    if (gameMusicPlaying) {
-      // Game music would play here
-    }
-    
     uint32_t now = millis();
     float dt = (now - lastFrame) / 20.0f;
     lastFrame = now;
@@ -3726,14 +3771,14 @@ void game_car() {
       if (obs[i].y > SCREEN_H) {
         obs[i].active = false;
         score++;
-        if (score % 5 == 0) beep(1500, 20, soundLevel);
+        if (score % 5 == 0) beep(1500, 15, soundLevel);
         continue;
       }
       
       if (obs[i].y + 10 > SCREEN_H - 12 && obs[i].y < SCREEN_H - 6 + 6 &&
           obs[i].x < playerX + CAR_W && obs[i].x + 12 > playerX) {
         lives--;
-        beep(200, 200, soundLevel);
+        beep(200, 160, soundLevel);
         if (lives <= 0) {
           gameOverScreen(score, 13, false);
           return;
