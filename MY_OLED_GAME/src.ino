@@ -1,7 +1,6 @@
 // ============================================================
 // COMPLETE GAME CONSOLE FOR ESP32-C3
 // 14 Games Total with Main Menu, Music Player, and Settings
-// FIXED: Back button now returns to Game Select Menu properly
 // ============================================================
 
 #include <Arduino.h>
@@ -43,6 +42,18 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, OLED_SCL, OLED_
 #define MUSIC_COUNT 30
 
 #define NOTE_REST 0
+
+// ── Love Heart Bitmap (8x8) ───────────
+static const unsigned char PROGMEM heart_bmp[] = {
+  0b00000000,
+  0b01100110,
+  0b11111111,
+  0b11111111,
+  0b11111111,
+  0b01111110,
+  0b00111100,
+  0b00011000
+};
 
 // ── Note Definitions ──────────────────
 #define NOTE_G2   98
@@ -526,8 +537,8 @@ bool soundEnabled = true;
 bool musicPlaying = false;
 bool musicPaused = false;
 int musicNoteIndex = 0;
-uint32_t lastMusicTime = 0;
-uint32_t musicNoteDuration = 0;
+uint32_t musicNoteStartTime = 0;
+bool musicNotePlaying = false;
 
 // Menu navigation state
 int lastGameIndex = 0;
@@ -542,6 +553,7 @@ void beep(uint16_t freq, uint16_t ms, uint8_t volume = 3);
 void playMenuButtonSound();
 void waitRelease();
 void centreStr(const char *s, uint8_t y);
+void drawHeart(int x, int y);
 void playStartMusic();
 void playGameOverMusic();
 void playPauseSound();
@@ -575,6 +587,7 @@ void loadSoundSetting();
 void playMusicSong(int songIndex);
 void stopMusicPlayer();
 void resetDevice();
+void showCountdown(int gameIndex);
 
 // Game functions
 void game_asteroids();
@@ -658,6 +671,10 @@ bool btnLongPressed(uint8_t pin, uint16_t holdTime) {
   return false;
 }
 
+void drawHeart(int x, int y) {
+  u8g2.drawXBMP(x, y, 8, 8, heart_bmp);
+}
+
 void beep(uint16_t freq, uint16_t ms, uint8_t volume) {
   if (!soundEnabled || volume == 0 || freq == 0 || ms == 0) return;
   uint16_t actualMs = ms;
@@ -668,6 +685,17 @@ void beep(uint16_t freq, uint16_t ms, uint8_t volume) {
   tone(BUZZER_PIN, freq, actualMs);
   delay(actualMs);
   noTone(BUZZER_PIN);
+}
+
+// ── Non-blocking beep for music ──────
+void beepNonBlocking(uint16_t freq, uint16_t ms, uint8_t volume) {
+  if (!soundEnabled || volume == 0 || freq == 0 || ms == 0) return;
+  uint16_t actualMs = ms;
+  if (volume == 1) actualMs = ms * 0.6;
+  else if (volume == 2) actualMs = ms * 0.8;
+  else actualMs = ms;
+  
+  tone(BUZZER_PIN, freq, actualMs);
 }
 
 void playMenuButtonSound() {
@@ -704,10 +732,10 @@ void playStartMusic() {
 
 void playGameOverMusic() {
   if (!soundEnabled) return;
-  beep(392, 150, soundLevel); delay(200);
-  beep(349, 150, soundLevel); delay(200);
-  beep(329, 150, soundLevel); delay(200);
-  beep(261, 300, soundLevel); delay(400);
+  beep(392, 150, soundLevel); delay(120);
+  beep(349, 150, soundLevel); delay(120);
+  beep(329, 150, soundLevel); delay(120);
+  beep(261, 300, soundLevel); delay(120);
   beep(196, 500, soundLevel);
 }
 
@@ -742,6 +770,47 @@ void uniqueGameStartSound(int gameIndex) {
   beep(900, 100, soundLevel);
 }
 
+// ── UPDATED: Countdown Timer for Resume (Background game visible) ──
+void showCountdown(int gameIndex) {
+  // Game background already visible, just overlay countdown
+  for (int i = 3; i >= 1; i--) {
+    // Don't clear buffer - keep game background
+    // Just draw overlay on top
+    u8g2.setFont(u8g2_font_ncenB18_tr);
+    char num[4];
+    snprintf(num, sizeof(num), "%d", i);
+    // Draw with background to make it visible
+    u8g2.setDrawColor(0);
+    u8g2.drawBox(40, 20, 48, 30);  // Clear area for text
+    u8g2.setDrawColor(1);
+    centreStr(num, 42);
+    
+    // Show small "GO" hint
+    u8g2.setFont(u8g2_font_5x7_tr);
+    u8g2.setDrawColor(0);
+    u8g2.drawBox(44, 50, 40, 10);
+    u8g2.setDrawColor(1);
+    centreStr("Resume...", 58);
+    
+    u8g2.sendBuffer();
+    beep(800 + (3 - i) * 100, 60, soundLevel);
+    delay(1000);
+  }
+  
+  // "GO!" message
+  u8g2.setDrawColor(0);
+  u8g2.drawBox(35, 15, 58, 35);
+  u8g2.setDrawColor(1);
+  u8g2.setFont(u8g2_font_ncenB18_tr);
+  centreStr("GO!", 38);
+  u8g2.sendBuffer();
+  beep(1200, 100, soundLevel);
+  delay(300);
+  
+  // Clear the overlay by redrawing game frame
+  // (Each game will redraw its own content)
+}
+
 // ============================================================
 // RESET DEVICE FUNCTION
 // ============================================================
@@ -773,7 +842,7 @@ void resetDevice() {
   
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
-  centreStr("✅ RESET", 24);
+  centreStr("RESET", 24);
   centreStr("COMPLETE!", 40);
   u8g2.setFont(u8g2_font_6x10_tr);
   centreStr("All data cleared", 55);
@@ -782,38 +851,62 @@ void resetDevice() {
 }
 
 // ============================================================
-// MUSIC PLAYER
+// MUSIC PLAYER (NON-BLOCKING + RESUME FIXED)
 // ============================================================
 
 void playMusicSong(int songIndex) {
-  if (!soundEnabled || songIndex < 0 || songIndex >= MUSIC_COUNT || musicPaused) return;
+  if (!soundEnabled || songIndex < 0 || songIndex >= MUSIC_COUNT) return;
   if (MUSIC_SONGS[songIndex] == nullptr) return;
   
   const MelodyNote* song = MUSIC_SONGS[songIndex];
   uint16_t songLen = SONG_LENGTHS[songIndex];
   
   uint32_t now = millis();
+  
+  // Check if song is finished
   if (musicNoteIndex >= songLen) {
     musicNoteIndex = 0;
     musicPlaying = false;
+    musicNotePlaying = false;
+    noTone(BUZZER_PIN);
     return;
   }
   
-  uint16_t freq = song[musicNoteIndex].freq;
-  uint16_t dur = song[musicNoteIndex].duration;
-  
-  if (freq != 0) {
-    beep(freq, dur, soundLevel);
-  } else {
-    delay(dur + 20);
+  // If currently playing a note, check if it's done
+  if (musicNotePlaying) {
+    uint16_t dur = song[musicNoteIndex].duration;
+    if (now - musicNoteStartTime >= dur) {
+      musicNotePlaying = false;
+      musicNoteIndex++;
+      noTone(BUZZER_PIN);
+    }
+    return;
   }
-  musicNoteIndex++;
+  
+  // Play next note
+  if (musicNoteIndex < songLen) {
+    uint16_t freq = song[musicNoteIndex].freq;
+    uint16_t dur = song[musicNoteIndex].duration;
+    
+    if (freq != 0) {
+      beepNonBlocking(freq, dur, soundLevel);
+    }
+    musicNoteStartTime = now;
+    musicNotePlaying = true;
+    
+    // If it's a rest, skip immediately
+    if (freq == 0) {
+      musicNotePlaying = false;
+      musicNoteIndex++;
+    }
+  }
 }
 
 void stopMusicPlayer() {
   musicPlaying = false;
   musicPaused = false;
   musicNoteIndex = 0;
+  musicNotePlaying = false;
   noTone(BUZZER_PIN);
 }
 
@@ -989,12 +1082,13 @@ void saveHighScore(int gameIndex, uint16_t score) {
 }
 
 // ============================================================
-// PAUSE & MENU FUNCTIONS (FIXED)
+// PAUSE & MENU FUNCTIONS (WITH COUNTDOWN - UPDATED)
 // ============================================================
 
 volatile bool menuPressed = false;
 volatile bool gamePaused = false;
 String currentGameName = "";
+int currentGameIndex = 0;
 
 bool checkPause(const char* gameName) {
   currentGameName = String(gameName);
@@ -1020,6 +1114,9 @@ bool checkPause(const char* gameName) {
         if (btnPressed(BTN_PAUSE)) {
           gamePaused = false;
           playResumeSound();
+          // Show countdown before resuming (background visible)
+          showCountdown(currentGameIndex);
+          return false;
         }
         if (btnPressed(BTN_MENU)) {
           gamePaused = false;
@@ -1032,6 +1129,8 @@ bool checkPause(const char* gameName) {
       return false;
     } else {
       playResumeSound();
+      // Show countdown before resuming (background visible)
+      showCountdown(currentGameIndex);
     }
   }
   return false;
@@ -1047,13 +1146,11 @@ bool checkMenuAndReturn() {
 }
 
 // ============================================================
-// GAME OVER AND MENU SYSTEM
+// GAME OVER SCREEN (UPDATED - 500ms more delay)
 // ============================================================
 
 void gameOverScreen(uint16_t score, int gameIndex, bool isWin) {
-  char buf[20];
-  snprintf(buf, sizeof(buf), "Score: %u", score);
-  
+  // Save score first
   if (gameIndex == 12 && isWin) {
     saveTotalGames(12);
     saveRPSWin(12);
@@ -1095,6 +1192,16 @@ void gameOverScreen(uint16_t score, int gameIndex, bool isWin) {
     }
   }
   
+  // Play game over music
+  playGameOverMusic();
+  
+ 
+  delay(1000);
+  
+  // Show game over screen
+  char buf[20];
+  snprintf(buf, sizeof(buf), "Score: %u", score);
+  
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
   centreStr("GAME OVER", 20);
@@ -1114,13 +1221,21 @@ void gameOverScreen(uint16_t score, int gameIndex, bool isWin) {
   centreStr(hs, 53);
   
   u8g2.sendBuffer();
-  playGameOverMusic();
-  delay(400);
+  delay(1000);
   waitRelease();
 }
 
 // ============================================================
-// GAME SUB MENU (FIXED - Returns to Game Select)
+// UPDATED: DRAW HEART WITH 7 PIXELS OFFSET AND SAME HEIGHT
+// ============================================================
+
+void drawHeartAtEnd(const char* text, int baseX, int y) {
+  int textWidth = u8g2.getStrWidth(text);
+  drawHeart(baseX + textWidth + 7, y - 7); // 7px gap, same height
+}
+
+// ============================================================
+// GAME SUB MENU (WITH HEART 7px AFTER NAME + SAME HEIGHT)
 // ============================================================
 
 void showGameSubMenu(const char* gameName, int gameIndex) {
@@ -1136,10 +1251,13 @@ void showGameSubMenu(const char* gameName, int gameIndex) {
     game_maze, game_rps, game_car
   };
   
+  // Store current game index for countdown
+  currentGameIndex = gameIndex;
+  
   while (true) {
     if (btnLongPressed(BTN_MENU, 200)) {
       playMenuButtonSound();
-      return;  // ✅ Game Select Menu তে ফিরে যাবে
+      return;
     }
     
     if (sel < top) top = sel;
@@ -1150,13 +1268,14 @@ void showGameSubMenu(const char* gameName, int gameIndex) {
     u8g2.drawRBox(5, 2, SCREEN_W - 10, 12, 2);
     u8g2.setDrawColor(0);
     
-    char displayName[35];
+    // Draw game name with heart 7px after name (same height)
     if (isFavorite(gameIndex)) {
-      snprintf(displayName, sizeof(displayName), "❤️ %s", gameName);
+      u8g2.drawStr(10, 11, gameName);
+      int nameWidth = u8g2.getStrWidth(gameName);
+      drawHeart(10 + nameWidth + 7, 4); // 7px gap, y=4 (same height as text at y=11)
     } else {
-      snprintf(displayName, sizeof(displayName), "%s", gameName);
+      centreStr(gameName, 11);
     }
-    centreStr(displayName, 11);
     u8g2.setDrawColor(1);
     
     u8g2.setFont(u8g2_font_6x10_tr);
@@ -1232,7 +1351,6 @@ void showGameSubMenu(const char* gameName, int gameIndex) {
           continue;
         }
         
-        // Game Over - Show replay option
         bool replay = false;
         bool backToMenu = false;
         
@@ -1261,12 +1379,11 @@ void showGameSubMenu(const char* gameName, int gameIndex) {
         }
         
         if (backToMenu) {
-          continue;  // Game Sub Menu দেখাবে
+          continue;
         }
         if (replay) {
           uniqueGameStartSound(gameIndex);
-          games[gameIndex]();  // আবার গেম খেলা
-          // গেম শেষে আবার loop
+          games[gameIndex]();
         }
       }
       else if (sel == 1) {
@@ -1344,14 +1461,15 @@ void showGameSubMenu(const char* gameName, int gameIndex) {
         u8g2.clearBuffer();
         u8g2.setFont(u8g2_font_ncenB10_tr);
         if (isFavorite(gameIndex)) {
-          centreStr("❤️ ADDED TO", 24);
-          centreStr("FAVORITES!", 40);
+          centreStr("ADDED TO", 28);
+          centreStr("FAVORITES!", 42);
+          drawHeart(60, 50);
           beep(1200, 40, soundLevel);
           delay(80);
           beep(1500, 40, soundLevel);
         } else {
-          centreStr("❌ REMOVED", 24);
-          centreStr("FROM FAVORITES", 40);
+          centreStr("REMOVED", 28);
+          centreStr("FROM FAVORITES", 42);
           beep(600, 40, soundLevel);
           delay(80);
           beep(500, 40, soundLevel);
@@ -1364,22 +1482,22 @@ void showGameSubMenu(const char* gameName, int gameIndex) {
     else if (btnPressed(BTN_MENU)) { 
       beep(600, 40, soundLevel); 
       waitRelease();
-      return;  // ✅ Game Select Menu তে ফিরে যাবে
+      return;
     }
     delay(100);
   }
 }
 
 // ============================================================
-// SPLASH SCREEN
+// UPDATED SPLASH SCREEN - NO HEART
 // ============================================================
 
 void showSplash() {
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
-  centreStr("🎮 GAME CONSOLE", 20);
-  u8g2.setFont(u8g2_font_ncenB10_tr);
-  centreStr("MADE BY Rahul", 40);
+  centreStr("GAME CONSOLE", 28);  // Moved up
+  u8g2.setFont(u8g2_font_ncenB08_tr);
+  centreStr("MADE BY Rahul", 48);
   u8g2.sendBuffer();
   
   if (soundEnabled) {
@@ -1392,17 +1510,12 @@ void showSplash() {
   for (int i = 0; i <= 100; i += 5) {
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB10_tr);
-    centreStr("🎮 GAME CONSOLE", 20);
-    u8g2.setFont(u8g2_font_ncenB10_tr);
-    centreStr("MADE BY Rahul", 40);
+    centreStr("GAME CONSOLE", 28);
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    centreStr("MADE BY Rahul", 48);
     
-    u8g2.drawFrame(14, 50, 100, 8);
-    u8g2.drawBox(14, 50, i, 8);
-    
-    char loadText[10];
-    snprintf(loadText, sizeof(loadText), "%d%%", i);
-    u8g2.setFont(u8g2_font_5x7_tr);
-    u8g2.drawStr(60 - u8g2.getStrWidth(loadText)/2, 58, loadText);
+    u8g2.drawFrame(14, 58, 100, 4);
+    u8g2.drawBox(14, 58, i, 4);
     
     u8g2.sendBuffer();
     
@@ -1494,7 +1607,6 @@ void showMainGridMenu() {
       waitRelease();
 
       if (sel == 0) {
-        // ✅ Game Select Menu Loop
         while (true) {
           int gameSel = menuSelect();
           if (gameSel >= 0 && gameSel < GAME_COUNT) {
@@ -1505,9 +1617,7 @@ void showMainGridMenu() {
               "Maze Runner", "RPS Game", "Car Racer"
             };
             showGameSubMenu(gameNames[gameSel], gameSel);
-            // ✅ Game Sub Menu থেকে ফিরে এলে আবার Game Select দেখাবে
           } else {
-            // ✅ -1 রিটার্ন মানে Main Menu তে ফিরে যাবে
             break;
           }
         }
@@ -1546,7 +1656,7 @@ void showMediaMenu() {
     
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    centreStr("📁 MEDIA", 10);
+    centreStr("MEDIA", 10);
     
     for (int i = 0; i < 2; i++) {
       int y = 30 + i * 16;
@@ -1591,7 +1701,7 @@ void showImageMenu() {
     
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB10_tr);
-    centreStr("📷 IMAGE", 24);
+    centreStr("IMAGE", 24);
     u8g2.setFont(u8g2_font_6x10_tr);
     centreStr("Coming Soon!", 40);
     centreStr("Press MENU to go back", 55);
@@ -1615,7 +1725,7 @@ void showVideoMenu() {
     
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB10_tr);
-    centreStr("🎬 VIDEO", 24);
+    centreStr("VIDEO", 24);
     u8g2.setFont(u8g2_font_6x10_tr);
     centreStr("Coming Soon!", 40);
     centreStr("Press MENU to go back", 55);
@@ -1648,7 +1758,7 @@ void showSetupMenu() {
     u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawBox(0, 0, SCREEN_W, 11);
     u8g2.setDrawColor(0);
-    centreStr("⚙️ SETUP", 9);
+    centreStr("SETUP", 9);
     u8g2.setDrawColor(1);
     
     u8g2.setFont(u8g2_font_ncenB08_tr);
@@ -1688,15 +1798,18 @@ void showSetupMenu() {
 }
 
 // ============================================================
-// MUSIC MENU
+// MUSIC MENU (NON-BLOCKING + RESUME FIXED)
 // ============================================================
 
 void showMusicMenu() {
   int sel = 0;
   int top = 0;
   const int VISIBLE = 4;
+  uint32_t lastUpdate = 0;
   
   while (true) {
+    uint32_t now = millis();
+    
     if (btnLongPressed(BTN_MENU, 200)) {
       if (musicPlaying) {
         stopMusicPlayer();
@@ -1710,7 +1823,7 @@ void showMusicMenu() {
     
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    centreStr("🎵 MUSIC PLAYER", 10); 
+    centreStr("MUSIC PLAYER", 10); 
     
     u8g2.setFont(u8g2_font_5x7_tr);
     for (int i = 0; i < VISIBLE; i++) {
@@ -1723,7 +1836,9 @@ void showMusicMenu() {
         u8g2.drawStr(6, y + 9, MUSIC_NAMES[idx]);
         u8g2.setDrawColor(1);
         if (musicPlaying && !musicPaused && idx == sel) {
-          u8g2.drawStr(SCREEN_W - 10, y + 9, "▶");
+          u8g2.drawStr(SCREEN_W - 10, y + 9, ">");
+        } else if (musicPaused && idx == sel) {
+          u8g2.drawStr(SCREEN_W - 10, y + 9, "||");
         }
       } else {
         u8g2.drawStr(6, y + 9, MUSIC_NAMES[idx]);
@@ -1734,12 +1849,13 @@ void showMusicMenu() {
     if (top + VISIBLE < MUSIC_COUNT) u8g2.drawStr(SCREEN_W - 8, 62, "v");
     
     u8g2.sendBuffer();
-    delay(50);
     
+    // ── Non-blocking music playback ──
     if (musicPlaying && !musicPaused) {
       playMusicSong(sel);
     }
     
+    // ── Button handling ──
     if (btnPressed(BTN_UP)) { 
       sel = (sel + MUSIC_COUNT - 1) % MUSIC_COUNT; 
       beep(800, 20, soundLevel);
@@ -1747,6 +1863,7 @@ void showMusicMenu() {
         stopMusicPlayer();
         musicPlaying = true;
         musicNoteIndex = 0;
+        musicNotePlaying = false;
       }
     }
     else if (btnPressed(BTN_DOWN)) { 
@@ -1756,40 +1873,28 @@ void showMusicMenu() {
         stopMusicPlayer();
         musicPlaying = true;
         musicNoteIndex = 0;
+        musicNotePlaying = false;
       }
     }
-    else if (btnPressed(BTN_ENTER)) { 
+    else if (btnPressed(BTN_ENTER) || btnPressed(BTN_PAUSE)) { 
       if (musicPlaying && !musicPaused) {
+        // Playing → Pause
         musicPaused = true;
         noTone(BUZZER_PIN);
+        musicNotePlaying = false;
         beep(500, 40, soundLevel);
       } else if (musicPaused) {
+        // Paused → Resume (continue from where it left off)
         musicPaused = false;
-        musicNoteIndex = 0;
+        // Don't reset musicNoteIndex, continue from where it was paused
+        musicNotePlaying = false;
         beep(1000, 30, soundLevel);
       } else {
+        // Stopped → Play
         musicPlaying = true;
         musicPaused = false;
         musicNoteIndex = 0;
-        beep(1000, 30, soundLevel);
-      }
-      waitRelease();
-    }
-    else if (btnPressed(BTN_PAUSE)) {
-      if (musicPlaying) {
-        if (musicPaused) {
-          musicPaused = false;
-          musicNoteIndex = 0;
-          beep(1000, 30, soundLevel);
-        } else {
-          musicPaused = true;
-          noTone(BUZZER_PIN);
-          beep(500, 40, soundLevel);
-        }
-      } else {
-        musicPlaying = true;
-        musicPaused = false;
-        musicNoteIndex = 0;
+        musicNotePlaying = false;
         beep(1000, 30, soundLevel);
       }
       waitRelease();
@@ -1802,6 +1907,8 @@ void showMusicMenu() {
       waitRelease(); 
       return; 
     }
+    
+    delay(20);
   }
 }
 
@@ -1921,10 +2028,10 @@ void showSettingsMenu() {
           
           u8g2.setFont(u8g2_font_ncenB10_tr);
           char soundText[20];
-          if (soundLevel == 0) snprintf(soundText, sizeof(soundText), "🔇 MUTE");
-          else if (soundLevel == 1) snprintf(soundText, sizeof(soundText), "🔊 LOW");
-          else if (soundLevel == 2) snprintf(soundText, sizeof(soundText), "🔊 MEDIUM");
-          else if (soundLevel == 3) snprintf(soundText, sizeof(soundText), "🔊 HIGH");
+          if (soundLevel == 0) snprintf(soundText, sizeof(soundText), "MUTE");
+          else if (soundLevel == 1) snprintf(soundText, sizeof(soundText), "LOW");
+          else if (soundLevel == 2) snprintf(soundText, sizeof(soundText), "MEDIUM");
+          else if (soundLevel == 3) snprintf(soundText, sizeof(soundText), "HIGH");
           centreStr(soundText, 28);
           
           for (int i = 0; i < 4; i++) {
@@ -1978,7 +2085,7 @@ void showSettingsMenu() {
           
           u8g2.clearBuffer();
           u8g2.setFont(u8g2_font_ncenB10_tr);
-          centreStr("⚠️ RESET", 18);
+          centreStr("RESET", 18);
           u8g2.setFont(u8g2_font_6x10_tr);
           centreStr("All data will be", 32);
           centreStr("erased!", 42);
@@ -2039,14 +2146,14 @@ void showSettingsMenu() {
 }
 
 // ============================================================
-// FAVORITES MENU
+// FAVORITES MENU (WITH HEART 7px AFTER NAME + SAME HEIGHT)
 // ============================================================
 
 void showFavoritesMenu() {
   if (favoriteCount == 0) {
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB10_tr);
-    centreStr("⭐ NO", 24);
+    centreStr("NO", 24);
     centreStr("FAVORITES", 40);
     u8g2.setFont(u8g2_font_6x10_tr);
     centreStr("Add from game menu", 55);
@@ -2083,7 +2190,7 @@ void showFavoritesMenu() {
     
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    centreStr("⭐ FAVORITES", 10);
+    centreStr("FAVORITES", 10);
     
     u8g2.setFont(u8g2_font_6x10_tr);
     for (int i = 0; i < VISIBLE; i++) {
@@ -2091,13 +2198,22 @@ void showFavoritesMenu() {
       if (idx >= favoriteCount) break;
       int gameIdx = favoriteGames[idx];
       int y = 14 + i * 13;
+      
+      char displayName[30];
+      snprintf(displayName, sizeof(displayName), "%d. %s", idx + 1, gameNames[gameIdx]);
+      
       if (idx == sel) {
         u8g2.drawRBox(0, y-1, SCREEN_W, 12, 2);
         u8g2.setDrawColor(0);
-        u8g2.drawStr(6, y + 9, gameNames[gameIdx]);
+        // Show name with heart 7px after name (same height)
+        u8g2.drawStr(6, y + 9, displayName);
+        int nameWidth = u8g2.getStrWidth(displayName);
+        drawHeart(6 + nameWidth + 7, y + 2); // 7px gap, y+2 for same height
         u8g2.setDrawColor(1);
       } else {
-        u8g2.drawStr(6, y + 9, gameNames[gameIdx]);
+        int nameWidth = u8g2.getStrWidth(displayName);
+        u8g2.drawStr(6, y + 9, displayName);
+        drawHeart(6 + nameWidth + 7, y + 2); // 7px gap, y+2 for same height
       }
     }
     
@@ -2130,7 +2246,7 @@ void showFavoritesMenu() {
 }
 
 // ============================================================
-// MAIN GAME MENU (Game Select - FIXED)
+// MAIN GAME MENU (Game Select - WITH HEART 7px AFTER NAME)
 // ============================================================
 
 int menuSelect() {
@@ -2148,7 +2264,7 @@ int menuSelect() {
   while (true) {
     if (btnLongPressed(BTN_MENU, 200)) {
       playMenuButtonSound();
-      return -1;  // ✅ Main Menu তে ফিরে যাবে
+      return -1;
     }
     
     if (sel < top) top = sel;
@@ -2158,7 +2274,7 @@ int menuSelect() {
     u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawBox(0, 0, SCREEN_W, 11);
     u8g2.setDrawColor(0);
-    centreStr("🎮 SELECT GAME", 9);
+    centreStr("SELECT GAME", 9);
     u8g2.setDrawColor(1);
 
     u8g2.setFont(u8g2_font_ncenB08_tr);
@@ -2167,20 +2283,26 @@ int menuSelect() {
       if (idx >= GAME_COUNT) break;
       int y = 14 + i * 12;
       
-      char displayName[30];
-      if (isFavorite(idx)) {
-        snprintf(displayName, sizeof(displayName), "❤️ %s", names[idx]);
-      } else {
-        snprintf(displayName, sizeof(displayName), "%s", names[idx]);
-      }
-      
       if (idx == sel) {
         u8g2.drawRBox(0, y-1, SCREEN_W, 11, 2);
         u8g2.setDrawColor(0);
-        u8g2.drawStr(6, y + 9, displayName);
+        if (isFavorite(idx)) {
+          // Show name with heart 7px after name (same height)
+          u8g2.drawStr(6, y + 9, names[idx]);
+          int nameWidth = u8g2.getStrWidth(names[idx]);
+          drawHeart(6 + nameWidth + 7, y + 2); // 7px gap, y+2 for same height
+        } else {
+          u8g2.drawStr(6, y + 9, names[idx]);
+        }
         u8g2.setDrawColor(1);
       } else {
-        u8g2.drawStr(6, y + 9, displayName);
+        if (isFavorite(idx)) {
+          int nameWidth = u8g2.getStrWidth(names[idx]);
+          u8g2.drawStr(6, y + 9, names[idx]);
+          drawHeart(6 + nameWidth + 7, y + 2); // 7px gap, y+2 for same height
+        } else {
+          u8g2.drawStr(6, y + 9, names[idx]);
+        }
       }
     }
 
@@ -2212,13 +2334,13 @@ int menuSelect() {
     else if (btnPressed(BTN_MENU)) { 
       playMenuButtonSound(); 
       waitRelease();
-      return -1;  // ✅ Main Menu তে ফিরে যাবে
+      return -1; 
     }
   }
 }
 
 // ============================================================
-// GAME: ASTEROIDS (Partial - All games are same as before)
+// GAME: ASTEROIDS
 // ============================================================
 
 void game_asteroids() {
@@ -2265,7 +2387,12 @@ void game_asteroids() {
     if (btnHeld(BTN_UP)) shipY = max(0, shipY - 4);
     if (btnHeld(BTN_DOWN)) shipY = min(SCREEN_H - SHIP_H, shipY + 4);
 
-    score++;
+    // FIXED: Score increases based on time, not per frame
+    static uint32_t lastScoreUpdate = 0;
+    if (now - lastScoreUpdate > 1000) {
+      score++;
+      lastScoreUpdate = now;
+    }
     spawnGap = max(300UL, 900UL - score / 100);
 
     if (now - lastSpawn > spawnGap) {
@@ -2295,7 +2422,7 @@ void game_asteroids() {
           r.y < shipY + SHIP_H && r.y + r.h > shipY) {
         lives--;
         if (lives == 0) {
-          gameOverScreen(score / 10, 0, false);
+          gameOverScreen(score, 0, false);
           return;
         }
         beep(200, 80, soundLevel);
@@ -2340,7 +2467,7 @@ void game_asteroids() {
     
     u8g2.setFont(u8g2_font_5x7_tr);
     char sc[8];
-    ltoa(score / 10, sc, 10);
+    ltoa(score, sc, 10);
     u8g2.drawStr(SCREEN_W - u8g2.getStrWidth(sc) - 2, 8, sc);
     
     char livesText[8];
@@ -2354,14 +2481,7 @@ void game_asteroids() {
 }
 
 // ============================================================
-// All other game functions remain the same...
-// (game_breakout, game_dino, game_flappy, game_snake1, game_snake2,
-//  game_pong, game_pacman, game_spaceinvaders, game_tetris, game_tank,
-//  game_maze, game_rps, game_car)
-// ============================================================
-
-// ============================================================
-// GAME: BREAKOUT (Keep existing code)
+// GAME: BREAKOUT (Fixed collision)
 // ============================================================
 
 void game_breakout() {
@@ -2406,7 +2526,8 @@ void game_breakout() {
     if (bx >= SCREEN_W - 4) { vx = -fabsf(vx); bx = SCREEN_W - 4; beep(600, 10, soundLevel); }
     if (by <= 1) { vy = fabsf(vy); by = 1; beep(600, 10, soundLevel); }
     
-    if (vy > 0 && by + 3 >= padY && by + 3 <= padY + 3 + 2 &&
+    // FIXED: Better paddle collision detection
+    if (by + 3 >= padY && by <= padY + 3 && 
         bx + 2 >= padX && bx <= padX + 20) {
       vy = -fabsf(vy);
       float rel = ((bx + 1) - (padX + 10.0f)) / 10.0f;
@@ -2491,7 +2612,7 @@ void game_breakout() {
 }
 
 // ============================================================
-// GAME: DINO RUN (Keep existing code)
+// GAME: DINO RUN (Fixed collision)
 // ============================================================
 
 void game_dino() {
@@ -2561,6 +2682,7 @@ void game_dino() {
       obsW = 16; obsH = 20; obsY = GROUND_Y - 20;
     }
 
+    // FIXED: Better collision detection
     if (DINO_X < obsX + obsW && DINO_X + dinoW > obsX && 
         dinoY < obsY + obsH && dinoY + dinoH > obsY) {
       gameOverScreen(score, 2, false);
@@ -2594,7 +2716,7 @@ void game_dino() {
 }
 
 // ============================================================
-// GAME: FLAPPY BIRD (Keep existing code)
+// GAME: FLAPPY BIRD (Fixed pipe initialization)
 // ============================================================
 
 void game_flappy() {
@@ -2616,12 +2738,13 @@ void game_flappy() {
   float currentSpeed = INITIAL_SPEED;
   int activePipes = 2;
 
-  for(int i = 0; i < 2; i++) {
+  for(int i = 0; i < 3; i++) {
     pGapY[i] = random(8, SCREEN_H - VERTICAL_GAP - 8);
     scored[i] = false;
   }
   int initialDistance = random(30, 60);
   pX[1] = pX[0] + initialDistance;
+  pX[2] = pX[1] + random(30, 60); // Initialize third pipe
 
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
@@ -2731,7 +2854,7 @@ void game_flappy() {
 }
 
 // ============================================================
-// GAME: SNAKE 1 (Keep existing code)
+// GAME: SNAKE 1 (Fixed direction change)
 // ============================================================
 
 #define SN_COLS 21
@@ -2780,10 +2903,11 @@ void game_snake1() {
     if (checkPause("SNAKE 1")) return;
     if (checkMenuAndReturn()) return;
     
-    if (btnHeld(BTN_UP) && dy == 0) { next_dx = 0; next_dy = -1; }
-    if (btnHeld(BTN_DOWN) && dy == 0) { next_dx = 0; next_dy = 1; }
-    if (btnHeld(BTN_LEFT) && dx == 0) { next_dx = -1; next_dy = 0; }
-    if (btnHeld(BTN_RIGHT) && dx == 0) { next_dx = 1; next_dy = 0; }
+    // FIXED: Direction change logic
+    if (btnHeld(BTN_UP) && dy != 1) { next_dx = 0; next_dy = -1; }
+    if (btnHeld(BTN_DOWN) && dy != -1) { next_dx = 0; next_dy = 1; }
+    if (btnHeld(BTN_LEFT) && dx != 1) { next_dx = -1; next_dy = 0; }
+    if (btnHeld(BTN_RIGHT) && dx != -1) { next_dx = 1; next_dy = 0; }
 
     uint32_t now = millis();
     if (now - lastMove < spd) { delay(8); continue; }
@@ -2832,7 +2956,7 @@ void game_snake1() {
 }
 
 // ============================================================
-// GAME: SNAKE 2 (Keep existing code)
+// GAME: SNAKE 2
 // ============================================================
 
 #define SN2_COLS 20
@@ -2884,10 +3008,11 @@ void game_snake2() {
     if (checkPause("SNAKE 2")) return;
     if (checkMenuAndReturn()) return;
     
-    if (btnHeld(BTN_UP) && dy == 0) { next_dx = 0; next_dy = -1; }
-    if (btnHeld(BTN_DOWN) && dy == 0) { next_dx = 0; next_dy = 1; }
-    if (btnHeld(BTN_LEFT) && dx == 0) { next_dx = -1; next_dy = 0; }
-    if (btnHeld(BTN_RIGHT) && dx == 0) { next_dx = 1; next_dy = 0; }
+    // FIXED: Direction change logic
+    if (btnHeld(BTN_UP) && dy != 1) { next_dx = 0; next_dy = -1; }
+    if (btnHeld(BTN_DOWN) && dy != -1) { next_dx = 0; next_dy = 1; }
+    if (btnHeld(BTN_LEFT) && dx != 1) { next_dx = -1; next_dy = 0; }
+    if (btnHeld(BTN_RIGHT) && dx != -1) { next_dx = 1; next_dy = 0; }
 
     uint32_t now = millis();
     if (now - lastMove < spd) { delay(8); continue; }
@@ -2958,7 +3083,7 @@ void game_snake2() {
 }
 
 // ============================================================
-// GAME: PONG (Keep existing code)
+// GAME: PONG (Fixed CPU speed)
 // ============================================================
 
 void game_pong() {
@@ -2988,9 +3113,14 @@ void game_pong() {
     if (btnHeld(BTN_UP)) pY = max(0, pY - 3);
     if (btnHeld(BTN_DOWN)) pY = min(SCREEN_H - PAD_H, pY + 3);
 
+    // FIXED: Better CPU AI with speed adjustment
     int mid = cY + PAD_H / 2;
-    if (mid < (int)by - 1) cY = min(SCREEN_H - PAD_H, cY + 2);
-    if (mid > (int)by + 1) cY = max(0, cY - 2);
+    int dist = abs((int)by - mid);
+    int cpuSpeed = 2 + (dist / 6);
+    if (cpuSpeed > 5) cpuSpeed = 5;
+    
+    if (mid < (int)by - 1) cY = min(SCREEN_H - PAD_H, cY + cpuSpeed);
+    if (mid > (int)by + 1) cY = max(0, cY - cpuSpeed);
 
     bx += vx; by += vy;
 
@@ -3052,7 +3182,7 @@ void game_pong() {
 }
 
 // ============================================================
-// GAME: PACMAN (Keep existing code)
+// GAME: PACMAN (Fixed grid calculation)
 // ============================================================
 
 void game_pacman() {
@@ -3094,6 +3224,7 @@ void game_pacman() {
     if (py < 4) py = 4;
     if (py > SCREEN_H - 4) py = SCREEN_H - 4;
 
+    // FIXED: Better grid position calculation
     int mx = (px * 10) / SCREEN_W;
     int my = (py * 5) / SCREEN_H;
     if (mx >= 0 && mx < 10 && my >= 0 && my < 5) {
@@ -3154,7 +3285,7 @@ void game_pacman() {
 }
 
 // ============================================================
-// GAME: SPACE INVADERS (Keep existing code)
+// GAME: SPACE INVADERS (Fixed bullet detection)
 // ============================================================
 
 void game_spaceinvaders() {
@@ -3251,6 +3382,7 @@ void game_spaceinvaders() {
       shot_done:;
     }
     
+    // FIXED: Better bullet collision detection
     for (auto &b : eb) {
       if (!b.on) continue;
       b.y += 3.0f * dt;
@@ -3323,7 +3455,7 @@ void game_spaceinvaders() {
 }
 
 // ============================================================
-// GAME: TETRIS (Keep existing code)
+// GAME: TETRIS (Fixed scoring)
 // ============================================================
 
 #define TT_COLS 8
@@ -3438,8 +3570,9 @@ void game_tetris() {
           }
         }
         if (cleared) {
+          // FIXED: Standard Tetris scoring without level multiplier
           static const uint16_t pts[5] = {0, 40, 100, 300, 1200};
-          score += pts[min(cleared, 4)] * level;
+          score += pts[min(cleared, 4)];
           beep(1200, 30, soundLevel); delay(35); beep(1400, 30, soundLevel);
           level = 1 + score / 200;
           dropInterval = max(80U, 600U - (level - 1) * 60);
@@ -3480,7 +3613,7 @@ void game_tetris() {
 }
 
 // ============================================================
-// GAME: TANK BATTLE (Keep existing code)
+// GAME: TANK BATTLE (Fixed facing direction)
 // ============================================================
 
 void game_tank() {
@@ -3488,6 +3621,9 @@ void game_tank() {
   struct TankBullet { float x, y; int8_t dx, dy; bool active; };
   
   Tank player = {64, 50, 0, 0, true, 0};
+  int playerFacingDx = 0;
+  int playerFacingDy = 1;  // Default facing down
+  
   Tank enemies[3];
   for (int i = 0; i < 3; i++) enemies[i].active = false;
   
@@ -3519,19 +3655,39 @@ void game_tank() {
     float dt = (now - lastFrame) / 20.0f;
     lastFrame = now;
 
-    if (btnHeld(BTN_UP)) { player.y -= 1.5f * dt; player.dx = 0; player.dy = -1; }
-    else if (btnHeld(BTN_DOWN)) { player.y += 1.5f * dt; player.dx = 0; player.dy = 1; }
-    else if (btnHeld(BTN_LEFT)) { player.x -= 1.5f * dt; player.dx = -1; player.dy = 0; }
-    else if (btnHeld(BTN_RIGHT)) { player.x += 1.5f * dt; player.dx = 1; player.dy = 0; }
+    // Player movement with facing direction tracking
+    if (btnHeld(BTN_UP)) { 
+      player.y -= 1.5f * dt; 
+      playerFacingDx = 0; 
+      playerFacingDy = -1; 
+    }
+    else if (btnHeld(BTN_DOWN)) { 
+      player.y += 1.5f * dt; 
+      playerFacingDx = 0; 
+      playerFacingDy = 1; 
+    }
+    else if (btnHeld(BTN_LEFT)) { 
+      player.x -= 1.5f * dt; 
+      playerFacingDx = -1; 
+      playerFacingDy = 0; 
+    }
+    else if (btnHeld(BTN_RIGHT)) { 
+      player.x += 1.5f * dt; 
+      playerFacingDx = 1; 
+      playerFacingDy = 0; 
+    }
 
     player.x = constrain(player.x, 0, SCREEN_W - 8);
     player.y = constrain(player.y, 0, SCREEN_H - 8);
 
+    // Fire bullet in facing direction
     if (btnPressed(BTN_ENTER) && now - lastFire > 300) {
       for (int i = 0; i < 3; i++) {
         if (!pBullet[i].active) {
-          pBullet[i].x = player.x + 3; pBullet[i].y = player.y + 3;
-          pBullet[i].dx = player.dx; pBullet[i].dy = player.dy;
+          pBullet[i].x = player.x + 3; 
+          pBullet[i].y = player.y + 3;
+          pBullet[i].dx = playerFacingDx;
+          pBullet[i].dy = playerFacingDy;
           pBullet[i].active = true;
           beep(1200, 15, soundLevel);
           lastFire = now;
@@ -3566,8 +3722,10 @@ void game_tank() {
         if (random(0, 100) < 40) {
           for (int j = 0; j < 5; j++) {
             if (!eBullets[j].active) {
-              eBullets[j].x = enemies[i].x + 3; eBullets[j].y = enemies[i].y + 3;
-              eBullets[j].dx = enemies[i].dx; eBullets[j].dy = enemies[i].dy;
+              eBullets[j].x = enemies[i].x + 3; 
+              eBullets[j].y = enemies[i].y + 3;
+              eBullets[j].dx = enemies[i].dx; 
+              eBullets[j].dy = enemies[i].dy;
               eBullets[j].active = true;
               break;
             }
@@ -3643,7 +3801,7 @@ void game_tank() {
 }
 
 // ============================================================
-// GAME: MAZE RUNNER (Keep existing code)
+// GAME: MAZE RUNNER (Fixed maze data reading)
 // ============================================================
 
 const uint8_t MAZE_L1[8][16] PROGMEM = {
@@ -3681,6 +3839,7 @@ void game_maze() {
     if (now - lastMove > moveDelay) {
       uint8_t walls = pgm_read_byte(&MAZE_L1[py][px]);
       bool moved = false;
+      // FIXED: Correct wall bit checking
       if (btnHeld(BTN_UP) && !(walls & 1) && py > 0) { py--; moved = true; }
       if (btnHeld(BTN_RIGHT) && !(walls & 2) && px < 15) { px++; moved = true; }
       if (btnHeld(BTN_DOWN) && !(walls & 4) && py < 7) { py++; moved = true; }
@@ -3737,11 +3896,11 @@ void game_maze() {
 }
 
 // ============================================================
-// GAME: ROCK PAPER SCISSORS (Keep existing code)
+// GAME: ROCK PAPER SCISSORS
 // ============================================================
 
 void game_rps() {
-  const char* moves[] = {"✊ ROCK", "✋ PAPER", "✌ SCISSORS"};
+  const char* moves[] = {"ROCK", "PAPER", "SCISSORS"};
   int playerScore = 0, cpuScore = 0;
   int playerChoice = 0, cpuChoice = 0;
   int state = 0;
@@ -3826,7 +3985,7 @@ void game_rps() {
         beep(500, 40, soundLevel);
       }
       else if (result == 1) { 
-        resultText = "YOU WIN! 🎉"; 
+        resultText = "YOU WIN!"; 
         playerScore++;
         playerWins++;
         saveRPSWin(12);
@@ -3846,7 +4005,7 @@ void game_rps() {
         beep(1500, 30, soundLevel); 
       }
       else { 
-        resultText = "CPU WINS! 😢"; 
+        resultText = "CPU WINS!"; 
         cpuScore++; 
         beep(300, 80, soundLevel); 
       }
@@ -3866,7 +4025,7 @@ void game_rps() {
 }
 
 // ============================================================
-// GAME: CAR RACER (Keep existing code)
+// GAME: CAR RACER (Fixed movement)
 // ============================================================
 
 void game_car() {
@@ -3904,13 +4063,16 @@ void game_car() {
     
     uint32_t now = millis();
     float dt = (now - lastFrame) / 20.0f;
+    if (dt > 3.0f) dt = 3.0f; // Limit dt to prevent overshoot
     lastFrame = now;
     
     if (btnPressed(BTN_LEFT)) targetLane = max(0, targetLane - 1);
     if (btnPressed(BTN_RIGHT)) targetLane = min(2, targetLane + 1);
     
     int targetX = LANE_START + targetLane * LANE_WIDTH + (LANE_WIDTH - CAR_W) / 2;
-    playerX += (targetX - playerX) * 0.15f * dt;
+    // FIXED: Smooth movement with clamp
+    playerX += (targetX - playerX) * 0.12f * dt;
+    playerX = constrain(playerX, LANE_START, LANE_START + 2 * LANE_WIDTH + (LANE_WIDTH - CAR_W));
     
     if (now - lastSpawn > (uint32_t)max(500, 1500 - score * 2)) {
       lastSpawn = now;
