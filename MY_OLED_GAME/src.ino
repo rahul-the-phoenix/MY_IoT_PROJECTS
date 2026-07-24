@@ -1,6 +1,7 @@
 // ============================================================
 // COMPLETE GAME CONSOLE FOR ESP32-C3
 // 14 Games Total with Main Menu, Music Player, and Settings
+// FIXED: Back button now returns to Game Select Menu properly
 // ============================================================
 
 #include <Arduino.h>
@@ -552,17 +553,17 @@ void saveRPSWin(int gameIndex);
 bool checkPause(const char* gameName);
 bool checkMenuAndReturn();
 void gameOverScreen(uint16_t score, int gameIndex, bool isWin);
-void showGameMenu(const char* gameName, int gameIndex, GameFunction game);
-void runGameWithMenu(GameFunction game, const char* gameName, int gameIndex);
+void showGameSubMenu(const char* gameName, int gameIndex);
 int menuSelect();
 void showSplash();
 void showMainGridMenu();
-void showGameMainMenu();
+void showSetupMenu();
 void showFavoritesMenu();
 void showSettingsMenu();
 void showMusicMenu();
-void showVideoMenu();
+void showMediaMenu();
 void showImageMenu();
+void showVideoMenu();
 void toggleFavorite(int gameIndex);
 bool isFavorite(int gameIndex);
 void saveFavorites();
@@ -573,6 +574,7 @@ void saveSoundSetting();
 void loadSoundSetting();
 void playMusicSong(int songIndex);
 void stopMusicPlayer();
+void resetDevice();
 
 // Game functions
 void game_asteroids();
@@ -649,7 +651,7 @@ bool btnLongPressed(uint8_t pin, uint16_t holdTime) {
   }
   
   if (cur && wasPressed[idx] && (millis() - pressStart[idx] > holdTime)) {
-    wasPressed[idx] = false; // Reset to avoid multiple triggers
+    wasPressed[idx] = false;
     return true;
   }
   
@@ -741,6 +743,45 @@ void uniqueGameStartSound(int gameIndex) {
 }
 
 // ============================================================
+// RESET DEVICE FUNCTION
+// ============================================================
+
+void resetDevice() {
+  EEPROM.begin(EEPROM_SIZE);
+  for (int i = 0; i < GAME_COUNT; i++) {
+    highScores[i] = 0;
+    totalGamesPlayed[i] = 0;
+    rpsWins[i] = 0;
+    EEPROM.put(i * sizeof(uint16_t), (uint16_t)0);
+    EEPROM.put((i + GAME_COUNT) * sizeof(uint16_t), (uint16_t)0);
+    EEPROM.put((i + GAME_COUNT*2) * sizeof(uint16_t), (uint16_t)0);
+  }
+  EEPROM.commit();
+  EEPROM.end();
+  
+  favoriteCount = 0;
+  for (int i = 0; i < MAX_FAVORITES; i++) {
+    favoriteGames[i] = 0;
+  }
+  saveFavorites();
+  
+  brightnessLevel = 4;
+  soundLevel = 3;
+  soundEnabled = true;
+  saveBrightness();
+  saveSoundSetting();
+  
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  centreStr("✅ RESET", 24);
+  centreStr("COMPLETE!", 40);
+  u8g2.setFont(u8g2_font_6x10_tr);
+  centreStr("All data cleared", 55);
+  u8g2.sendBuffer();
+  delay(2000);
+}
+
+// ============================================================
 // MUSIC PLAYER
 // ============================================================
 
@@ -754,6 +795,8 @@ void playMusicSong(int songIndex) {
   uint32_t now = millis();
   if (musicNoteIndex >= songLen) {
     musicNoteIndex = 0;
+    musicPlaying = false;
+    return;
   }
   
   uint16_t freq = song[musicNoteIndex].freq;
@@ -890,6 +933,7 @@ void loadHighScores() {
 }
 
 void saveTotalGames(int gameIndex) {
+  if (gameIndex != 12) return;
   totalGamesPlayed[gameIndex]++;
   EEPROM.begin(EEPROM_SIZE);
   EEPROM.put((gameIndex + GAME_COUNT) * sizeof(uint16_t), totalGamesPlayed[gameIndex]);
@@ -898,6 +942,7 @@ void saveTotalGames(int gameIndex) {
 }
 
 void saveRPSWin(int gameIndex) {
+  if (gameIndex != 12) return;
   rpsWins[gameIndex]++;
   EEPROM.begin(EEPROM_SIZE);
   EEPROM.put((gameIndex + GAME_COUNT*2) * sizeof(uint16_t), rpsWins[gameIndex]);
@@ -944,7 +989,7 @@ void saveHighScore(int gameIndex, uint16_t score) {
 }
 
 // ============================================================
-// PAUSE & MENU FUNCTIONS
+// PAUSE & MENU FUNCTIONS (FIXED)
 // ============================================================
 
 volatile bool menuPressed = false;
@@ -979,6 +1024,7 @@ bool checkPause(const char* gameName) {
         if (btnPressed(BTN_MENU)) {
           gamePaused = false;
           playMenuButtonSound();
+          menuPressed = true;
           return true;
         }
         delay(50);
@@ -1008,7 +1054,6 @@ void gameOverScreen(uint16_t score, int gameIndex, bool isWin) {
   char buf[20];
   snprintf(buf, sizeof(buf), "Score: %u", score);
   
-  // Only save total games for RPS (index 12)
   if (gameIndex == 12 && isWin) {
     saveTotalGames(12);
     saveRPSWin(12);
@@ -1075,20 +1120,26 @@ void gameOverScreen(uint16_t score, int gameIndex, bool isWin) {
 }
 
 // ============================================================
-// GAME SUBMENU (FIXED - Back goes directly to Game Select)
+// GAME SUB MENU (FIXED - Returns to Game Select)
 // ============================================================
 
-void showGameMenu(const char* gameName, int gameIndex, GameFunction game) {
-  const char* options[] = {"1. PLAY GAME", "2. HIGH SCORE", "3. GAME RULES", "4. ADD FAVORITE"};
+void showGameSubMenu(const char* gameName, int gameIndex) {
+  const char* options[] = {"1. PLAY GAME", "2. GAME RULES", "3. HIGH SCORE", "4. ADD FAVORITE"};
   int sel = 0;
   int top = 0;
-  const int VISIBLE = 3;
+  const int VISIBLE = 4;
+  
+  GameFunction games[GAME_COUNT] = {
+    game_asteroids, game_breakout, game_dino, game_flappy,
+    game_snake1, game_snake2, game_pong, game_pacman,
+    game_spaceinvaders, game_tetris, game_tank,
+    game_maze, game_rps, game_car
+  };
   
   while (true) {
-    // Check for long press on MENU button - Direct to Game Select
     if (btnLongPressed(BTN_MENU, 200)) {
       playMenuButtonSound();
-      return;
+      return;  // ✅ Game Select Menu তে ফিরে যাবে
     }
     
     if (sel < top) top = sel;
@@ -1101,28 +1152,57 @@ void showGameMenu(const char* gameName, int gameIndex, GameFunction game) {
     
     char displayName[35];
     if (isFavorite(gameIndex)) {
-      snprintf(displayName, sizeof(displayName), "⭐ %s", gameName);
+      snprintf(displayName, sizeof(displayName), "❤️ %s", gameName);
     } else {
       snprintf(displayName, sizeof(displayName), "%s", gameName);
     }
     centreStr(displayName, 11);
     u8g2.setDrawColor(1);
     
+    u8g2.setFont(u8g2_font_6x10_tr);
     for (int i = 0; i < VISIBLE; i++) {
       int idx = top + i;
       if (idx >= 4) break;
-      int y = 28 + i * 13;
+      int y = 20 + i * 11;
       if (idx == sel) {
-        u8g2.drawRBox(10, y - 8, SCREEN_W - 20, 12, 2);
+        u8g2.drawRBox(10, y - 7, SCREEN_W - 20, 10, 2);
         u8g2.setDrawColor(0);
-        centreStr(options[idx], y + 3);
+        if (idx == 2) {
+          char scoreText[30];
+          if (gameIndex == 12) {
+            uint16_t winRate = 0;
+            if (totalGamesPlayed[12] > 0) {
+              winRate = (rpsWins[12] * 100) / totalGamesPlayed[12];
+            }
+            snprintf(scoreText, sizeof(scoreText), "High Score = %u%%", winRate);
+          } else {
+            snprintf(scoreText, sizeof(scoreText), "High Score = %u", highScores[gameIndex]);
+          }
+          centreStr(scoreText, y + 3);
+        } else {
+          centreStr(options[idx], y + 3);
+        }
         u8g2.setDrawColor(1);
       } else {
-        centreStr(options[idx], y + 3);
+        if (idx == 2) {
+          char scoreText[30];
+          if (gameIndex == 12) {
+            uint16_t winRate = 0;
+            if (totalGamesPlayed[12] > 0) {
+              winRate = (rpsWins[12] * 100) / totalGamesPlayed[12];
+            }
+            snprintf(scoreText, sizeof(scoreText), "High Score = %u%%", winRate);
+          } else {
+            snprintf(scoreText, sizeof(scoreText), "High Score = %u", highScores[gameIndex]);
+          }
+          centreStr(scoreText, y + 3);
+        } else {
+          centreStr(options[idx], y + 3);
+        }
       }
     }
     
-    if (top > 0) u8g2.drawStr(SCREEN_W - 8, 26, "^");
+    if (top > 0) u8g2.drawStr(SCREEN_W - 8, 18, "^");
     if (top + VISIBLE < 4) u8g2.drawStr(SCREEN_W - 8, 62, "v");
     
     u8g2.sendBuffer();
@@ -1145,72 +1225,51 @@ void showGameMenu(const char* gameName, int gameIndex, GameFunction game) {
         menuPressed = false;
         gamePaused = false;
         uniqueGameStartSound(gameIndex);
-        game();
+        games[gameIndex]();
         
         if (menuPressed) {
           menuPressed = false;
           continue;
         }
         
-        delay(500);
-        u8g2.clearBuffer();
-        u8g2.setFont(u8g2_font_ncenB10_tr);
-        centreStr("GAME OVER", 20);
-        u8g2.setFont(u8g2_font_6x10_tr);
-        centreStr("ENTER to replay", 38);
-        centreStr("MENU to game menu", 50);
-        u8g2.sendBuffer();
+        // Game Over - Show replay option
+        bool replay = false;
+        bool backToMenu = false;
         
-        bool waitForInput = true;
-        while (waitForInput) {
+        while (true) {
+          u8g2.clearBuffer();
+          u8g2.setFont(u8g2_font_ncenB10_tr);
+          centreStr("GAME OVER", 20);
+          u8g2.setFont(u8g2_font_6x10_tr);
+          centreStr("ENTER to replay", 38);
+          centreStr("MENU to game menu", 50);
+          u8g2.sendBuffer();
+          
           if (btnPressed(BTN_MENU)) {
             playMenuButtonSound();
             waitRelease();
-            waitForInput = false;
+            backToMenu = true;
             break;
           }
           if (btnPressed(BTN_ENTER)) {
             beep(800, 20, soundLevel);
             waitRelease();
-            waitForInput = false;
+            replay = true;
             break;
           }
           delay(50);
         }
+        
+        if (backToMenu) {
+          continue;  // Game Sub Menu দেখাবে
+        }
+        if (replay) {
+          uniqueGameStartSound(gameIndex);
+          games[gameIndex]();  // আবার গেম খেলা
+          // গেম শেষে আবার loop
+        }
       }
       else if (sel == 1) {
-        u8g2.clearBuffer();
-        u8g2.setFont(u8g2_font_ncenB10_tr);
-        centreStr("HIGH SCORE", 20);
-        u8g2.setFont(u8g2_font_ncenB08_tr);
-        
-        if (gameIndex == 12) {
-          uint16_t winRate = 0;
-          if (totalGamesPlayed[12] > 0) {
-            winRate = (rpsWins[12] * 100) / totalGamesPlayed[12];
-          }
-          char hs[30];
-          snprintf(hs, sizeof(hs), "Win Rate: %u%%", winRate);
-          centreStr(hs, 41);
-          char total[30];
-          snprintf(total, sizeof(total), "Total Games: %u", totalGamesPlayed[12]);
-          centreStr(total, 53);
-        } else {
-          char hs[30];
-          snprintf(hs, sizeof(hs), "Score: %u", highScores[gameIndex]);
-          centreStr(hs, 41);
-          char total[30];
-          snprintf(total, sizeof(total), "Total Games: %u", totalGamesPlayed[gameIndex]);
-          centreStr(total, 53);
-        }
-        u8g2.sendBuffer();
-        waitRelease();
-        while (!btnHeld(BTN_UP) && !btnHeld(BTN_DOWN) && !btnHeld(BTN_LEFT) &&
-               !btnHeld(BTN_RIGHT) && !btnHeld(BTN_MENU) && !btnHeld(BTN_ENTER))
-          delay(15);
-        waitRelease();
-      }
-      else if (sel == 2) {
         const char* rules[14] = {
           "Dodge asteroids and survive as long as possible!",
           "Break all bricks using the bouncing ball!",
@@ -1277,12 +1336,15 @@ void showGameMenu(const char* gameName, int gameIndex, GameFunction game) {
           delay(15);
         waitRelease();
       }
+      else if (sel == 2) {
+        beep(800, 20, soundLevel);
+      }
       else if (sel == 3) {
         toggleFavorite(gameIndex);
         u8g2.clearBuffer();
         u8g2.setFont(u8g2_font_ncenB10_tr);
         if (isFavorite(gameIndex)) {
-          centreStr("⭐ ADDED TO", 24);
+          centreStr("❤️ ADDED TO", 24);
           centreStr("FAVORITES!", 40);
           beep(1200, 40, soundLevel);
           delay(80);
@@ -1299,19 +1361,13 @@ void showGameMenu(const char* gameName, int gameIndex, GameFunction game) {
         waitRelease();
       }
     }
-    // BACK button pressed - Go DIRECTLY to Game Select (NOT Game Main Menu)
     else if (btnPressed(BTN_MENU)) { 
       beep(600, 40, soundLevel); 
       waitRelease();
-      return;  // Returns to menuSelect() which shows Game Select list
+      return;  // ✅ Game Select Menu তে ফিরে যাবে
     }
     delay(100);
   }
-}
-
-void runGameWithMenu(GameFunction game, const char* gameName, int gameIndex) {
-  lastGameIndex = gameIndex;
-  showGameMenu(gameName, gameIndex, game);
 }
 
 // ============================================================
@@ -1377,7 +1433,7 @@ void centreStrBox(const char *s, int boxX, int boxW, int y) {
 }
 
 void showMainGridMenu() {
-  const char* options[] = {"GAME", "MUSIC", "IMAGE", "VIDEO"};
+  const char* options[] = {"GAME", "MUSIC", "MEDIA", "SETUP"};
   int sel = 0;
   int col = 0;
   int row = 0;
@@ -1438,16 +1494,32 @@ void showMainGridMenu() {
       waitRelease();
 
       if (sel == 0) {
-        showGameMainMenu();
+        // ✅ Game Select Menu Loop
+        while (true) {
+          int gameSel = menuSelect();
+          if (gameSel >= 0 && gameSel < GAME_COUNT) {
+            const char* gameNames[GAME_COUNT] = {
+              "Asteroids", "Breakout", "Dino Run", "Flappy Bird",
+              "Snake 1", "Snake 2", "Pong", "Pacman",
+              "Space Invaders", "Tetris", "Tank Battle",
+              "Maze Runner", "RPS Game", "Car Racer"
+            };
+            showGameSubMenu(gameNames[gameSel], gameSel);
+            // ✅ Game Sub Menu থেকে ফিরে এলে আবার Game Select দেখাবে
+          } else {
+            // ✅ -1 রিটার্ন মানে Main Menu তে ফিরে যাবে
+            break;
+          }
+        }
       }
       else if (sel == 1) {
         showMusicMenu();
       }
       else if (sel == 2) {
-        showImageMenu();
+        showMediaMenu();
       }
       else if (sel == 3) {
-        showVideoMenu();
+        showSetupMenu();
       }
     }
     else if (btnPressed(BTN_MENU)) {
@@ -1459,26 +1531,112 @@ void showMainGridMenu() {
 }
 
 // ============================================================
-// GAME MAIN MENU (UPDATED - Shows Game Select on ENTER)
+// MEDIA MENU
 // ============================================================
 
-void showGameMainMenu() {
-  const char* options[] = {"1. GAME MENU", "2. ⭐ FAVORITES", "3. SETTINGS"};
+void showMediaMenu() {
+  const char* options[] = {"IMAGE", "VIDEO"};
   int sel = 0;
   
-  const char* gameNames[GAME_COUNT] = {
-    "Asteroids", "Breakout", "Dino Run", "Flappy Bird",
-    "Snake 1", "Snake 2", "Pong", "Pacman",
-    "Space Invaders", "Tetris", "Tank Battle",
-    "Maze Runner", "RPS Game", "Car Racer"
-  };
-  
-  GameFunction games[GAME_COUNT] = {
-    game_asteroids, game_breakout, game_dino, game_flappy,
-    game_snake1, game_snake2, game_pong, game_pacman,
-    game_spaceinvaders, game_tetris, game_tank,
-    game_maze, game_rps, game_car
-  };
+  while (true) {
+    if (btnLongPressed(BTN_MENU, 200)) {
+      playMenuButtonSound();
+      return;
+    }
+    
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    centreStr("📁 MEDIA", 10);
+    
+    for (int i = 0; i < 2; i++) {
+      int y = 30 + i * 16;
+      if (i == sel) {
+        u8g2.drawRBox(20, y - 8, SCREEN_W - 40, 14, 2);
+        u8g2.setDrawColor(0);
+        centreStr(options[i], y + 4);
+        u8g2.setDrawColor(1);
+      } else {
+        centreStr(options[i], y + 4);
+      }
+    }
+    u8g2.sendBuffer();
+    
+    if (btnPressed(BTN_UP)) { sel = (sel + 1) % 2; beep(800, 20, soundLevel); }
+    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 2; beep(800, 20, soundLevel); }
+    else if (btnPressed(BTN_ENTER)) { 
+      beep(1000, 30, soundLevel);
+      waitRelease();
+      
+      if (sel == 0) {
+        showImageMenu();
+      } else {
+        showVideoMenu();
+      }
+    }
+    else if (btnPressed(BTN_MENU)) { 
+      playMenuButtonSound(); 
+      waitRelease(); 
+      return; 
+    }
+    delay(100);
+  }
+}
+
+void showImageMenu() {
+  while (true) {
+    if (btnLongPressed(BTN_MENU, 200)) {
+      playMenuButtonSound();
+      return;
+    }
+    
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    centreStr("📷 IMAGE", 24);
+    u8g2.setFont(u8g2_font_6x10_tr);
+    centreStr("Coming Soon!", 40);
+    centreStr("Press MENU to go back", 55);
+    u8g2.sendBuffer();
+    
+    if (btnPressed(BTN_MENU)) {
+      playMenuButtonSound();
+      waitRelease();
+      return;
+    }
+    delay(50);
+  }
+}
+
+void showVideoMenu() {
+  while (true) {
+    if (btnLongPressed(BTN_MENU, 200)) {
+      playMenuButtonSound();
+      return;
+    }
+    
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    centreStr("🎬 VIDEO", 24);
+    u8g2.setFont(u8g2_font_6x10_tr);
+    centreStr("Coming Soon!", 40);
+    centreStr("Press MENU to go back", 55);
+    u8g2.sendBuffer();
+    
+    if (btnPressed(BTN_MENU)) {
+      playMenuButtonSound();
+      waitRelease();
+      return;
+    }
+    delay(50);
+  }
+}
+
+// ============================================================
+// SETUP MENU
+// ============================================================
+
+void showSetupMenu() {
+  const char* options[] = {"1. SETTINGS", "2. FAV GAMES"};
+  int sel = 0;
   
   while (true) {
     if (btnLongPressed(BTN_MENU, 200)) {
@@ -1490,43 +1648,34 @@ void showGameMainMenu() {
     u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawBox(0, 0, SCREEN_W, 11);
     u8g2.setDrawColor(0);
-    centreStr("🎮 GAME MENU 🎮", 9);
+    centreStr("⚙️ SETUP", 9);
     u8g2.setDrawColor(1);
     
-    u8g2.setFont(u8g2_font_6x10_tr);
-    for (int i = 0; i < 3; i++) {
-      int y = 21 + i * 13;
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    for (int i = 0; i < 2; i++) {
+      int y = 25 + i * 16;
       if (i == sel) {
-        u8g2.drawRBox(10, y - 7, SCREEN_W - 20, 11, 2);
+        u8g2.drawRBox(10, y - 8, SCREEN_W - 20, 14, 2);
         u8g2.setDrawColor(0);
-        centreStr(options[i], y + 3);
+        centreStr(options[i], y + 4);
         u8g2.setDrawColor(1);
       } else {
-        centreStr(options[i], y + 3);
+        centreStr(options[i], y + 4);
       }
     }
-    
     u8g2.sendBuffer();
-    delay(100);
     
-    if (btnPressed(BTN_UP)) { sel = (sel + 2) % 3; beep(800, 20, soundLevel); }
-    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 3; beep(800, 20, soundLevel); }
+    if (btnPressed(BTN_UP)) { sel = (sel + 1) % 2; beep(800, 20, soundLevel); }
+    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 2; beep(800, 20, soundLevel); }
     else if (btnPressed(BTN_ENTER)) { 
       beep(1200, 40, soundLevel); 
       waitRelease();
       
       if (sel == 0) {
-        // This shows the Game Select list (all games with favorites)
-        int gameSel = menuSelect();
-        if (gameSel >= 0 && gameSel < GAME_COUNT) {
-          runGameWithMenu(games[gameSel], gameNames[gameSel], gameSel);
-        }
+        showSettingsMenu();
       }
       else if (sel == 1) {
         showFavoritesMenu();
-      }
-      else if (sel == 2) {
-        showSettingsMenu();
       }
     }
     else if (btnPressed(BTN_MENU)) { 
@@ -1534,6 +1683,7 @@ void showGameMainMenu() {
       waitRelease();
       return;
     }
+    delay(100);
   }
 }
 
@@ -1656,63 +1806,11 @@ void showMusicMenu() {
 }
 
 // ============================================================
-// IMAGE AND VIDEO MENUS
-// ============================================================
-
-void showImageMenu() {
-  while (true) {
-    if (btnLongPressed(BTN_MENU, 200)) {
-      playMenuButtonSound();
-      return;
-    }
-    
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_ncenB10_tr);
-    centreStr("📷 IMAGE", 24);
-    u8g2.setFont(u8g2_font_6x10_tr);
-    centreStr("Coming Soon!", 40);
-    centreStr("Press MENU to go back", 55);
-    u8g2.sendBuffer();
-    
-    if (btnPressed(BTN_MENU)) {
-      playMenuButtonSound();
-      waitRelease();
-      return;
-    }
-    delay(50);
-  }
-}
-
-void showVideoMenu() {
-  while (true) {
-    if (btnLongPressed(BTN_MENU, 200)) {
-      playMenuButtonSound();
-      return;
-    }
-    
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_ncenB10_tr);
-    centreStr("🎬 VIDEO", 24);
-    u8g2.setFont(u8g2_font_6x10_tr);
-    centreStr("Coming Soon!", 40);
-    centreStr("Press MENU to go back", 55);
-    u8g2.sendBuffer();
-    
-    if (btnPressed(BTN_MENU)) {
-      playMenuButtonSound();
-      waitRelease();
-      return;
-    }
-    delay(50);
-  }
-}
-
-// ============================================================
 // SETTINGS MENU
 // ============================================================
 
 void showSettingsMenu() {
-  const char* options[] = {"Brightness", "Sound", "Back"};
+  const char* options[] = {"1. Brightness", "2. Sound", "3. Reset Device"};
   int sel = 0;
   
   while (true) {
@@ -1867,7 +1965,72 @@ void showSettingsMenu() {
         }
       }
       else if (sel == 2) {
-        return;
+        bool confirmReset = true;
+        int confirmSel = 0;
+        const char* confirmOptions[] = {"YES", "NO"};
+        
+        while (confirmReset) {
+          if (btnLongPressed(BTN_MENU, 200)) {
+            playMenuButtonSound();
+            confirmReset = false;
+            break;
+          }
+          
+          u8g2.clearBuffer();
+          u8g2.setFont(u8g2_font_ncenB10_tr);
+          centreStr("⚠️ RESET", 18);
+          u8g2.setFont(u8g2_font_6x10_tr);
+          centreStr("All data will be", 32);
+          centreStr("erased!", 42);
+          
+          int boxW = 40;
+          int boxH = 16;
+          int spacing = 10;
+          int totalW = boxW * 2 + spacing;
+          int startX = (SCREEN_W - totalW) / 2;
+          int y = 50;
+          
+          for (int i = 0; i < 2; i++) {
+            int x = startX + i * (boxW + spacing);
+            u8g2.setFont(u8g2_font_ncenB08_tr);
+            
+            if (i == confirmSel) {
+              u8g2.drawRBox(x, y - boxH + 2, boxW, boxH, 2);
+              u8g2.setDrawColor(0);
+              centreStrBox(confirmOptions[i], x, boxW, y + 2);
+              u8g2.setDrawColor(1);
+            } else {
+              u8g2.drawFrame(x, y - boxH + 2, boxW, boxH);
+              centreStrBox(confirmOptions[i], x, boxW, y + 2);
+            }
+          }
+          
+          u8g2.sendBuffer();
+          delay(100);
+          
+          if (btnPressed(BTN_LEFT) || btnPressed(BTN_UP)) {
+            confirmSel = 0;
+            beep(800, 20, soundLevel);
+          }
+          else if (btnPressed(BTN_RIGHT) || btnPressed(BTN_DOWN)) {
+            confirmSel = 1;
+            beep(800, 20, soundLevel);
+          }
+          else if (btnPressed(BTN_ENTER)) {
+            beep(1000, 30, soundLevel);
+            waitRelease();
+            if (confirmSel == 0) {
+              resetDevice();
+              confirmReset = false;
+            } else {
+              confirmReset = false;
+            }
+          }
+          else if (btnPressed(BTN_MENU)) {
+            playMenuButtonSound();
+            confirmReset = false;
+          }
+        }
       }
     }
     else if (btnPressed(BTN_MENU)) { playMenuButtonSound(); waitRelease(); return; }
@@ -1876,7 +2039,7 @@ void showSettingsMenu() {
 }
 
 // ============================================================
-// FAVORITES MENU (UPDATED - Back goes to Game Select)
+// FAVORITES MENU
 // ============================================================
 
 void showFavoritesMenu() {
@@ -1903,13 +2066,6 @@ void showFavoritesMenu() {
     "Maze Runner", "RPS Game", "Car Racer"
   };
   
-  GameFunction games[GAME_COUNT] = {
-    game_asteroids, game_breakout, game_dino, game_flappy,
-    game_snake1, game_snake2, game_pong, game_pacman,
-    game_spaceinvaders, game_tetris, game_tank,
-    game_maze, game_rps, game_car
-  };
-  
   int sel = 0;
   int top = 0;
   const int VISIBLE = 4;
@@ -1917,7 +2073,7 @@ void showFavoritesMenu() {
   while (true) {
     if (btnLongPressed(BTN_MENU, 200)) {
       playMenuButtonSound();
-      return; // Returns to Game Select
+      return;
     }
     
     if (favoriteCount == 0) return;
@@ -1929,6 +2085,7 @@ void showFavoritesMenu() {
     u8g2.setFont(u8g2_font_ncenB08_tr);
     centreStr("⭐ FAVORITES", 10);
     
+    u8g2.setFont(u8g2_font_6x10_tr);
     for (int i = 0; i < VISIBLE; i++) {
       int idx = top + i;
       if (idx >= favoriteCount) break;
@@ -1962,19 +2119,18 @@ void showFavoritesMenu() {
       beep(1200, 40, soundLevel); 
       waitRelease();
       int gameIdx = favoriteGames[sel];
-      runGameWithMenu(games[gameIdx], gameNames[gameIdx], gameIdx);
-      // After game submenu returns, stay in favorites list
+      showGameSubMenu(gameNames[gameIdx], gameIdx);
     }
     else if (btnPressed(BTN_MENU)) { 
       playMenuButtonSound(); 
       waitRelease(); 
-      return; // Returns to Game Select
+      return;
     }
   }
 }
 
 // ============================================================
-// GAME SELECTION MENU (Shows all games with favorites)
+// MAIN GAME MENU (Game Select - FIXED)
 // ============================================================
 
 int menuSelect() {
@@ -1992,7 +2148,7 @@ int menuSelect() {
   while (true) {
     if (btnLongPressed(BTN_MENU, 200)) {
       playMenuButtonSound();
-      return -1;
+      return -1;  // ✅ Main Menu তে ফিরে যাবে
     }
     
     if (sel < top) top = sel;
@@ -2002,10 +2158,10 @@ int menuSelect() {
     u8g2.setFont(u8g2_font_ncenB08_tr);
     u8g2.drawBox(0, 0, SCREEN_W, 11);
     u8g2.setDrawColor(0);
-    centreStr("🎮 GAME SELECT", 9);
+    centreStr("🎮 SELECT GAME", 9);
     u8g2.setDrawColor(1);
 
-    u8g2.setFont(u8g2_font_6x10_tr);
+    u8g2.setFont(u8g2_font_ncenB08_tr);
     for (int i = 0; i < VISIBLE; i++) {
       int idx = top + i;
       if (idx >= GAME_COUNT) break;
@@ -2013,7 +2169,7 @@ int menuSelect() {
       
       char displayName[30];
       if (isFavorite(idx)) {
-        snprintf(displayName, sizeof(displayName), "⭐ %s", names[idx]);
+        snprintf(displayName, sizeof(displayName), "❤️ %s", names[idx]);
       } else {
         snprintf(displayName, sizeof(displayName), "%s", names[idx]);
       }
@@ -2050,18 +2206,19 @@ int menuSelect() {
     else if (btnPressed(BTN_ENTER)) { 
       beep(1200, 40, soundLevel); 
       waitRelease(); 
+      lastGameIndex = sel;
       return sel; 
     }
     else if (btnPressed(BTN_MENU)) { 
       playMenuButtonSound(); 
       waitRelease();
-      return -1; 
+      return -1;  // ✅ Main Menu তে ফিরে যাবে
     }
   }
 }
 
 // ============================================================
-// GAME: ASTEROIDS
+// GAME: ASTEROIDS (Partial - All games are same as before)
 // ============================================================
 
 void game_asteroids() {
@@ -2197,7 +2354,14 @@ void game_asteroids() {
 }
 
 // ============================================================
-// GAME: BREAKOUT
+// All other game functions remain the same...
+// (game_breakout, game_dino, game_flappy, game_snake1, game_snake2,
+//  game_pong, game_pacman, game_spaceinvaders, game_tetris, game_tank,
+//  game_maze, game_rps, game_car)
+// ============================================================
+
+// ============================================================
+// GAME: BREAKOUT (Keep existing code)
 // ============================================================
 
 void game_breakout() {
@@ -2327,7 +2491,7 @@ void game_breakout() {
 }
 
 // ============================================================
-// GAME: DINO RUN
+// GAME: DINO RUN (Keep existing code)
 // ============================================================
 
 void game_dino() {
@@ -2430,7 +2594,7 @@ void game_dino() {
 }
 
 // ============================================================
-// GAME: FLAPPY BIRD
+// GAME: FLAPPY BIRD (Keep existing code)
 // ============================================================
 
 void game_flappy() {
@@ -2567,7 +2731,7 @@ void game_flappy() {
 }
 
 // ============================================================
-// GAME: SNAKE 1
+// GAME: SNAKE 1 (Keep existing code)
 // ============================================================
 
 #define SN_COLS 21
@@ -2668,7 +2832,7 @@ void game_snake1() {
 }
 
 // ============================================================
-// GAME: SNAKE 2
+// GAME: SNAKE 2 (Keep existing code)
 // ============================================================
 
 #define SN2_COLS 20
@@ -2794,7 +2958,7 @@ void game_snake2() {
 }
 
 // ============================================================
-// GAME: PONG
+// GAME: PONG (Keep existing code)
 // ============================================================
 
 void game_pong() {
@@ -2888,7 +3052,7 @@ void game_pong() {
 }
 
 // ============================================================
-// GAME: PACMAN
+// GAME: PACMAN (Keep existing code)
 // ============================================================
 
 void game_pacman() {
@@ -2990,7 +3154,7 @@ void game_pacman() {
 }
 
 // ============================================================
-// GAME: SPACE INVADERS
+// GAME: SPACE INVADERS (Keep existing code)
 // ============================================================
 
 void game_spaceinvaders() {
@@ -3159,7 +3323,7 @@ void game_spaceinvaders() {
 }
 
 // ============================================================
-// GAME: TETRIS
+// GAME: TETRIS (Keep existing code)
 // ============================================================
 
 #define TT_COLS 8
@@ -3316,7 +3480,7 @@ void game_tetris() {
 }
 
 // ============================================================
-// GAME: TANK BATTLE
+// GAME: TANK BATTLE (Keep existing code)
 // ============================================================
 
 void game_tank() {
@@ -3479,7 +3643,7 @@ void game_tank() {
 }
 
 // ============================================================
-// GAME: MAZE RUNNER
+// GAME: MAZE RUNNER (Keep existing code)
 // ============================================================
 
 const uint8_t MAZE_L1[8][16] PROGMEM = {
@@ -3573,7 +3737,7 @@ void game_maze() {
 }
 
 // ============================================================
-// GAME: ROCK PAPER SCISSORS
+// GAME: ROCK PAPER SCISSORS (Keep existing code)
 // ============================================================
 
 void game_rps() {
@@ -3609,6 +3773,7 @@ void game_rps() {
         resultTime = millis();
         beep(900, 20, soundLevel);
         totalRounds++;
+        saveTotalGames(12);
       }
       
       u8g2.clearBuffer();
@@ -3659,13 +3824,11 @@ void game_rps() {
       if (result == 0) { 
         resultText = "DRAW!"; 
         beep(500, 40, soundLevel);
-        saveTotalGames(12);
       }
       else if (result == 1) { 
         resultText = "YOU WIN! 🎉"; 
         playerScore++;
         playerWins++;
-        saveTotalGames(12);
         saveRPSWin(12);
         uint16_t winRate = 0;
         if (totalGamesPlayed[12] > 0) {
@@ -3685,7 +3848,6 @@ void game_rps() {
       else { 
         resultText = "CPU WINS! 😢"; 
         cpuScore++; 
-        saveTotalGames(12);
         beep(300, 80, soundLevel); 
       }
       
@@ -3704,7 +3866,7 @@ void game_rps() {
 }
 
 // ============================================================
-// GAME: CAR RACER
+// GAME: CAR RACER (Keep existing code)
 // ============================================================
 
 void game_car() {
