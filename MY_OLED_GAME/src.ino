@@ -37,7 +37,7 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, OLED_SCL, OLED_
 
 // ── EEPROM for high scores ────────────
 #define EEPROM_SIZE 512
-#define GAME_COUNT 14
+#define GAME_COUNT 19
 #define MAX_FAVORITES 10
 #define MUSIC_COUNT 30
 
@@ -604,6 +604,7 @@ void game_tank();
 void game_maze();
 void game_rps();
 void game_car();
+void game_trex();
 
 // Tetris helper functions
 void loadPiece(struct TetPiece &p, uint8_t t);
@@ -1253,7 +1254,8 @@ void showGameSubMenu(const char* gameName, int gameIndex) {
     game_asteroids, game_breakout, game_dino, game_flappy,
     game_snake1, game_snake2, game_pong, game_pacman,
     game_spaceinvaders, game_tetris, game_tank,
-    game_maze, game_rps, game_car
+    game_maze, game_rps, game_car,game_car_2lane,game_trex,game_trex2,game_meteor_defenders,
+     game_death_star
   };
   
   currentGameIndex = gameIndex;
@@ -1594,11 +1596,13 @@ void showMainGridMenu() {
           int gameSel = menuSelect();
           if (gameSel >= 0 && gameSel < GAME_COUNT) {
             const char* gameNames[GAME_COUNT] = {
-              "Asteroids", "Breakout", "Dino Run", "Flappy Bird",
-              "Snake 1", "Snake 2", "Pong", "Pacman",
-              "Space Invaders", "Tetris", "Tank Battle",
-              "Maze Runner", "RPS Game", "Car Racer"
-            };
+    "Asteroids", "Breakout", "Dino Run", "Flappy Bird",
+    "Snake 1", "Snake 2", "Pong", "Pacman",
+    "Space Invaders", "Tetris", "Tank Battle",
+    "Maze Runner", "RPS Game", "Car Racer", 
+    "2-Lane Racer", "T-Rex Run", "T-Rex Run 2",
+    "Meteor Defenders","Death Star"  // নতুন গেম
+};
             showGameSubMenu(gameNames[gameSel], gameSel);
           } else {
             break;
@@ -2264,7 +2268,7 @@ int menuSelect() {
       "1. Asteroids", "2. Breakout", "3. Dino Run", "4. Flappy Bird",
       "5. Snake 1", "6. Snake 2", "7. Pong", "8. Pacman",
       "9. Space Invaders", "10. Tetris", "11. Tank Battle",
-      "12. Maze Runner", "13. RPS Game", "14. Car Racer"
+      "12. Maze Runner", "13. RPS Game", "14. Car Racer","15. 2-Lane Racer","16. T-Rex Run","17. T-Rex Run 2","18. Meteor Defenders" ,"19. Death Star"
   };
   int sel = lastGameIndex;
   if (sel >= GAME_COUNT) sel = 0;
@@ -4833,6 +4837,2122 @@ void game_car() {
     delay(20);
   }
 }
+
+// ============================================================
+// GAME: CAR RACER 2 LANE (FIXED - সঠিকভাবে লেন পরিবর্তন হয়)
+// ============================================================
+
+void game_car_2lane() {
+  const int CAR_W = 10, CAR_H = 6;
+  int playerX = 64 - CAR_W/2;
+  int targetLane = 0;  // 0 = Left lane, 1 = Right lane
+  const int LANE_WIDTH = 63;  // SCREEN_W / 2 - 1
+  const int LANE_START = 1;
+  
+  struct Obstacle { 
+    float x, y; 
+    int lane; 
+    bool active; 
+    float speed; 
+    int type;  // 0 = car, 1 = truck, 2 = bike
+  };
+  
+  Obstacle obs[10];  // বেশি obstacle রাখলাম
+  for (int i = 0; i < 10; i++) obs[i].active = false;
+  
+  uint32_t lastSpawn = 0;
+  uint32_t lastFrame = millis();
+  uint16_t score = 0;
+  float baseSpeed = 1.5f;
+  int lives = 3;
+  int laneHistory[2] = {0, 0};  // Track which lanes have obstacles
+  
+  const float SPEED_TYPES[4] = {0.6f, 0.9f, 1.35f, 1.7f};
+  
+  // Show start screen
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  centreStr("2-LANE CAR RACER", 18);
+  u8g2.setFont(u8g2_font_6x10_tr);
+  centreStr("Avoid obstacles!", 36);
+  centreStr("LEFT/RIGHT = switch lanes", 50);
+  u8g2.setFont(u8g2_font_5x7_tr);
+  centreStr("2 lanes - double the challenge!", 62);
+  u8g2.sendBuffer();
+  delay(1500);
+  waitRelease();
+
+  while (true) {
+    if (checkPause("2-LANE RACER")) return;
+    if (checkMenuAndReturn()) return;
+    
+    uint32_t now = millis();
+    float dt = (now - lastFrame) / 20.0f;
+    if (dt > 3.0f) dt = 3.0f;
+    lastFrame = now;
+    
+    // Lane switching with button presses
+    if (btnPressed(BTN_LEFT)) {
+      targetLane = max(0, targetLane - 1);
+      beep(800, 15, soundLevel);
+    }
+    if (btnPressed(BTN_RIGHT)) {
+      targetLane = min(1, targetLane + 1);
+      beep(800, 15, soundLevel);
+    }
+    
+    // Calculate target X position for each lane
+    int targetX = LANE_START + targetLane * LANE_WIDTH + (LANE_WIDTH - CAR_W) / 2  ;
+    // Smooth movement
+    playerX += (targetX - playerX) * 0.15f * dt;
+    playerX = constrain(playerX, LANE_START, LANE_START + LANE_WIDTH - CAR_W);
+    
+    // 🔥 FIXED: Spawn obstacles with random lanes
+    int spawnInterval = max(300, 1200 - score * 2);
+    if (now - lastSpawn > (uint32_t)spawnInterval) {
+      lastSpawn = now;
+      
+      // Check if we need to spawn
+      int activeCount = 0;
+      for (int i = 0; i < 10; i++) {
+        if (obs[i].active) activeCount++;
+      }
+      
+      // Max 4 obstacles at a time
+      if (activeCount < 4) {
+        for (int i = 0; i < 10; i++) {
+          if (!obs[i].active) {
+            // 🔥 RANDOM LANE - 0 or 1
+            obs[i].lane = random(0, 2);
+            
+            // Different obstacle types
+            obs[i].type = random(0, 3);  // 0=car, 1=truck, 2=bike
+            
+            // Calculate X position based on lane
+            if (obs[i].type == 0) {  // Car
+              obs[i].x = LANE_START + obs[i].lane * LANE_WIDTH + (LANE_WIDTH - 12) / 2;
+            } else if (obs[i].type == 1) {  // Truck (wider)
+              obs[i].x = LANE_START + obs[i].lane * LANE_WIDTH + (LANE_WIDTH - 16) / 2;
+            } else {  // Bike (narrower)
+              obs[i].x = LANE_START + obs[i].lane * LANE_WIDTH + (LANE_WIDTH - 8) / 2;
+            }
+            
+            obs[i].y = -20 - random(0, 30);  // Random start position
+            obs[i].active = true;
+            obs[i].speed = SPEED_TYPES[random(0, 4)] * (1.0f + score / 200.0f);
+            
+            // Debug: beep to confirm spawn
+            // beep(600, 5, soundLevel);
+            break;
+          }
+        }
+      }
+      baseSpeed = 1.5f + score / 200.0f;
+    }
+    
+    // Update obstacles and check collisions
+    for (int i = 0; i < 10; i++) {
+      if (!obs[i].active) continue;
+      
+      // Move obstacle down
+      obs[i].y += obs[i].speed * dt;
+      
+      // Remove if off screen
+      if (obs[i].y > SCREEN_H + 20) {
+        obs[i].active = false;
+        score++;
+        if (score % 5 == 0) {
+          beep(1500, 15, soundLevel);
+        }
+        continue;
+      }
+      
+      // Get obstacle dimensions based on type
+      int obsW, obsH;
+      if (obs[i].type == 0) { obsW = 12; obsH = 10; }
+      else if (obs[i].type == 1) { obsW = 16; obsH = 12; }
+      else { obsW = 8; obsH = 8; }
+      
+      // Collision detection with player
+      if (obs[i].y + obsH > SCREEN_H - 12 && obs[i].y < SCREEN_H - 6 + 6 &&
+          obs[i].x < playerX + CAR_W && obs[i].x + obsW > playerX) {
+        lives--;
+        beep(200, 160, soundLevel);
+        if (lives <= 0) {
+          gameOverScreen(score, 13, false);
+          return;
+        }
+        obs[i].active = false;
+        
+        // Flash effect for invincibility
+        for (int f = 0; f < 4; f++) {
+          u8g2.clearBuffer();
+          if (f % 2 == 0) {
+            u8g2.drawRBox((int)playerX, SCREEN_H - 12, CAR_W, CAR_H, 2);
+          }
+          u8g2.sendBuffer();
+          delay(80);
+        }
+      }
+    }
+    
+    // ============================================
+    // DRAW EVERYTHING
+    // ============================================
+    u8g2.clearBuffer();
+    
+    // 🔥 Draw 2 lanes with proper markings
+    for (int i = 0; i < 2; i++) {
+      int x = LANE_START + i * LANE_WIDTH;
+      
+      // Lane border
+      u8g2.drawFrame(x, 0, LANE_WIDTH, SCREEN_H);
+      
+      // Road edge markings (left and right edges)
+      if (i == 0) {
+        for (int y = 4; y < SCREEN_H; y += 12) {
+          u8g2.drawVLine(x, y, 4);
+        }
+      }
+      if (i == 1) {
+        for (int y = 4; y < SCREEN_H; y += 12) {
+          u8g2.drawVLine(x + LANE_WIDTH - 1, y, 4);
+        }
+      }
+      
+      // Lane markings (dashed lines inside lane)
+      if (i == 0) {
+        for (int y = 8; y < SCREEN_H; y += 20) {
+          u8g2.drawHLine(x + 15, y, 8);
+          u8g2.drawHLine(x + 35, y, 8);
+        }
+      }
+      if (i == 1) {
+        for (int y = 8; y < SCREEN_H; y += 20) {
+          u8g2.drawHLine(x + 15, y, 8);
+          u8g2.drawHLine(x + 35, y, 8);
+        }
+      }
+    }
+    
+    // Draw center divider with animation
+    int dividerOffset = (int)(now / 100) % 20;
+    for (int y = dividerOffset; y < SCREEN_H; y += 40) {
+      u8g2.drawHLine(SCREEN_W / 2 - 2, y, 4);
+      u8g2.drawHLine(SCREEN_W / 2 - 2, y + 10, 4);
+      u8g2.drawHLine(SCREEN_W / 2 - 2, y + 20, 4);
+    }
+    
+    // 🔥 Draw obstacles with different types
+    for (int i = 0; i < 10; i++) {
+      if (!obs[i].active) continue;
+      
+      int ox = (int)obs[i].x;
+      int oy = (int)obs[i].y;
+      
+      if (obs[i].type == 0) {
+        // Car - Red
+        u8g2.drawBox(ox, oy, 12, 10);
+        u8g2.setDrawColor(0);
+        u8g2.drawBox(ox + 2, oy + 2, 8, 3);
+        u8g2.drawBox(ox + 2, oy + 6, 8, 2);
+        u8g2.setDrawColor(1);
+        // Headlights
+        u8g2.drawBox(ox + 1, oy + 1, 3, 1);
+        u8g2.drawBox(ox + 8, oy + 1, 3, 1);
+      } 
+      else if (obs[i].type == 1) {
+        // Truck - Blue (wider)
+        u8g2.drawBox(ox, oy, 16, 12);
+        u8g2.setDrawColor(0);
+        u8g2.drawBox(ox + 3, oy + 2, 10, 4);
+        u8g2.drawBox(ox + 2, oy + 7, 12, 3);
+        u8g2.setDrawColor(1);
+      } 
+      else {
+        // Bike - Green (narrower)
+        u8g2.drawBox(ox + 2, oy, 4, 8);
+        u8g2.drawBox(ox, oy + 2, 8, 4);
+        u8g2.drawBox(ox + 2, oy + 8, 4, 2);
+        // Wheels
+        u8g2.drawCircle(ox + 1, oy + 8, 2);
+        u8g2.drawCircle(ox + 7, oy + 8, 2);
+      }
+    }
+    
+    // 🔥 Draw player car with glow effect
+    // Glow
+    u8g2.setDrawColor(0);
+    u8g2.drawRBox((int)playerX - 2, SCREEN_H - 14, CAR_W + 4, CAR_H + 4, 2);
+    u8g2.setDrawColor(1);
+    
+    // Car body
+    u8g2.drawRBox((int)playerX, SCREEN_H - 12, CAR_W, CAR_H, 2);
+    u8g2.setDrawColor(0);
+    // Headlights
+    u8g2.drawBox((int)playerX + 1, SCREEN_H - 10, 3, 2);
+    u8g2.drawBox((int)playerX + CAR_W - 4, SCREEN_H - 10, 3, 2);
+    u8g2.setDrawColor(1);
+    // Windshield
+    u8g2.drawBox((int)playerX + 2, SCREEN_H - 14, 6, 2);
+    
+    // 🔥 Draw UI
+    u8g2.setFont(u8g2_font_5x7_tr);
+    char sc[8];
+    itoa(score, sc, 10);
+    u8g2.drawStr(1, 8, "SC:");
+    u8g2.drawStr(16, 8, sc);
+    
+    // Draw lives as hearts
+    for (int i = 0; i < lives; i++) {
+      drawHeart(SCREEN_W - 10 - i * 10, 1);
+    }
+    
+    // Lane indicator with arrows
+    u8g2.setFont(u8g2_font_6x10_tr);
+    if (targetLane == 0) {
+      u8g2.drawStr(1, 20, "<-");
+    } else {
+      u8g2.drawStr(1, 20, "->");
+    }
+    
+    // Show current speed
+    u8g2.setFont(u8g2_font_5x7_tr);
+    char speedStr[10];
+    snprintf(speedStr, sizeof(speedStr), "SPD:%d", (int)(baseSpeed * 10));
+    u8g2.drawStr(SCREEN_W - 30, 20, speedStr);
+    
+    u8g2.sendBuffer();
+    delay(20);
+  }
+}
+
+
+// ============================================================
+// T-REX RUNNER â€” converted to fit the existing console framework
+// (uses the shared u8g2 display object + checkPause/checkMenuAndReturn/
+// beep/btnPressed/gameOverScreen/centreStr helpers, same as game_car_2lane()).
+//
+// ASSUMPTIONS â€” please adjust if these don't match your framework:
+//   1. Jump button: currently BTN_LEFT or BTN_RIGHT (either) triggers jump.
+//      Change to your actual jump/action button (e.g. BTN_A / BTN_UP) if you have one.
+//   2. gameOverScreen(score, gameId, false) is called with gameId = 14 â€” change
+//      to whatever ID you use for this game in your menu system.
+//   3. Sprite bytes were bit-reversed (Adafruit MSB-first -> u8g2 drawXBMP LSB-first).
+//      If sprites look scrambled/mirrored on your screen, that's the thing to check first.
+//
+// NOTE ON SPRITE_CACTUS3: the original data you gave me is 66 bytes, but its
+// declared size (21 x 23, 3 bytes/row) needs 69 bytes â€” it's 1 row short in the
+// SOURCE data itself (a pre-existing bug, not something I introduced). I padded
+// it with 3 zero bytes so it can't read out of bounds, but the bottom row of
+// that cactus sprite will just be blank until you supply the missing row data.
+// ============================================================
+
+// void game_trex() {
+//   // ---------------- Sprites (bit-reversed for u8g2 drawXBMP) ----------------
+//   static const uint8_t SPRITE_TREX[] PROGMEM = {
+//     0x00, 0x00, 0x00, 0x00, 0x00, 0xe0, 0x3f, 0x00, 0x00, 0xf0, 0x7f, 0x00, 0x00, 0x30, 0x7f, 0x00,
+//     0x00, 0xf0, 0x7f, 0x00, 0x00, 0xf0, 0x7f, 0x00, 0x00, 0xf0, 0x7f, 0x00, 0x00, 0xf0, 0x03, 0x00,
+//     0x00, 0xf0, 0x1f, 0x00, 0x00, 0xf0, 0x01, 0x00, 0x02, 0xf8, 0x00, 0x00, 0x02, 0xfe, 0x01, 0x00,
+//     0x06, 0xff, 0x07, 0x00, 0x8e, 0xff, 0x04, 0x00, 0xfe, 0xff, 0x00, 0x00, 0xfe, 0xff, 0x00, 0x00,
+//     0xfc, 0xff, 0x00, 0x00, 0xf8, 0x7f, 0x00, 0x00, 0xe0, 0x3f, 0x00, 0x00, 0xc0, 0x1f, 0x00, 0x00,
+//     0x80, 0x1b, 0x00, 0x00, 0x80, 0x11, 0x00, 0x00, 0x80, 0x11, 0x00, 0x00, 0x80, 0x10, 0x00, 0x00,
+//     0x80, 0x31, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+//   };
+
+//   static const uint8_t SPRITE_CACTUS1[] PROGMEM = {
+//     0x00, 0x00, 0x70, 0x00, 0x70, 0x00, 0x70, 0x00, 0x70, 0x00, 0x70, 0x00, 0x72, 0x02, 0x76, 0x02,
+//     0x76, 0x02, 0x76, 0x02, 0x76, 0x02, 0x76, 0x02, 0x76, 0x02, 0xfe, 0x03, 0x7c, 0x00, 0x70, 0x00,
+//     0x70, 0x00, 0x70, 0x00, 0x70, 0x00, 0x70, 0x00, 0x70, 0x00, 0x70, 0x00, 0x00, 0x00,
+//   };
+
+//   static const uint8_t SPRITE_CACTUS2[] PROGMEM = {
+//     0x00, 0x00, 0x00, 0x00, 0x80, 0x01, 0x18, 0xc0, 0x01, 0x18, 0xc0, 0x01, 0x18, 0xd8, 0x01, 0x58,
+//     0xd8, 0x01, 0x58, 0xd8, 0x09, 0x58, 0xd8, 0x09, 0x7a, 0xd8, 0x09, 0x1a, 0xd8, 0x09, 0x1a, 0xf1,
+//     0x09, 0x1a, 0xc1, 0x09, 0x5a, 0xc5, 0x0f, 0x5e, 0xc5, 0x01, 0x5c, 0xc5, 0x01, 0x98, 0xc7, 0x01,
+//     0x18, 0xc1, 0x01, 0x18, 0xc1, 0x01, 0x18, 0xc1, 0x01, 0x18, 0xc1, 0x01, 0x00, 0x00, 0x00, 0x00,
+//     0x00, 0x00, 0x00, 0x00, 0x00,
+//   };
+
+//   // NOTE: padded with 3 trailing 0x00 bytes â€” see header comment above.
+//   static const uint8_t SPRITE_CACTUS3[] PROGMEM = {
+//     0x00, 0x00, 0x00, 0x70, 0xc0, 0x01, 0x70, 0xc0, 0x01, 0x70, 0xd0, 0x09, 0x70, 0xdb, 0x09, 0x70,
+//     0xdb, 0x09, 0x72, 0xdb, 0x09, 0x72, 0xdb, 0x09, 0x72, 0xfb, 0x09, 0x72, 0xf3, 0x09, 0xf2, 0xc1,
+//     0x09, 0xf2, 0xc0, 0x0f, 0x7e, 0xc0, 0x07, 0x7c, 0xc0, 0x01, 0x70, 0xc0, 0x01, 0x70, 0xc0, 0x01,
+//     0x70, 0xc0, 0x01, 0x70, 0xc0, 0x01, 0x70, 0xc0, 0x01, 0x70, 0xc0, 0x01, 0x00, 0x00, 0x00, 0x00,
+//     0x00, 0x00, 0x00, 0x00, 0x00,
+//   };
+
+//   const int TREX_WIDTH = 25, TREX_HEIGHT = 26;
+//   const int CACTUS1_WIDTH = 11, CACTUS1_HEIGHT = 23;
+//   const int CACTUS2_WIDTH = 21, CACTUS2_HEIGHT = 23;
+//   const int CACTUS3_WIDTH = 21, CACTUS3_HEIGHT = 23;
+
+//   // ---------------- Game constants ----------------
+//   const int GROUND_Y = SCREEN_H - 10;
+//   const int TREX_X = 10;
+//   const int TREX_GROUND_Y = GROUND_Y - TREX_HEIGHT + 2;
+//   const int CACTUS_Y = GROUND_Y - CACTUS1_HEIGHT + 2;
+
+//   const int TREX_VELOCITY = -7;
+//   const int GRAVITY = 5;
+//   const int OBSTACLE_VELOCITY = -3;
+//   const int OBSTACLE_GAP = 120;
+
+//   // ---------------- Local types ----------------
+//   enum TrexState { RUNNING, JUMPING };
+
+//   struct Trex {
+//     int x, y;
+//     float velocityY;
+//     TrexState state;
+
+//     Trex() { x = TREX_X; y = TREX_GROUND_Y; velocityY = 0; state = RUNNING; }
+
+//     void jump() {
+//       if (state == RUNNING) {
+//         velocityY = TREX_VELOCITY;
+//         state = JUMPING;
+//         beep(700, 15, soundLevel);
+//       }
+//     }
+
+//     void updateState(float dt) {
+//       if (state == JUMPING) {
+//         y += (int)(velocityY * dt);
+//         velocityY += (GRAVITY / 10.0f) * dt;
+//         if (y >= TREX_GROUND_Y) {
+//           y = TREX_GROUND_Y;
+//           velocityY = 0;
+//           state = RUNNING;
+//         }
+//       }
+//     }
+
+//     void draw() { u8g2.drawXBMP(x, y, TREX_WIDTH, TREX_HEIGHT, SPRITE_TREX); }
+
+//     int getX() { return x; }
+//     int getY() { return y; }
+//     int getWidth() { return TREX_WIDTH - 8; }
+//     int getHeight() { return TREX_HEIGHT - 4; }
+//   };
+
+//   struct Obstacle {
+//     int x;
+//     const uint8_t* sprite;
+//     int w, h;
+
+//     Obstacle() { x = SCREEN_W + OBSTACLE_GAP; randomize(); }
+
+//     void randomize() {
+//       x = SCREEN_W + random(OBSTACLE_GAP + 50 , OBSTACLE_GAP + 150);
+//       int type = random(0, 3);
+//       switch (type) {
+//         case 0: sprite = SPRITE_CACTUS1; w = CACTUS1_WIDTH; h = CACTUS1_HEIGHT; break;
+//         case 1: sprite = SPRITE_CACTUS2; w = CACTUS2_WIDTH; h = CACTUS2_HEIGHT; break;
+//         default: sprite = SPRITE_CACTUS3; w = CACTUS3_WIDTH; h = CACTUS3_HEIGHT; break;
+//       }
+//     }
+
+//     void draw() { u8g2.drawXBMP(x, CACTUS_Y, w, h, sprite); }
+
+//     int getX() { return x; }
+//     int getY() { return CACTUS_Y; }
+//     int getWidth() { return w; }
+//     int getHeight() { return h; }
+//   };
+
+//   // ---------------- Game state ----------------
+//   Trex trex;
+//   Obstacle obs[2];
+//   unsigned long score = 0;
+//   uint32_t lastFrame = millis();
+
+//   obs[0] = Obstacle();
+//   obs[1] = Obstacle();
+//   obs[1].x = obs[0].x + SCREEN_W / 2 + OBSTACLE_GAP;
+
+//   // Show start screen
+//   u8g2.clearBuffer();
+//   u8g2.setFont(u8g2_font_ncenB10_tr);
+//   centreStr("T-REX RUNNER", 24);
+//   u8g2.setFont(u8g2_font_6x10_tr);
+//   centreStr("Press to jump!", 40);
+//   u8g2.sendBuffer();
+//   delay(1200);
+//   waitRelease();
+
+//   while (true) {
+//     if (checkPause("T-REX RUNNER")) return;
+//     if (checkMenuAndReturn()) return;
+
+//     uint32_t now = millis();
+//     float dt = (now - lastFrame) / 20.0f;
+//     if (dt > 3.0f) dt = 3.0f;
+//     lastFrame = now;
+
+//     // Jump input â€” change to your dedicated jump button if you have one
+//  if (btnPressed(BTN_UP) || btnPressed(BTN_DOWN) || 
+//         btnPressed(BTN_LEFT) || btnPressed(BTN_RIGHT)) {
+//       trex.jump();
+//     }
+
+//     score++;
+
+//     // Speed ramps up with score
+//     int dynamicVelocity = OBSTACLE_VELOCITY - (int)(score / 500);
+
+//     for (int i = 0; i < 2; i++) {
+//       obs[i].x += (int)(dynamicVelocity * dt);
+//       if (obs[i].x < -obs[i].w) obs[i].randomize();
+//     }
+
+//     trex.updateState(dt);
+
+//     // Collision check
+//     bool hit = false;
+//     for (int i = 0; i < 2; i++) {
+//       if (trex.getX() < obs[i].getX() + obs[i].getWidth() &&
+//           trex.getX() + trex.getWidth() > obs[i].getX() &&
+//           trex.getY() < obs[i].getY() + obs[i].getHeight() &&
+//           trex.getY() + trex.getHeight() > obs[i].getY()) {
+//         hit = true;
+//         break;
+//       }
+//     }
+
+//     if (hit) {
+//       beep(200, 160, soundLevel);
+//       gameOverScreen(score, 14, false);  // change gameId (14) to match your menu system
+//       return;
+//     }
+
+//     // ---------------- Draw ----------------
+//     u8g2.clearBuffer();
+
+//     u8g2.drawHLine(0, GROUND_Y + 1, SCREEN_W);
+//     trex.draw();
+//     for (int i = 0; i < 2; i++) obs[i].draw();
+
+//     u8g2.setFont(u8g2_font_5x7_tr);
+//     char sc[16];
+//     snprintf(sc, sizeof(sc), "Score:%lu", score);
+//     u8g2.drawStr(SCREEN_W - 60, 8, sc);
+
+//     u8g2.sendBuffer();
+//     delay(20);
+//   }
+// }
+
+void game_trex() {
+  // ---------------- Sprites ----------------
+  static const uint8_t SPRITE_TREX[] PROGMEM = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0xe0, 0x3f, 0x00, 0x00, 0xf0, 0x7f, 0x00, 0x00, 0x30, 0x7f, 0x00,
+    0x00, 0xf0, 0x7f, 0x00, 0x00, 0xf0, 0x7f, 0x00, 0x00, 0xf0, 0x7f, 0x00, 0x00, 0xf0, 0x03, 0x00,
+    0x00, 0xf0, 0x1f, 0x00, 0x00, 0xf0, 0x01, 0x00, 0x02, 0xf8, 0x00, 0x00, 0x02, 0xfe, 0x01, 0x00,
+    0x06, 0xff, 0x07, 0x00, 0x8e, 0xff, 0x04, 0x00, 0xfe, 0xff, 0x00, 0x00, 0xfe, 0xff, 0x00, 0x00,
+    0xfc, 0xff, 0x00, 0x00, 0xf8, 0x7f, 0x00, 0x00, 0xe0, 0x3f, 0x00, 0x00, 0xc0, 0x1f, 0x00, 0x00,
+    0x80, 0x1b, 0x00, 0x00, 0x80, 0x11, 0x00, 0x00, 0x80, 0x11, 0x00, 0x00, 0x80, 0x10, 0x00, 0x00,
+    0x80, 0x31, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  };
+
+  static const uint8_t SPRITE_CACTUS1[] PROGMEM = {
+    0x00, 0x00, 0x70, 0x00, 0x70, 0x00, 0x70, 0x00, 0x70, 0x00, 0x70, 0x00, 0x72, 0x02, 0x76, 0x02,
+    0x76, 0x02, 0x76, 0x02, 0x76, 0x02, 0x76, 0x02, 0x76, 0x02, 0xfe, 0x03, 0x7c, 0x00, 0x70, 0x00,
+    0x70, 0x00, 0x70, 0x00, 0x70, 0x00, 0x70, 0x00, 0x70, 0x00, 0x70, 0x00, 0x00, 0x00,
+  };
+
+  static const uint8_t SPRITE_CACTUS2[] PROGMEM = {
+    0x00, 0x00, 0x00, 0x00, 0x80, 0x01, 0x18, 0xc0, 0x01, 0x18, 0xc0, 0x01, 0x18, 0xd8, 0x01, 0x58,
+    0xd8, 0x01, 0x58, 0xd8, 0x09, 0x58, 0xd8, 0x09, 0x7a, 0xd8, 0x09, 0x1a, 0xd8, 0x09, 0x1a, 0xf1,
+    0x09, 0x1a, 0xc1, 0x09, 0x5a, 0xc5, 0x0f, 0x5e, 0xc5, 0x01, 0x5c, 0xc5, 0x01, 0x98, 0xc7, 0x01,
+    0x18, 0xc1, 0x01, 0x18, 0xc1, 0x01, 0x18, 0xc1, 0x01, 0x18, 0xc1, 0x01, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00,
+  };
+
+  static const uint8_t SPRITE_CACTUS3[] PROGMEM = {
+    0x00, 0x00, 0x00, 0x70, 0xc0, 0x01, 0x70, 0xc0, 0x01, 0x70, 0xd0, 0x09, 0x70, 0xdb, 0x09, 0x70,
+    0xdb, 0x09, 0x72, 0xdb, 0x09, 0x72, 0xdb, 0x09, 0x72, 0xfb, 0x09, 0x72, 0xf3, 0x09, 0xf2, 0xc1,
+    0x09, 0xf2, 0xc0, 0x0f, 0x7e, 0xc0, 0x07, 0x7c, 0xc0, 0x01, 0x70, 0xc0, 0x01, 0x70, 0xc0, 0x01,
+    0x70, 0xc0, 0x01, 0x70, 0xc0, 0x01, 0x70, 0xc0, 0x01, 0x70, 0xc0, 0x01, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00,
+  };
+
+  const int TREX_WIDTH = 25, TREX_HEIGHT = 26;
+  const int CACTUS1_WIDTH = 11, CACTUS1_HEIGHT = 23;
+  const int CACTUS2_WIDTH = 21, CACTUS2_HEIGHT = 23;
+  const int CACTUS3_WIDTH = 21, CACTUS3_HEIGHT = 23;
+
+  // ---------------- Game constants ----------------
+  const float OBSTACLE_VELOCITY = -2.5f;
+
+  // ---------------- Local types ----------------
+  enum TrexState { RUNNING, JUMPING };
+
+  // 🔥 FIXED: সব কনস্ট্যান্ট স্ট্রাকটের ভিতরে ডিফাইন করা হয়েছে
+  struct Trex {
+    float x, y;
+    float velocityY;
+    TrexState state;
+    
+    // সব কনস্ট্যান্ট এখানে ডিফাইন করুন
+    float trexX;
+    float trexGroundY;
+    float trexVelocity;
+    float gravity;
+    int trexWidth;
+    int trexHeight;
+
+    Trex() { 
+      // কনস্ট্যান্ট ভ্যালু সেট করুন
+      trexX = 10.0f;
+      trexGroundY = (float)(SCREEN_H - 10) - 26.0f + 2.0f;  // SCREEN_H - 10 - 26 + 2
+      trexVelocity = -7.0f;
+      gravity = 5.0f;
+      trexWidth = 25;
+      trexHeight = 26;
+      
+      x = trexX; 
+      y = trexGroundY; 
+      velocityY = 0.0f; 
+      state = RUNNING; 
+    }
+
+    void jump() {
+      if (state == RUNNING) {
+        velocityY = trexVelocity;
+        state = JUMPING;
+        beep(700, 15, soundLevel);
+      }
+    }
+
+    void updateState(float dt) {
+      if (state == JUMPING) {
+        y += velocityY * dt;
+        velocityY += (gravity / 10.0f) * dt;
+        if (y >= trexGroundY) {
+          y = trexGroundY;
+          velocityY = 0.0f;
+          state = RUNNING;
+        }
+      }
+    }
+
+    void draw() { 
+      u8g2.drawXBMP((int)x, (int)y, trexWidth, trexHeight, SPRITE_TREX); 
+    }
+
+    float getX() { return x; }
+    float getY() { return y; }
+    float getWidth() { return (float)(trexWidth - 8); }
+    float getHeight() { return (float)(trexHeight - 4); }
+  };
+
+  // 🔥 FIXED: Obstacle struct - সব কনস্ট্যান্ট ভিতরে
+  struct Obstacle {
+    float x;
+    const uint8_t* sprite;
+    float w, h;
+    float obstacleGap;
+    float cactusY;
+    int cactusWidth;
+    int cactusHeight;
+
+    Obstacle() { 
+      obstacleGap = 120.0f;
+      cactusY = (float)(SCREEN_H - 10) - 23.0f + 2.0f;  // SCREEN_H - 10 - 23 + 2
+      cactusWidth = 11;
+      cactusHeight = 23;
+      x = (float)SCREEN_W + obstacleGap; 
+      randomize(); 
+    }
+
+    void randomize() {
+      x = (float)SCREEN_W + random((int)(obstacleGap + 50.0f), (int)(obstacleGap + 150.0f));
+      int type = random(0, 3);
+      switch (type) {
+        case 0: 
+          sprite = SPRITE_CACTUS1; 
+          w = 11.0f; 
+          h = 23.0f; 
+          break;
+        case 1: 
+          sprite = SPRITE_CACTUS2; 
+          w = 21.0f; 
+          h = 23.0f; 
+          break;
+        default: 
+          sprite = SPRITE_CACTUS3; 
+          w = 21.0f; 
+          h = 23.0f; 
+          break;
+      }
+    }
+
+    void draw() { 
+      u8g2.drawXBMP((int)x, (int)cactusY, (int)w, (int)h, sprite); 
+    }
+
+    float getX() { return x; }
+    float getY() { return cactusY; }
+    float getWidth() { return w; }
+    float getHeight() { return h; }
+  };
+
+  // ---------------- Game state ----------------
+  Trex trex;
+  Obstacle obs[2];
+  unsigned long score = 0;
+  uint32_t lastFrame = millis();
+
+  obs[0] = Obstacle();
+  obs[1] = Obstacle();
+  obs[1].x = obs[0].x + (float)SCREEN_W / 2.0f + 120.0f;  // OBSTACLE_GAP = 120
+
+  // Show start screen
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  centreStr("T-REX RUNNER", 24);
+  u8g2.setFont(u8g2_font_6x10_tr);
+  centreStr("Any direction to jump!", 40);
+  u8g2.sendBuffer();
+  delay(1200);
+  waitRelease();
+
+  while (true) {
+    if (checkPause("T-REX RUNNER")) return;
+    if (checkMenuAndReturn()) return;
+
+    uint32_t now = millis();
+    float dt = (now - lastFrame) / 20.0f;
+    if (dt > 3.0f) dt = 3.0f;
+    if (dt < 0.5f) dt = 0.5f;
+    lastFrame = now;
+
+    // Jump input - all 4 direction buttons
+    if (btnPressed(BTN_UP) || btnPressed(BTN_DOWN) || 
+        btnPressed(BTN_LEFT) || btnPressed(BTN_RIGHT)) {
+      trex.jump();
+    }
+
+    score++;
+
+    // Speed calculation
+    float levelFloat = (float)score / 200.0f;
+    float dynamicVelocity = OBSTACLE_VELOCITY - floorf(levelFloat) * 0.1f;
+    if (dynamicVelocity < -6.5f) dynamicVelocity = -6.5f;
+
+    // Update obstacles
+    for (int i = 0; i < 2; i++) {
+      obs[i].x += dynamicVelocity * dt;
+      if (obs[i].x < -obs[i].w) {
+        obs[i].randomize();
+      }
+    }
+
+    trex.updateState(dt);
+
+    // Collision check
+    bool hit = false;
+    for (int i = 0; i < 2; i++) {
+      if (trex.getX() < obs[i].getX() + obs[i].getWidth() &&
+          trex.getX() + trex.getWidth() > obs[i].getX() &&
+          trex.getY() < obs[i].getY() + obs[i].getHeight() &&
+          trex.getY() + trex.getHeight() > obs[i].getY()) {
+        hit = true;
+        break;
+      }
+    }
+
+    if (hit) {
+      beep(200, 160, soundLevel);
+      gameOverScreen(score, 14, false);
+      return;
+    }
+
+    // ---------------- Draw ----------------
+    u8g2.clearBuffer();
+
+    u8g2.drawHLine(0, (int)(SCREEN_H - 10) + 1, SCREEN_W);
+    trex.draw();
+    for (int i = 0; i < 2; i++) obs[i].draw();
+
+    // Draw score and speed
+    u8g2.setFont(u8g2_font_5x7_tr);
+    char sc[16];
+    snprintf(sc, sizeof(sc), "Score:%lu", score);
+    u8g2.drawStr(SCREEN_W - 60, 8, sc);
+    
+    char spd[16];
+    snprintf(spd, sizeof(spd), "SPD:%.1f", abs(dynamicVelocity));
+    u8g2.drawStr(2, 8, spd);
+
+    u8g2.sendBuffer();
+    delay(20);
+  }
+}
+
+// ============================================================
+// T-REX RUNNER - Fixed Memory Leak Version
+// ============================================================
+
+// ============================================================
+// T-REX RUNNER 2 (trex2) - Complete Working Function
+// ============================================================
+
+void game_trex2() {
+  const int GAME_INDEX = 16;
+
+  // ── SPRITE DATA ──
+  static const uint8_t trex_up_1s_bitmap[] PROGMEM = {
+    0x16, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfc, 0xfe, 0xfa,
+    0xfe, 0xfe, 0xbe, 0xbe, 0xbe, 0x3e, 0x3c, 0x00, 0x00, 0x3f, 0x7c, 0xf8, 0xf0, 0xf0, 0xf8, 0xfc,
+    0xfe, 0xfe, 0xff, 0xff, 0xff, 0xff, 0x3f, 0x04, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x01, 0x03, 0x3f, 0x2f, 0x07, 0x03, 0x07, 0x3f, 0x21, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00
+  };
+
+  static const uint8_t trex_up_2s_bitmap[] PROGMEM = {
+    0x16, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfc, 0xfe, 0xfa,
+    0xfe, 0xfe, 0xbe, 0xbe, 0xbe, 0x3e, 0x3c, 0x00, 0x00, 0x3f, 0x7c, 0xf8, 0xf0, 0xf0, 0xf8, 0xfc,
+    0xfe, 0xfe, 0xff, 0xff, 0xff, 0xff, 0x3f, 0x04, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x01, 0x03, 0x3f, 0x2f, 0x07, 0x03, 0x03, 0x07, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00
+  };
+
+  static const uint8_t trex_up_3s_bitmap[] PROGMEM = {
+    0x16, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfc, 0xfe, 0xfa,
+    0xfe, 0xfe, 0xbe, 0xbe, 0xbe, 0x3e, 0x3c, 0x00, 0x00, 0x3f, 0x7c, 0xf8, 0xf0, 0xf0, 0xf8, 0xfc,
+    0xfe, 0xfe, 0xff, 0xff, 0xff, 0xff, 0x3f, 0x04, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x01, 0x03, 0x07, 0x0f, 0x0b, 0x03, 0x07, 0x3f, 0x21, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00
+  };
+
+  static const uint8_t trex_duck_1s_bitmap[] PROGMEM = {
+    0x1d, 0x0f, 0x00, 0x0e, 0x1c, 0x3c, 0x78, 0xf8, 0xf8, 0xf8, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc,
+    0xfc, 0xfc, 0xf8, 0xf8, 0xfc, 0xfe, 0xf6, 0xfe, 0xfe, 0x7e, 0x7e, 0x7e, 0x7e, 0x7c, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x0d, 0x0b, 0x03, 0x3f, 0x2f, 0x07, 0x03, 0x01, 0x01, 0x07, 0x05,
+    0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00
+  };
+
+  static const uint8_t trex_duck_2s_bitmap[] PROGMEM = {
+    0x1d, 0x0f, 0x00, 0x0e, 0x1c, 0x3c, 0x78, 0xf8, 0xf8, 0xf8, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc, 0xfc,
+    0xfc, 0xfc, 0xf8, 0xf8, 0xfc, 0xfe, 0xf6, 0xfe, 0xfe, 0x7e, 0x7e, 0x7e, 0x7e, 0x7c, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x3d, 0x2f, 0x07, 0x03, 0x03, 0x07, 0x07, 0x05, 0x01, 0x07, 0x05,
+    0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00
+  };
+
+  static const uint8_t trex_dead_1_bitmap[] PROGMEM = {
+    0x16, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfc, 0xfe, 0xe2,
+    0xea, 0xe2, 0xfe, 0xfe, 0xfe, 0x7e, 0x7c, 0x00, 0x00, 0x3f, 0x7c, 0xf8, 0xf0, 0xf0, 0xf8, 0xfc,
+    0xfe, 0xfe, 0xff, 0xff, 0xff, 0xff, 0x3f, 0x04, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x01, 0x03, 0x3f, 0x2f, 0x07, 0x03, 0x07, 0x3f, 0x21, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00
+  };
+
+  static const uint8_t cacti_big_big_bitmap[] PROGMEM = {
+    0x1b, 0x1a, 0x00, 0x00, 0x80, 0x00, 0x00, 0xfc, 0xfe, 0xfe, 0xfc, 0x00, 0x80, 0xc0, 0x80, 0x00,
+    0xe0, 0xf0, 0xe0, 0x00, 0xfc, 0xfe, 0xfe, 0xfc, 0x00, 0x80, 0xc0, 0x80, 0x00, 0x00, 0x7f, 0xff,
+    0xff, 0xc0, 0xff, 0xff, 0xff, 0xff, 0xc0, 0xff, 0x7f, 0x3f, 0x00, 0x0f, 0x1f, 0x3f, 0x38, 0xff,
+    0xff, 0xff, 0xff, 0xe0, 0xff, 0x7f, 0x3f, 0x00, 0x00, 0x00, 0x00, 0x81, 0x81, 0xff, 0xff, 0xff,
+    0xff, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x80, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00
+  };
+
+  static const uint8_t cacti_big_small_bitmap[] PROGMEM = {
+    0x17, 0x1a, 0x00, 0x00, 0x80, 0x00, 0x00, 0xfc, 0xfe, 0xfe, 0xfc, 0x00, 0x80, 0xc0, 0x80, 0x00,
+    0x00, 0x00, 0x00, 0xc0, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7f, 0xff, 0xff, 0xc0, 0xff, 0xff,
+    0xff, 0xff, 0xc0, 0xff, 0x7f, 0x3f, 0x00, 0x7e, 0xff, 0x80, 0xff, 0xff, 0x00, 0xfc, 0xfc, 0x00,
+    0x00, 0x00, 0x00, 0x81, 0x81, 0xff, 0xff, 0xff, 0xff, 0x00, 0x80, 0x00, 0x00, 0x00, 0x80, 0x00,
+    0x00, 0xff, 0xff, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00
+  };
+
+  static const uint8_t cacti_small_big_bitmap[] PROGMEM = {
+    0x17, 0x1a, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00,
+    0xfc, 0xfe, 0xfe, 0xfc, 0x00, 0x80, 0xc0, 0x80, 0x00, 0x00, 0x7e, 0xff, 0x80, 0xff, 0xff, 0x00,
+    0xfc, 0xfc, 0x00, 0x7f, 0xff, 0xff, 0xc0, 0xff, 0xff, 0xff, 0xff, 0xc0, 0xff, 0x7f, 0x3f, 0x00,
+    0x00, 0x80, 0x00, 0x00, 0xff, 0xff, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x81, 0x81, 0xff, 0xff,
+    0xff, 0xff, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+  };
+
+  static const uint8_t cacti_small_small_small_bitmap[] PROGMEM = {
+    0x1b, 0x1a, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf0, 0xf8,
+    0x00, 0xff, 0xff, 0x80, 0xfe, 0x7c, 0x00, 0xfe, 0x00, 0xff, 0xff, 0xff, 0x00, 0xf8, 0x00, 0x7f,
+    0xfe, 0x80, 0xff, 0xff, 0x00, 0xfe, 0xfc, 0x00, 0x00, 0x01, 0x03, 0x02, 0xff, 0xff, 0x00, 0x00,
+    0x00, 0x00, 0x03, 0x06, 0xff, 0xff, 0xff, 0x0c, 0x07, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0x01,
+    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x01, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x01, 0x00
+  };
+
+  static const uint8_t pterodactyl_1_bitmap[] PROGMEM = {
+    0x17, 0x14, 0x00, 0x00, 0x80, 0xc0, 0xe0, 0xf0, 0xf0, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+    0x03, 0x07, 0xff, 0xff, 0xff, 0x7f, 0x3f, 0x3f, 0x3e, 0x3c, 0x3c, 0x1c, 0x14, 0x14, 0x04, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+  };
+
+  static const uint8_t pterodactyl_2_bitmap[] PROGMEM = {
+    0x17, 0x14, 0x00, 0x00, 0x80, 0xc0, 0xe0, 0xf0, 0xf0, 0xc0, 0x0e, 0xfc, 0xf8, 0xf0, 0xe0, 0xc0,
+    0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+    0x03, 0x07, 0x0f, 0x1f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3e, 0x3c, 0x3c, 0x1c, 0x14, 0x14, 0x04, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+  };
+
+  static const uint8_t ground_1_bitmap[] PROGMEM = {
+    0x40, 0x0c, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x10, 0x90, 0x90, 0x90, 0x90, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x08, 0x08, 0x08,
+    0x00, 0x00, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x08, 0x08, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00
+  };
+
+  static const uint8_t ground_2_bitmap[] PROGMEM = {
+    0x40, 0x0c, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x02, 0x02, 0x00, 0x00, 0x00, 0x00, 0x08, 0x08, 0x08, 0x08, 0x00, 0x00,
+    0x00, 0x00
+  };
+
+  static const uint8_t ground_3_bitmap[] PROGMEM = {
+    0x40, 0x0c, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x90, 0x90,
+    0x90, 0x90, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x08, 0x08, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00
+  };
+
+  static const uint8_t ground_4_bitmap[] PROGMEM = {
+    0x40, 0x0c, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x18, 0x0c, 0x04, 0x06, 0x03, 0x01, 0x01, 0x01, 0x01, 0x03, 0x04, 0x04, 0x08, 0x18, 0x10, 0x10,
+    0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x18, 0x08, 0x04, 0x04, 0x06, 0x03, 0x01, 0x01, 0x01,
+    0x01, 0x03, 0x04, 0x04, 0x08, 0x18, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x00, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x04, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01,
+    0x01, 0x00
+  };
+
+  static const uint8_t ground_5_bitmap[] PROGMEM = {
+    0x40, 0x0c, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x18, 0x0c, 0x04, 0x06, 0x03,
+    0x01, 0x01, 0x01, 0x01, 0x03, 0x06, 0x04, 0x08, 0x18, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x90, 0x90, 0x90, 0x90, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x30, 0x60, 0x40, 0x40, 0x40, 0x40,
+    0x40, 0x40, 0x40, 0x60, 0x30, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+    0x10, 0x10, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x04, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01,
+    0x01, 0x00
+  };
+
+  // ── BitmapMasked Struct ──
+  struct BitmapMasked {
+    uint8_t width;
+    uint8_t height;
+    const uint8_t* data;
+    
+    BitmapMasked(const uint8_t* bitmapData) {
+      width = pgm_read_byte(bitmapData);
+      height = pgm_read_byte(bitmapData + 1);
+      data = bitmapData + 2;
+    }
+  };
+
+  // ── Static Bitmap Objects ──
+  static BitmapMasked BM_TREX_UP1(trex_up_1s_bitmap);
+  static BitmapMasked BM_TREX_UP2(trex_up_2s_bitmap);
+  static BitmapMasked BM_TREX_UP3(trex_up_3s_bitmap);
+  static BitmapMasked BM_TREX_DUCK1(trex_duck_1s_bitmap);
+  static BitmapMasked BM_TREX_DUCK2(trex_duck_2s_bitmap);
+  static BitmapMasked BM_TREX_DEAD(trex_dead_1_bitmap);
+  
+  static BitmapMasked BM_CACTUS_BB(cacti_big_big_bitmap);
+  static BitmapMasked BM_CACTUS_BS(cacti_big_small_bitmap);
+  static BitmapMasked BM_CACTUS_SB(cacti_small_big_bitmap);
+  static BitmapMasked BM_CACTUS_SSS(cacti_small_small_small_bitmap);
+  
+  static BitmapMasked BM_PTERO1(pterodactyl_1_bitmap);
+  static BitmapMasked BM_PTERO2(pterodactyl_2_bitmap);
+  
+  static BitmapMasked BM_GROUND1(ground_1_bitmap);
+  static BitmapMasked BM_GROUND2(ground_2_bitmap);
+  static BitmapMasked BM_GROUND3(ground_3_bitmap);
+  static BitmapMasked BM_GROUND4(ground_4_bitmap);
+  static BitmapMasked BM_GROUND5(ground_5_bitmap);
+
+  // ── Sprite Struct ──
+  struct Sprite {
+    const BitmapMasked* bitmap;
+    int16_t x, y;
+    bool active;
+    
+    Sprite() : bitmap(nullptr), x(0), y(0), active(false) {}
+    Sprite(const BitmapMasked* bm, int16_t xPos, int16_t yPos) 
+      : bitmap(bm), x(xPos), y(yPos), active(true) {}
+    
+    void draw() {
+      if (!bitmap || !active) return;
+      u8g2.drawXBMP(x, y, bitmap->width, bitmap->height, bitmap->data);
+    }
+  };
+
+  // ── TrexPlayer ──
+  struct TrexPlayer {
+    enum State { UP, DUCK, DEAD };
+    
+    State state;
+    Sprite sprite;
+    int8_t vy, dy;
+    bool skipStep;
+    uint8_t bitmapId;
+    uint8_t blinkCnt;
+    const BitmapMasked* sprites[6];
+    
+    TrexPlayer() {
+      sprites[0] = &BM_TREX_UP1;
+      sprites[1] = &BM_TREX_UP2;
+      sprites[2] = &BM_TREX_UP3;
+      sprites[3] = &BM_TREX_DUCK1;
+      sprites[4] = &BM_TREX_DUCK2;
+      sprites[5] = &BM_TREX_DEAD;
+      
+      state = UP;
+      sprite = Sprite(sprites[0], 10, 36);
+      vy = 0; dy = 0;
+      skipStep = false;
+      bitmapId = 0;
+      blinkCnt = 0;
+    }
+    
+    void step() { animationStep(); motionStep(); }
+    
+    void jump() {
+      if (isJumping() || state == DEAD) return;
+      vy = (state == UP) ? 7 : 5;
+      beep(700, 15, soundLevel);
+    }
+    
+    void duck(bool toDuck) {
+      if (toDuck && state == UP && !isJumping()) state = DUCK;
+      else if (!toDuck && state == DUCK) state = UP;
+    }
+    
+    void die() { state = DEAD; vy = 0; sprite.bitmap = sprites[5]; }
+    void blink() { blinkCnt = 32; }
+    bool isBlinking() { return blinkCnt > 0; }
+    bool isJumping() const { return dy != 0 || vy != 0; }
+    
+  private:
+    void motionStep() {
+      if (abs(vy) <= 1 && !skipStep) { skipStep = true; return; }
+      skipStep = false;
+      
+      dy += vy;
+      sprite.y -= vy;
+      if (dy) --vy; else vy = 0;
+      
+      if (sprite.y + sprite.bitmap->height >= 60) {
+        sprite.y = 60 - sprite.bitmap->height;
+        vy = 0; dy = 0;
+      }
+    }
+    
+    void animationStep() {
+      if (blinkCnt) { blinkCnt--; return; }
+      
+      uint8_t start = 0, end = 0;
+      if (state == UP) { start = 0; end = isJumping() ? 1 : 3; }
+      else if (state == DUCK) { start = 3; end = isJumping() ? 3 : 5; }
+      else { start = 5; end = 6; }
+      
+      if (!(bitmapId >= start && bitmapId < end)) bitmapId = start;
+      if (bitmapId + 1 < end) bitmapId++; else bitmapId = start;
+      
+      sprite.bitmap = sprites[bitmapId];
+    }
+  };
+
+  // ── Ground ──
+  struct Ground {
+    Sprite sprite;
+    int8_t speed;
+    
+    Ground(int16_t startX) : speed(3) {
+      sprite = Sprite(&BM_GROUND1, startX, 60);
+    }
+    
+    void step() {
+      for (int i = 0; i < speed; i++) {
+        sprite.x--;
+        if (sprite.x + sprite.bitmap->width < 0) {
+          const BitmapMasked* pick;
+          switch (random(0, 5)) {
+            case 0: pick = &BM_GROUND1; break;
+            case 1: pick = &BM_GROUND2; break;
+            case 2: pick = &BM_GROUND3; break;
+            case 3: pick = &BM_GROUND4; break;
+            default: pick = &BM_GROUND5; break;
+          }
+          sprite.bitmap = pick;
+          sprite.x = 128;
+        }
+      }
+    }
+    
+    void draw() { sprite.draw(); }
+  };
+
+  // ── Cactus ──
+  struct Cactus {
+    Sprite sprite;
+    int8_t speed;
+    uint8_t respawnWait;
+    
+    static const BitmapMasked* pickType(int type) {
+      switch (type) {
+        case 0: return &BM_CACTUS_BB;
+        case 1: return &BM_CACTUS_BS;
+        case 2: return &BM_CACTUS_SB;
+        default: return &BM_CACTUS_SSS;
+      }
+    }
+    
+    Cactus() : speed(3), respawnWait(0) {
+      sprite = Sprite(pickType(random(0, 4)), 200 + random(0, 100), 60);
+    }
+    
+    void step() {
+      if (!sprite.active) {
+        if (respawnWait) { respawnWait--; return; }
+        sprite.bitmap = pickType(random(0, 4));
+        sprite.x = 128 + random(0, 60);
+        sprite.y = 60 - sprite.bitmap->height;
+        sprite.active = true;
+        respawnWait = random(10, 50);
+        return;
+      }
+      
+      sprite.x -= speed;
+      if (sprite.x + sprite.bitmap->width < 0) {
+        sprite.active = false;
+        respawnWait = random(10, 30);
+      }
+    }
+    
+    void draw() { sprite.draw(); }
+    
+    bool checkCollision(const TrexPlayer& player) {
+      if (!sprite.active) return false;
+      int margin = 4;
+      return (player.sprite.x + margin < sprite.x + sprite.bitmap->width - margin &&
+              player.sprite.x + player.sprite.bitmap->width - margin > sprite.x + margin &&
+              player.sprite.y + margin < sprite.y + sprite.bitmap->height - margin &&
+              player.sprite.y + player.sprite.bitmap->height - margin > sprite.y + margin);
+    }
+  };
+
+  // ── Pterodactyl ──
+  struct Pterodactyl {
+    Sprite sprite;
+    int8_t speed;
+    uint8_t respawnWait, animSkip;
+    bool frame;
+    
+    Pterodactyl() : speed(5), respawnWait(0), animSkip(0), frame(false) {
+      sprite = Sprite(&BM_PTERO1, -50, 25);
+      sprite.active = false;
+    }
+    
+    void step() {
+      if (animSkip) {
+        animSkip--;
+      } else {
+        animSkip = 6;
+        frame = !frame;
+        if (sprite.active) sprite.bitmap = frame ? &BM_PTERO1 : &BM_PTERO2;
+      }
+      
+      if (!sprite.active) {
+        if (respawnWait) { respawnWait--; return; }
+        if (random(0, 100) < 15) {
+          sprite.bitmap = &BM_PTERO1;
+          sprite.x = 128 + random(0, 40);
+          sprite.y = random(15, 35);
+          sprite.active = true;
+          respawnWait = random(50, 150);
+        }
+        return;
+      }
+      
+      sprite.x -= speed;
+      if (sprite.x + sprite.bitmap->width < 0) {
+        sprite.active = false;
+        respawnWait = random(30, 80);
+      }
+    }
+    
+    void draw() { sprite.draw(); }
+    
+    bool checkCollision(const TrexPlayer& player) {
+      if (!sprite.active) return false;
+      int margin = 4;
+      return (player.sprite.x + margin < sprite.x + sprite.bitmap->width - margin &&
+              player.sprite.x + player.sprite.bitmap->width - margin > sprite.x + margin &&
+              player.sprite.y + margin < sprite.y + sprite.bitmap->height - margin &&
+              player.sprite.y + player.sprite.bitmap->height - margin > sprite.y + margin);
+    }
+  };
+
+  // ── Game State ──
+  uint16_t hiScore = 0;
+  EEPROM.begin(EEPROM_SIZE);
+  EEPROM.get(GAME_INDEX * sizeof(uint16_t), hiScore);
+  if (hiScore == 0xFFFF || hiScore > 9999) hiScore = 0;
+  EEPROM.end();
+  
+  TrexPlayer trex;
+  Ground ground1(-1), ground2(63), ground3(127);
+  Cactus cactus1, cactus2;
+  Pterodactyl pterodactyl;
+  
+  uint16_t score = 0;
+  uint8_t lives = 3;
+  bool gameOver = false;
+  uint32_t lastFrame = millis();
+  uint8_t targetFPS = 23;
+  
+  // ── Start Screen ──
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  centreStr("T-REX RUNNER 2", 20);
+  u8g2.setFont(u8g2_font_6x10_tr);
+  centreStr("Any direction to jump!", 36);
+  centreStr("Duck with DOWN", 48);
+  u8g2.setFont(u8g2_font_5x7_tr);
+  centreStr("Press any key to start", 60);
+  u8g2.sendBuffer();
+  
+  waitRelease();
+  while (!btnPressed(BTN_UP) && !btnPressed(BTN_DOWN) && 
+         !btnPressed(BTN_LEFT) && !btnPressed(BTN_RIGHT) &&
+         !btnPressed(BTN_ENTER)) {
+    delay(10);
+  }
+  waitRelease();
+  
+  // ── Main Game Loop ──
+  while (true) {
+    if (checkPause("T-REX RUNNER 2")) return;
+    if (checkMenuAndReturn()) return;
+    
+    uint32_t now = millis();
+    float dt = (now - lastFrame) / 16.0f;
+    if (dt > 3.0f) dt = 3.0f;
+    if (dt < 0.5f) dt = 0.5f;
+    lastFrame = now;
+    
+    // Input
+    if (btnPressed(BTN_UP) || btnPressed(BTN_LEFT) || 
+        btnPressed(BTN_RIGHT) || btnPressed(BTN_ENTER)) {
+      trex.jump();
+    }
+    trex.duck(btnHeld(BTN_DOWN));
+    
+    if (!gameOver) {
+      score++;
+      
+      ground1.step(); ground2.step(); ground3.step();
+      cactus1.step(); cactus2.step(); pterodactyl.step();
+      trex.step();
+      
+      // Collision detection
+      bool hit = false;
+      if (cactus1.checkCollision(trex)) hit = true;
+      if (!hit && cactus2.checkCollision(trex)) hit = true;
+      if (!hit && pterodactyl.checkCollision(trex)) hit = true;
+      
+      if (hit && !trex.isBlinking()) {
+        lives--;
+        trex.blink();
+        if (lives <= 0) {
+          trex.die();
+          gameOver = true;
+          beep(200, 300, soundLevel);
+        } else {
+          beep(200, 150, soundLevel);
+        }
+      }
+      
+      // Speed up
+      if (score % 256 == 0 && targetFPS < 48) {
+        targetFPS++;
+      }
+      
+      // High score
+      if (score > hiScore) {
+        hiScore = score;
+        EEPROM.begin(EEPROM_SIZE);
+        EEPROM.put(GAME_INDEX * sizeof(uint16_t), hiScore);
+        EEPROM.commit();
+        EEPROM.end();
+      }
+    }
+    
+    // ── Draw ──
+    u8g2.clearBuffer();
+    
+    ground1.draw(); ground2.draw(); ground3.draw();
+    cactus1.draw(); cactus2.draw(); pterodactyl.draw();
+    trex.sprite.draw();
+    
+    u8g2.setFont(u8g2_font_5x7_tr);
+    
+    char scoreText[16];
+    snprintf(scoreText, sizeof(scoreText), "SCORE:%d", score);
+    u8g2.drawStr(SCREEN_W - u8g2.getStrWidth(scoreText) - 2, 8, scoreText);
+    
+    if (hiScore > 0) {
+      char hiText[16];
+      snprintf(hiText, sizeof(hiText), "HI:%d", hiScore);
+      u8g2.drawStr(SCREEN_W - u8g2.getStrWidth(hiText) - 2, 16, hiText);
+    }
+    
+    for (int i = 0; i < lives; i++) {
+      drawHeart(2 + i * 8, 1);
+    }
+    
+    char speedText[16];
+    snprintf(speedText, sizeof(speedText), "SPD:%d", targetFPS - 23 + 1);
+    u8g2.drawStr(2, 55, speedText);
+    
+    if (gameOver) {
+      u8g2.setDrawColor(0);
+      u8g2.drawBox(0, 18, SCREEN_W, 30);
+      u8g2.setDrawColor(1);
+      
+      u8g2.setFont(u8g2_font_ncenB10_tr);
+      centreStr("GAME OVER", 32);
+      
+      u8g2.setFont(u8g2_font_5x7_tr);
+      centreStr("Press ENTER to restart", 46);
+      centreStr("MENU to quit", 54);
+      
+      u8g2.sendBuffer();
+      
+      while (gameOver) {
+        if (btnPressed(BTN_ENTER) || btnPressed(BTN_UP)) {
+          gameOver = false;
+          score = 0;
+          lives = 3;
+          targetFPS = 23;
+          trex = TrexPlayer();
+          cactus1 = Cactus();
+          cactus2 = Cactus();
+          pterodactyl = Pterodactyl();
+          beep(800, 30, soundLevel);
+          delay(100);
+          beep(1000, 30, soundLevel);
+          break;
+        }
+        if (btnPressed(BTN_MENU)) {
+          playMenuButtonSound();
+          gameOverScreen(score, GAME_INDEX, false);
+          return;
+        }
+        delay(50);
+      }
+    }
+    
+    u8g2.sendBuffer();
+    
+    int frameTime = 1000 / targetFPS;
+    int elapsed = millis() - lastFrame;
+    if (elapsed < frameTime) {
+      delay(frameTime - elapsed);
+    }
+  }
+}
+
+
+
+// ============================================================
+// METEOR DEFENDERS - Fixed Version (All bugs fixed)
+// আগে: pixel-by-pixel check (ভুল)
+// ============================================================
+// METEOR DEFENDERS - Fixed Collision Detection
+// ============================================================
+
+void game_meteor_defenders() {
+  const int GAME_INDEX = 17;
+
+  // ── Game Variables ──
+  bool quit = false;
+  float stepUD = 0;
+
+  // Ship coordinates (triangle)
+  float x1 = 8, y1 = 6;
+  float x2 = 8, y2 = 20;
+  float x3 = 23, y3 = 13;
+
+  // Bullet
+  float bulx = 0, buly = 0;
+  bool bullet = false;
+
+  // Meteors
+  struct Meteor {
+    float x, y;
+    bool active;
+    int size;
+    float speed;
+  };
+  
+  Meteor meteors[5];
+  for (int i = 0; i < 5; i++) {
+    meteors[i].active = false;
+    meteors[i].size = 4;
+    meteors[i].speed = 1.0f;
+  }
+
+  float bulletspeed = 6.0f;
+  int luck = 0;
+  float trispeed = 2.5f;
+  unsigned int score = 0;
+  unsigned int highscore = 0;
+  int meteorCount = 1;
+  uint32_t lastMeteorSpawn = 0;
+  uint32_t lastFrame = millis();
+
+  // ── Load High Score ──
+  EEPROM.begin(EEPROM_SIZE);
+  EEPROM.get(GAME_INDEX * sizeof(uint16_t), highscore);
+  if (highscore == 0xFFFF || highscore > 9999) highscore = 0;
+  EEPROM.end();
+
+  // ── Show Start Screen ──
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  centreStr("METEOR", 20);
+  centreStr("DEFENDERS", 36);
+  u8g2.setFont(u8g2_font_5x7_tr);
+  char hs[20];
+  snprintf(hs, sizeof(hs), "HI: %u", highscore);
+  centreStr(hs, 48);
+  centreStr("UP/DOWN=Move  LEFT/RIGHT/ENTER=Shoot", 60);
+  u8g2.sendBuffer();
+
+  waitRelease();
+  while (!btnPressed(BTN_UP) && !btnPressed(BTN_DOWN) &&
+         !btnPressed(BTN_LEFT) && !btnPressed(BTN_RIGHT) &&
+         !btnPressed(BTN_ENTER)) {
+    delay(10);
+  }
+  waitRelease();
+
+  // ── Game Loop ──
+  while (true) {
+    if (checkPause("METEOR DEFENDERS")) return;
+    if (checkMenuAndReturn()) return;
+
+    // ── Reset Game State ──
+    quit = false;
+    stepUD = 0;
+    x1 = 8; y1 = 6;
+    x2 = 8; y2 = 20;
+    x3 = 23; y3 = 13;
+    bulx = 0; buly = 0;
+    bullet = false;
+    for (int i = 0; i < 5; i++) {
+      meteors[i].active = false;
+      meteors[i].size = 5 + random(0, 2);
+      meteors[i].speed = 0.6f + (random(0, 20) / 40.0f);
+    }
+    bulletspeed = 6.0f;
+    trispeed = 2.5f;
+    score = 0;
+    meteorCount = 1;
+    luck = random(30, 80);
+    lastMeteorSpawn = millis();
+    lastFrame = millis();
+
+    // ── Main Game ──
+    while (!quit) {
+      if (checkPause("METEOR DEFENDERS")) return;
+      if (checkMenuAndReturn()) return;
+
+      uint32_t now = millis();
+      float dt = (now - lastFrame) / 16.0f;
+      if (dt > 2.0f) dt = 2.0f;
+      lastFrame = now;
+
+      // ── Boundary Check ──
+      float minY = min(y1, min(y2, y3));
+      float maxY = max(y1, max(y2, y3));
+      
+      if (minY < 0) {
+        float diff = -minY;
+        y1 += diff;
+        y2 += diff;
+        y3 += diff;
+      }
+      if (maxY > 63) {
+        float diff = 63 - maxY;
+        y1 += diff;
+        y2 += diff;
+        y3 += diff;
+      }
+
+      // ── Input Handling ──
+      if (btnHeld(BTN_DOWN)) {
+        stepUD = trispeed;
+      }
+      if (btnHeld(BTN_UP)) {
+        stepUD = -trispeed;
+      }
+      if (btnPressed(BTN_LEFT) || btnPressed(BTN_RIGHT) || btnPressed(BTN_ENTER)) {
+        if (!bullet) {
+          bullet = true;
+          bulx = x3;
+          buly = y3;
+          beep(900, 10, soundLevel);
+        }
+      }
+
+      // ── Bullet Update ──
+      if (bullet) {
+        bulx += bulletspeed * dt;
+        if (bulx > SCREEN_W + 10) {
+          bullet = false;
+        }
+      }
+
+      // ── Meteor Spawning ──
+      if (score < 250 ) meteorCount = 1;
+      if(score > 250 && score < 600) meteorCount = random(1,2);
+      if (score > 600 && score < 1000 ) meteorCount = 2;
+      if (score > 1000 && score < 1300) meteorCount = random(2,3);
+      if (score > 1300 && score < 1500) meteorCount = random(3,4);
+      if(score > 1600) meteorCount = 4 ;
+  
+
+      int spawnInterval = 80 - (int)(score / 50);
+      if (spawnInterval < 20) spawnInterval = 20;
+      if (spawnInterval > 80) spawnInterval = 80;
+
+      if (now - lastMeteorSpawn > (uint32_t)spawnInterval) {
+        int activeCount = 0;
+        for (int i = 0; i < 5; i++) {
+          if (meteors[i].active) activeCount++;
+        }
+        
+        if (activeCount < meteorCount) {
+          for (int i = 0; i < 5; i++) {
+            if (!meteors[i].active) {
+              meteors[i].active = true;
+              meteors[i].x = SCREEN_W + random(25, 45);
+              meteors[i].y = random(5, 58);
+              meteors[i].size = 5 + random(0, 2);
+              meteors[i].speed = 0.7f + (random(0, 20) / 40.0f);
+              break;
+            }
+          }
+        }
+        lastMeteorSpawn = now;
+      }
+
+      // ── Update Meteors & Collision ──
+      for (int i = 0; i < 5; i++) {
+        if (!meteors[i].active) continue;
+        
+        meteors[i].x -= meteors[i].speed * dt;
+        
+        // 🔥 FIXED: Game Over if meteor reaches left side
+        if (meteors[i].x < -10) {
+          meteors[i].active = false;
+          quit = true;
+          beep(200, 200, soundLevel);
+          break;
+        }
+
+        // 🔥 FIXED: Collision with Bullet (more accurate)
+        if (bullet) {
+          float bulletRadius = 2.0f;
+          float meteorRadius = meteors[i].size;
+          float dx = bulx - meteors[i].x;
+          float dy = buly - meteors[i].y;
+          float distance = sqrt(dx*dx + dy*dy);
+          
+          if (distance < meteorRadius + bulletRadius) {
+            meteors[i].active = false;
+            bullet = false;
+            score += 10;
+            beep(1200, 20, soundLevel);
+            
+            // Explosion effect
+            u8g2.drawLine(bulx - 5, buly - 5, bulx + 5, buly + 5);
+            u8g2.drawLine(bulx - 5, buly + 5, bulx + 5, buly - 5);
+            u8g2.drawCircle((int)bulx, (int)buly, 3);
+            u8g2.sendBuffer();
+            delay(50);
+            continue;
+          }
+        }
+
+        // 🔥 FIXED: Collision with Ship (more accurate)
+        float shipCenterX = x3;
+        float shipCenterY = y3;
+        float dx = meteors[i].x - shipCenterX;
+        float dy = meteors[i].y - shipCenterY;
+        float dist = sqrt(dx*dx + dy*dy);
+        
+        if (dist < meteors[i].size + 5) {
+          meteors[i].active = false;
+          quit = true;
+          beep(200, 300, soundLevel);
+          break;
+        }
+      }
+
+      // ── Update Ship Position ──
+      y1 += stepUD * dt;
+      y3 += stepUD * dt;
+      y2 += stepUD * dt;
+      stepUD = 0;
+
+      // ── Luck Counter ──
+      if (luck > 0) {
+        luck--;
+      } else {
+        luck = -1;
+      }
+      score++;
+
+      // ── Draw Everything ──
+      u8g2.clearBuffer();
+
+      // Draw planet
+      for (int r = 58; r <= 64; r++) {
+        u8g2.drawCircle(-58, 32, r);
+      }
+      
+      // Draw ship
+      u8g2.drawTriangle((int)x1, (int)y1, (int)x2, (int)y2, (int)x3, (int)y3);
+      u8g2.drawTriangle((int)x1+1, (int)y1, (int)x2-1, (int)y2, (int)x3, (int)y3);
+
+      // Draw bullet (bigger for visibility)
+      if (bullet) {
+        u8g2.drawBox((int)bulx-1, (int)buly-1, 3, 3);
+      }
+
+      // Draw meteors (filled)
+      for (int i = 0; i < 5; i++) {
+        if (!meteors[i].active) continue;
+        int size = meteors[i].size;
+        for (int r = size; r > 0; r--) {
+          u8g2.drawCircle((int)meteors[i].x, (int)meteors[i].y, r);
+        }
+      }
+
+      // ── UI ──
+      u8g2.setFont(u8g2_font_5x7_tr);
+      
+      char sc[10];
+      snprintf(sc, sizeof(sc), "%u", score);
+      u8g2.drawStr(2, 8, sc);
+
+      if (highscore > 0) {
+        char hs2[16];
+        snprintf(hs2, sizeof(hs2), "HI:%u", highscore);
+        u8g2.drawStr(SCREEN_W - u8g2.getStrWidth(hs2) - 2, 8, hs2);
+      }
+
+      char mc[10];
+      snprintf(mc, sizeof(mc), "M:%d", meteorCount);
+      u8g2.drawStr(2, 16, mc);
+
+      u8g2.sendBuffer();
+      delay(16);
+    }
+
+    // ── Game Over ──
+    if (score > highscore) {
+      highscore = score;
+      EEPROM.begin(EEPROM_SIZE);
+      EEPROM.put(GAME_INDEX * sizeof(uint16_t), highscore);
+      EEPROM.commit();
+      EEPROM.end();
+      beep(1200, 40, soundLevel);
+      delay(60);
+      beep(1500, 40, soundLevel);
+      delay(60);
+      beep(1800, 80, soundLevel);
+    }
+
+    // ── Game Over Screen ──
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    centreStr("GAME OVER", 20);
+    u8g2.setFont(u8g2_font_6x10_tr);
+    char buf[20];
+    snprintf(buf, sizeof(buf), "Score: %u", score);
+    centreStr(buf, 38);
+    char hs3[20];
+    snprintf(hs3, sizeof(hs3), "Best: %u", highscore);
+    centreStr(hs3, 52);
+    u8g2.setFont(u8g2_font_5x7_tr);
+    centreStr("ENTER=Replay  MENU=Quit", 62);
+    u8g2.sendBuffer();
+
+    bool waiting = true;
+    while (waiting) {
+      if (btnPressed(BTN_ENTER) || btnPressed(BTN_UP)) {
+        waiting = false;
+        beep(800, 30, soundLevel);
+        break;
+      }
+      if (btnPressed(BTN_MENU)) {
+        playMenuButtonSound();
+        gameOverScreen(score, GAME_INDEX, false);
+        return;
+      }
+      delay(50);
+    }
+  }
+}
+
+
+
+// ============================================================
+// DEATH STAR - Space Shooter Game
+// ============================================================
+
+// ============================================================
+// DEATH STAR - Space Shooter Game (HOLD TO SHOOT MULTIPLE BULLETS)
+// ============================================================
+
+void game_death_star() {
+  const int GAME_INDEX = 18;
+
+  // ── Game Variables ──
+  int metx = 0, mety = 0;
+  int postoji = 0;
+  int nep = 8;
+  int smjer = 0;
+  int go = 0;
+  int rx = 95, ry = 0;
+  int rx2 = 95, ry2 = 0;
+  int rx3 = 95, ry3 = 0;
+  int rx4 = 95, ry4 = 0;
+  int bodovi = 0;
+  int brzina = 3;
+  int bkugle = 1;
+  int najmanja = 600;
+  int najveca = 1200;
+  int promjer = 10;
+  int zivoti = 5;
+  int poc = 0;
+  int ispaljeno = 0;
+  int nivo = 1;
+  int centar = 95;
+  unsigned long pocetno = 0;
+  unsigned long odabrano = 0;
+  unsigned long trenutno = 0;
+  unsigned long nivovrije = 0;
+  int poz = 30;
+  unsigned int highscore = 0;
+
+  // ── 🔥 NEW: Multiple bullets system ──
+  #define MAX_BULLETS 10
+  struct Bullet {
+    float x, y;
+    bool active;
+  };
+  Bullet bullets[MAX_BULLETS];
+  for (int i = 0; i < MAX_BULLETS; i++) {
+    bullets[i].active = false;
+  }
+  unsigned long lastShotTime = 0;
+  int shootDelay = 350;  // milliseconds between shots when holding
+
+  // ── Death Star Sprite (48x48) ──
+  static const unsigned char storm[] PROGMEM = {
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x7F, 0xFE, 0x00, 0x00, 0x00, 0x07, 0x80, 0x01, 0xE0, 0x00, 0x00, 0x0C,
+    0x00, 0x00, 0x20, 0x00, 0x00, 0x18, 0x00, 0x00, 0x18, 0x00, 0x00, 0x30, 0x00, 0x00, 0x04, 0x00,
+    0x00, 0x20, 0x00, 0x00, 0x04, 0x00, 0x00, 0x20, 0x00, 0x00, 0x04, 0x00, 0x00, 0x60, 0x00, 0x00,
+    0x02, 0x00, 0x00, 0x40, 0x00, 0x00, 0x02, 0x00, 0x00, 0x40, 0x00, 0x00, 0x01, 0x00, 0x00, 0x40,
+    0x00, 0x00, 0x01, 0x00, 0x00, 0x40, 0x00, 0x00, 0x01, 0x00, 0x00, 0x7F, 0xE0, 0x00, 0x01, 0x00,
+    0x00, 0x7F, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0xD7, 0xFF, 0xFF,
+    0xE1, 0x00, 0x01, 0xBF, 0xFC, 0x1F, 0xFA, 0x80, 0x01, 0xBF, 0xF1, 0xCF, 0xFA, 0x80, 0x01, 0x3F,
+    0xC2, 0x37, 0xF7, 0x80, 0x01, 0xEF, 0x9C, 0x01, 0xE7, 0xC0, 0x01, 0xE0, 0x70, 0x06, 0x06, 0x80,
+    0x01, 0xE0, 0xC0, 0x03, 0x06, 0x80, 0x01, 0xFF, 0x80, 0x01, 0xFF, 0x80, 0x01, 0xF8, 0x00, 0x00,
+    0x1D, 0xC0, 0x03, 0x70, 0x00, 0x80, 0x0C, 0x60, 0x05, 0xB0, 0x07, 0xF0, 0x08, 0x90, 0x09, 0x10,
+    0x1F, 0xF8, 0x09, 0xD0, 0x0B, 0x90, 0x1F, 0x7C, 0x03, 0xF0, 0x0F, 0xC0, 0xFC, 0x0F, 0x07, 0x90,
+    0x0D, 0x43, 0xC0, 0x03, 0x07, 0x90, 0x05, 0x64, 0x00, 0x00, 0xCF, 0x10, 0x07, 0xFC, 0x00, 0x00,
+    0x26, 0x10, 0x01, 0x80, 0x00, 0x00, 0x10, 0x20, 0x01, 0x00, 0x00, 0x00, 0x0E, 0x40, 0x01, 0x80,
+    0x07, 0xF0, 0x01, 0x80, 0x00, 0x80, 0x07, 0xC8, 0x00, 0x80, 0x00, 0x80, 0x0B, 0xE8, 0x00, 0x80,
+    0x00, 0x87, 0x97, 0xE9, 0xE0, 0x80, 0x00, 0x87, 0xDF, 0xEF, 0xA0, 0x80, 0x00, 0x4B, 0xFF, 0xFF,
+    0xA0, 0x80, 0x00, 0x6B, 0xDF, 0xFB, 0xA3, 0x00, 0x00, 0x24, 0x97, 0xE8, 0x24, 0x00, 0x00, 0x1E,
+    0x1F, 0xC0, 0x2C, 0x00, 0x00, 0x07, 0xF8, 0x1F, 0xF0, 0x00, 0x00, 0x00, 0x0F, 0xF8, 0x00, 0x00
+  };
+
+  // ── X-Wing Sprite (16x16) ──
+  static const unsigned char dioda16[] PROGMEM = {
+    0x00, 0x00, 0x00, 0x00, 0x1C, 0x00, 0x3F, 0xF0, 0x3C, 0x00, 0x3C, 0x00, 0xFF, 0x00, 0x7F, 0xFF,
+    0x7F, 0xFF, 0xFF, 0x00, 0x3C, 0x00, 0x3C, 0x00, 0x1F, 0xF0, 0x1C, 0x00, 0x00, 0x00, 0x00, 0x00
+  };
+
+  // ── Load High Score ──
+  EEPROM.begin(EEPROM_SIZE);
+  EEPROM.get(GAME_INDEX * sizeof(uint16_t), highscore);
+  if (highscore == 0xFFFF || highscore > 9999) highscore = 0;
+  EEPROM.end();
+
+  // ── Show Start Screen ──
+  u8g2.clearBuffer();
+  u8g2.drawXBMP(6, 8, 48, 48, storm);
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  u8g2.drawStr(65, 20, "xWing");
+  u8g2.setFont(u8g2_font_5x7_tr);
+  u8g2.drawStr(65, 30, "vs");
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  u8g2.drawStr(65, 48, "Death");
+  u8g2.drawStr(65, 60, "Star");
+  u8g2.setFont(u8g2_font_5x7_tr);
+  char hs[20];
+  snprintf(hs, sizeof(hs), "HI: %u", highscore);
+  u8g2.drawStr(65, 70, hs);
+  u8g2.sendBuffer();
+
+  waitRelease();
+  while (!btnPressed(BTN_UP) && !btnPressed(BTN_DOWN) &&
+         !btnPressed(BTN_LEFT) && !btnPressed(BTN_RIGHT) &&
+         !btnPressed(BTN_ENTER)) {
+    delay(10);
+  }
+  waitRelease();
+
+  // ── Reset Function ──
+  auto ponovo = [&]() {
+    metx = 0; mety = 0;
+    postoji = 0;
+    nep = 8;
+    smjer = 0;
+    go = 0;
+    rx = 95; ry = 0;
+    rx2 = 95; ry2 = 0;
+    rx3 = 95; ry3 = 0;
+    rx4 = 95; ry4 = 0;
+    bodovi = 0;
+    brzina = 3;
+    bkugle = 1;
+    najmanja = 600;
+    najveca = 1200;
+    promjer = 10;
+    zivoti = 5;
+    poc = 0;
+    ispaljeno = 0;
+    nivo = 1;
+    centar = 95;
+    pocetno = 0;
+    odabrano = 0;
+    trenutno = 0;
+    nivovrije = 0;
+    poz = 30;
+    for (int i = 0; i < MAX_BULLETS; i++) {
+      bullets[i].active = false;
+    }
+    lastShotTime = 0;
+  };
+
+  // ── Game Loop ──
+  while (true) {
+    if (checkPause("DEATH STAR")) return;
+    if (checkMenuAndReturn()) return;
+
+    ponovo();
+
+    while (go == 0) {
+      if (checkPause("DEATH STAR")) return;
+      if (checkMenuAndReturn()) return;
+
+      u8g2.clearBuffer();
+
+      // ── Draw stars (background) ──
+      static int stars[20][2];
+      static bool starsInit = false;
+      if (!starsInit) {
+        for (int i = 0; i < 20; i++) {
+          stars[i][0] = random(0, 128);
+          stars[i][1] = random(0, 64);
+        }
+        starsInit = true;
+      }
+      for (int i = 0; i < 20; i++) {
+        u8g2.drawPixel(stars[i][0], stars[i][1]);
+        stars[i][0]--;
+        if (stars[i][0] < 0) {
+          stars[i][0] = 128;
+          stars[i][1] = random(0, 64);
+        }
+      }
+
+      // ── Enemy shooting timer ──
+      if (poc == 0) {
+        pocetno = millis();
+        odabrano = random(najmanja, najveca);
+        poc = 1;
+      }
+      trenutno = millis();
+
+      // ── Level up ──
+      if ((trenutno - nivovrije) > 50000) {
+        nivovrije = trenutno;
+        nivo = nivo + 1;
+        brzina = brzina + 1;
+        if (nivo % 2 == 0) {
+          bkugle = bkugle + 1;
+          promjer = promjer - 1;
+          if (promjer < 4) promjer = 4;
+        }
+        najmanja = najmanja - 50;
+        najveca = najveca - 50;
+        if (najmanja < 200) najmanja = 200;
+        if (najveca < 400) najveca = 400;
+      }
+
+      // ── Enemy bullets ──
+      if ((odabrano + pocetno) < trenutno) {
+        poc = 0;
+        ispaljeno = ispaljeno + 1;
+        if (ispaljeno == 1) { rx = 95; ry = nep; }
+        if (ispaljeno == 2) { rx2 = 95; ry2 = nep; }
+        if (ispaljeno == 3) { rx3 = 95; ry3 = nep; }
+        if (ispaljeno == 4) { rx4 = 95; ry4 = nep; }
+      }
+
+      if (ispaljeno > 0) {
+        u8g2.drawCircle(rx, ry, 2);
+        rx = rx - brzina;
+      }
+      if (ispaljeno > 1) {
+        u8g2.drawCircle(rx2, ry2, 1);
+        rx2 = rx2 - brzina;
+      }
+      if (ispaljeno > 2) {
+        u8g2.drawCircle(rx3, ry3, 4);
+        rx3 = rx3 - brzina;
+      }
+      if (ispaljeno > 3) {
+        u8g2.drawCircle(rx4, ry4, 2);
+        rx4 = rx4 - brzina;
+      }
+
+      // ── Player movement ──
+      if (btnHeld(BTN_UP) && poz >= 2) {
+        poz = poz - 2;
+      }
+      if (btnHeld(BTN_DOWN) && poz <= 46) {
+        poz = poz + 2;
+      }
+
+      // ── 🔥 FIXED: Hold to shoot multiple bullets ──
+      if (btnHeld(BTN_LEFT) || btnHeld(BTN_RIGHT) || btnHeld(BTN_ENTER)) {
+        unsigned long currentTime = millis();
+        if (currentTime - lastShotTime > shootDelay) {
+          // Find inactive bullet
+          bool shotFired = false;
+          for (int i = 0; i < MAX_BULLETS; i++) {
+            if (!bullets[i].active) {
+              bullets[i].active = true;
+              bullets[i].x = 6;
+              bullets[i].y = poz + 8;
+              lastShotTime = currentTime;
+              beep(1200, 10, soundLevel);
+              shotFired = true;
+              break;
+            }
+          }
+        }
+      }
+
+      // ── Update bullets ──
+      for (int i = 0; i < MAX_BULLETS; i++) {
+        if (bullets[i].active) {
+          bullets[i].x += 8;
+          u8g2.drawLine(bullets[i].x, bullets[i].y, bullets[i].x + 4, bullets[i].y);
+          
+          // Remove if off screen
+          if (bullets[i].x > 128) {
+            bullets[i].active = false;
+          }
+        }
+      }
+
+      // ── Draw X-Wing ──
+      u8g2.drawXBMP(4, poz, 16, 16, dioda16);
+
+      // ── Draw Death Star ──
+      for (int r = promjer; r > 0; r--) {
+        u8g2.drawCircle(centar, nep, r);
+      }
+      u8g2.setDrawColor(0);
+      int innerRadius = promjer / 3;
+      for (int r = innerRadius; r > 0; r--) {
+        u8g2.drawCircle(centar + 2, nep + 3, r);
+      }
+      u8g2.setDrawColor(1);
+
+      // ── UI ──
+      u8g2.setFont(u8g2_font_5x7_tr);
+      char sc[10];
+      snprintf(sc, sizeof(sc), "%d", bodovi);
+      u8g2.drawStr(33, 57, "score:");
+      u8g2.drawStr(68, 57, sc);
+
+      char lv[10];
+      snprintf(lv, sizeof(lv), "%d", zivoti);
+      u8g2.drawStr(33, 8, "lives:");
+      u8g2.drawStr(68, 8, lv);
+
+      char nv[10];
+      snprintf(nv, sizeof(nv), "%d", nivo);
+      u8g2.drawStr(110, 8, "L:");
+      u8g2.drawStr(122, 8, nv);
+
+      char tm[10];
+      snprintf(tm, sizeof(tm), "%lu", trenutno / 1000);
+      u8g2.drawStr(108, 57, tm);
+
+      // ── Enemy movement ──
+      if (smjer == 0) {
+        nep = nep + bkugle;
+      } else {
+        nep = nep - bkugle;
+      }
+      if (nep >= (64 - promjer)) smjer = 1;
+      if (nep <= promjer) smjer = 0;
+
+      // ── 🔥 Collision: All bullets vs Death Star ──
+      for (int i = 0; i < MAX_BULLETS; i++) {
+        if (!bullets[i].active) continue;
+        
+        if (bullets[i].y >= nep - promjer && bullets[i].y <= nep + promjer) {
+          if (bullets[i].x > (centar - promjer) && bullets[i].x < (centar + promjer)) {
+            bullets[i].active = false;
+            beep(500, 20, soundLevel);
+            bodovi = bodovi + 1;
+          }
+        }
+      }
+
+      // ── Collision: Enemy bullets vs Player ──
+      int pozicija = poz + 8;
+
+      auto checkHit = [&](int rx_, int ry_) {
+        if (ry_ >= pozicija - 8 && ry_ <= pozicija + 8) {
+          if (rx_ < 12 && rx_ > 4) {
+            beep(100, 100, soundLevel);
+            zivoti = zivoti - 1;
+            return true;
+          }
+        }
+        return false;
+      };
+
+      if (checkHit(rx, ry)) { rx = 95; ry = -50; }
+      if (checkHit(rx2, ry2)) { rx2 = -50; ry2 = -50; }
+      if (checkHit(rx3, ry3)) { rx3 = -50; ry3 = -50; }
+      if (checkHit(rx4, ry4)) { rx4 = 200; ry4 = -50; ispaljeno = 0; }
+
+      if (rx4 < 1) {
+        ispaljeno = 0;
+        rx4 = 200;
+      }
+
+      // ── Game Over ──
+      if (zivoti == 0) {
+        go = 1;
+        break;
+      }
+
+      u8g2.sendBuffer();
+      delay(16);
+    }
+
+    // ── Game Over Screen ──
+    if (zivoti == 0) {
+      beep(200, 300, soundLevel);
+      delay(300);
+      beep(250, 200, soundLevel);
+      delay(200);
+      beep(300, 300, soundLevel);
+      delay(300);
+    }
+
+    // ── Update High Score ──
+    if (bodovi > highscore) {
+      highscore = bodovi;
+      EEPROM.begin(EEPROM_SIZE);
+      EEPROM.put(GAME_INDEX * sizeof(uint16_t), highscore);
+      EEPROM.commit();
+      EEPROM.end();
+      beep(1200, 40, soundLevel);
+      delay(60);
+      beep(1500, 40, soundLevel);
+      delay(60);
+      beep(1800, 80, soundLevel);
+    }
+
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    centreStr("GAME OVER!", 20);
+    u8g2.setFont(u8g2_font_6x10_tr);
+    char buf[20];
+    snprintf(buf, sizeof(buf), "Score: %d", bodovi);
+    centreStr(buf, 38);
+    char hs2[20];
+    snprintf(hs2, sizeof(hs2), "Best: %u", highscore);
+    centreStr(hs2, 50);
+    u8g2.setFont(u8g2_font_5x7_tr);
+    centreStr("ENTER=Replay  MENU=Quit", 62);
+    u8g2.sendBuffer();
+
+    bool waiting = true;
+    while (waiting) {
+      if (btnPressed(BTN_ENTER) || btnPressed(BTN_UP)) {
+        waiting = false;
+        beep(800, 30, soundLevel);
+        break;
+      }
+      if (btnPressed(BTN_MENU)) {
+        playMenuButtonSound();
+        gameOverScreen(bodovi, GAME_INDEX, false);
+        return;
+      }
+      delay(50);
+    }
+  }
+}
+
 
 // ============================================================
 // SETUP & LOOP
