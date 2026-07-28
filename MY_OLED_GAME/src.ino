@@ -1246,7 +1246,7 @@ void showTimerMenu() {
           // frame for the whole song â€” it only looked "fixed" once a button
           // press happened to line up with the music finishing.
           u8g2.clearBuffer();
-          u8g2.setFont(u8g2_font_ncenB16_tr);
+          u8g2.setFont(u8g2_font_ncenB18_tr);
           centreStr("TIME UP!", 32);
           u8g2.setFont(u8g2_font_6x10_tr);
           centreStr("Press MENU to stop", 55);
