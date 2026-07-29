@@ -38,7 +38,7 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, OLED_SCL, OLED_
 
 // ── EEPROM for high scores ────────────
 #define EEPROM_SIZE 512
-#define GAME_COUNT 27
+#define GAME_COUNT 28
 #define MAX_FAVORITES 10
 #define MUSIC_COUNT 30
 
@@ -724,7 +724,7 @@ void game_color_matching();
 void game_ninja_spike();
 void game_sperm_race();
 void game_frogger();
-
+void game_frogger2(); 
 // Tetris helper functions
 void loadPiece(struct TetPiece &p, uint8_t t);
 bool ttFits(struct TetPiece &p, int dx, int dy);
@@ -748,7 +748,7 @@ bool btnPressed(uint8_t pin) {
   else return false;
 
   bool cur = (digitalRead(pin) == LOW);
-  bool edge = cur && !lastSt[idx] && (millis() - lastTime[idx] > 80);
+  bool edge = cur && !lastSt[idx] && (millis() - lastTime[idx] > 80);   //was 80 
   if (cur != lastSt[idx]) lastTime[idx] = millis();
   lastSt[idx] = cur;
   return edge;
@@ -2303,6 +2303,71 @@ bool checkMenuAndReturn() {
 }
 
 // ============================================================
+// BUTTON MAPPING - বাটনের অবস্থান দেখানো
+// ============================================================
+
+// ============================================================
+// BUTTON MAPPING - নির্দিষ্ট পিক্সেল দূরত্বে বাটন
+// ============================================================
+
+void showButtonMapping() {
+  while (true) {
+    if (btnLongPressed(BTN_MENU, 200)) {
+      playMenuButtonSound();
+      return;
+    }
+    
+    u8g2.clearBuffer();
+    
+    // ── হেডার ──
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    u8g2.drawBox(0, 0, SCREEN_W, 11);
+    u8g2.setDrawColor(0);
+    centreStr("BUTTON MAP", 9);
+    u8g2.setDrawColor(1);
+    
+    
+    // ── বাটনের নাম ──
+    u8g2.setFont(u8g2_font_6x10_tr);
+    
+    // UP (উপরে মাঝখানে)
+    u8g2.drawStr(32, 23, "UP");
+    
+    // DOWN (নিচে মাঝখানে)
+    u8g2.drawStr(26, 60, "DOWN");
+    
+    // LEFT (বামে মাঝখানে)
+    u8g2.drawStr(2, 39, "LEFT");
+    
+    // RIGHT (ডানে মাঝখানে) - 98 এ অবস্থান
+    u8g2.drawStr(45, 39, "RIGHT");
+    
+    // PLAY/PAUSE - RIGHT এর ডানদিকে 20 পিক্সেল দূরে
+    // RIGHT এর x = 88, তার ডানদিকে 20 পিক্সেল = 108
+    u8g2.drawStr(88, 39, "PAUSE");
+    
+    // START - UP এর ডানদিকে 40 পিক্সেল দূরে
+    // UP এর x = 54, তার ডানদিকে 40 পিক্সেল = 94
+    u8g2.drawStr(96, 23, "START");
+    
+    // BACK - DOWN এর ডানদিকে 40 পিক্সেল দূরে
+    // DOWN এর x = 50, তার ডানদিকে 40 পিক্সেল = 90
+    u8g2.drawStr(98, 55, "BACK");
+    
+    // ── এক্সিট ইনফো ──
+    
+    u8g2.sendBuffer();
+    
+    if (btnPressed(BTN_MENU)) {
+      playMenuButtonSound();
+      waitRelease();
+      return;
+    }
+    
+    delay(50);
+  }
+}
+// ============================================================
 // GAME OVER SCREEN
 // ============================================================
 
@@ -2398,7 +2463,7 @@ void showGameSubMenu(const char* gameName, int gameIndex) {
     game_death_star, game_tictactoe,
     game_memory_match, game_whack_a_mole,
     game_lunar_lander, game_color_matching,
-    game_ninja_spike, game_sperm_race, game_frogger
+    game_ninja_spike, game_sperm_race, game_frogger,game_frogger2
   };
   
   currentGameIndex = gameIndex;
@@ -2734,7 +2799,7 @@ void showMainGridMenu() {
               "2-Lane Racer", "T-Rex Run", "T-Rex Run 2",
               "Meteor Defenders", "Death Star", "Tic-Tac-Toe",
               "Memory Match", "Whack-A-Mole", "Lunar Lander",
-              "Color Match", "Ninja Spike", "Sperm Race", "Frogger"
+              "Color Match", "Ninja Spike", "Sperm Race", "Frogger","frogger 2"
             };
             showGameSubMenu(gameNames[gameSel], gameSel);
           } else {
@@ -2907,14 +2972,21 @@ void showVideoMenu() {
 // ============================================================
 
 
+// showSetupMenu() ফাংশন আপডেট করুন (লাইন ~1600)
+
 void showSetupMenu() {
   const char* options[] = {"1. SETTINGS", "2. TORCH", "3. FAV GAMES", 
                            "4. TIMER", "5. STOPWATCH", "6. POMODORO", 
-                           "7. DEVICE INFO"};
+                           "7. DEVICE INFO", "8. BUTTON MAP"};
+  
   int sel = 0;
-  const int TOTAL_OPTIONS = 7;
-  const int VISIBLE = 4;        // প্রতি স্ক্রিনে ৪টি করে
-  const int LINE_HEIGHT = 13;   // লাইনের মধ্যে গ্যাপ
+  const int TOTAL_OPTIONS = 8;
+  const int VISIBLE = 4;
+  const int LINE_HEIGHT = 13;
+  
+  // Hold detection
+  static uint32_t lastHoldTime = 0;
+  const uint32_t HOLD_DELAY = 120;
   
   while (true) {
     if (btnLongPressed(BTN_MENU, 200)) {
@@ -2924,47 +2996,73 @@ void showSetupMenu() {
     
     u8g2.clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
+    
+    // ── হেডার ──
     u8g2.drawBox(0, 0, SCREEN_W, 11);
     u8g2.setDrawColor(0);
-    centreStr("SETUP", 9);
+    centreStr("SETUP", 9);  // হেডার সেন্টার থাকবে
     u8g2.setDrawColor(1);
     
     u8g2.setFont(u8g2_font_ncenB08_tr);
     
-    // startIdx calculation for 4 visible items
     int startIdx = 0;
     if (sel >= VISIBLE) startIdx = sel - VISIBLE + 1;
     if (startIdx > TOTAL_OPTIONS - VISIBLE) startIdx = TOTAL_OPTIONS - VISIBLE;
     
+    // ✅ LEFT ALIGNED - বাম দিক থেকে শুরু
+    int leftX = 15;
+    
     for (int i = 0; i < VISIBLE && (startIdx + i) < TOTAL_OPTIONS; i++) {
       int idx = startIdx + i;
-      int y = 21 + i * LINE_HEIGHT;    // 7 পিক্সেল নিচে + 13 পিক্সেল গ্যাপ
+      int y = 21 + i * LINE_HEIGHT;
       
       if (idx == sel) {
-        u8g2.drawRBox(10, y - 7, SCREEN_W - 20, 11, 2);
+        // সিলেক্টেড আইটেম - বক্স সহ
+        int textWidth = u8g2.getStrWidth(options[idx]);
+        int boxWidth = textWidth + 24;
+        
+        u8g2.drawRBox(leftX - 5, y - 7, boxWidth, 11, 2);
         u8g2.setDrawColor(0);
-        centreStr(options[idx], y + 4);
+        u8g2.drawStr(leftX, y + 4, options[idx]);
         u8g2.setDrawColor(1);
       } else {
-        centreStr(options[idx], y + 4);
+        u8g2.drawStr(leftX, y + 4, options[idx]);
       }
     }
     
-    // Scroll indicators
-    if (startIdx > 0) u8g2.drawStr(SCREEN_W - 8, 13, "^");
-    if (startIdx + VISIBLE < TOTAL_OPTIONS) u8g2.drawStr(SCREEN_W - 8, 62, "v");
+    // ── স্ক্রল ইন্ডিকেটর ──
+    u8g2.setFont(u8g2_font_5x7_tr);
+    if (startIdx > 0) u8g2.drawStr(SCREEN_W - 10, 15, "^");
+    if (startIdx + VISIBLE < TOTAL_OPTIONS) u8g2.drawStr(SCREEN_W - 10, 62, "v");
     
     u8g2.sendBuffer();
     
+    // ── বাটন হ্যান্ডলিং ──
+    uint32_t now = millis();
+    
     if (btnPressed(BTN_UP)) { 
       sel = (sel + TOTAL_OPTIONS - 1) % TOTAL_OPTIONS; 
-      beep(800, 20, soundLevel); 
+      beep(800, 20, soundLevel);
+      lastHoldTime = now;
     }
-    else if (btnPressed(BTN_DOWN)) { 
+    else if (btnHeld(BTN_UP) && now - lastHoldTime > HOLD_DELAY) {
+      lastHoldTime = now;
+      sel = (sel + TOTAL_OPTIONS - 1) % TOTAL_OPTIONS; 
+      beep(800, 20, soundLevel);
+    }
+    
+    if (btnPressed(BTN_DOWN)) { 
       sel = (sel + 1) % TOTAL_OPTIONS; 
-      beep(800, 20, soundLevel); 
+      beep(800, 20, soundLevel);
+      lastHoldTime = now;
     }
-    else if (btnPressed(BTN_ENTER)) { 
+    else if (btnHeld(BTN_DOWN) && now - lastHoldTime > HOLD_DELAY) {
+      lastHoldTime = now;
+      sel = (sel + 1) % TOTAL_OPTIONS; 
+      beep(800, 20, soundLevel);
+    }
+    
+    if (btnPressed(BTN_ENTER)) { 
       beep(1200, 40, soundLevel); 
       waitRelease();
       
@@ -3003,7 +3101,7 @@ void showSetupMenu() {
             delay(500);
             break;
           }
-          delay(50);
+          delay(20);
         }
         waitRelease();
       }
@@ -3022,13 +3120,17 @@ void showSetupMenu() {
       else if (sel == 6) {
         showDeviceInfo();
       }
+      else if (sel == 7) {
+        showButtonMapping();
+      }
     }
     else if (btnPressed(BTN_MENU)) { 
       playMenuButtonSound(); 
       waitRelease();
       return;
     }
-    delay(100);
+    
+    delay(80);  // ডিলে কমানো হয়েছে
   }
 }
 
@@ -3431,7 +3533,7 @@ void showFavoritesMenu() {
     "2-Lane Racer", "T-Rex Run", "T-Rex Run 2",
     "Meteor Defenders", "Death Star", "Tic-Tac-Toe",
     "Memory Match", "Whack-A-Mole", "Lunar Lander",
-    "Color Match", "Ninja Spike", "Sperm Race", "Frogger"
+    "Color Match", "Ninja Spike", "Sperm Race", "Frogger","frogger 2"
   };
   
   int sel = 0;
@@ -3518,12 +3620,17 @@ int menuSelect() {
     "15. 2-Lane Racer", "16. T-Rex Run", "17. T-Rex Run 2",
     "18. Meteor Defenders", "19. Death Star", "20. Tic-Tac-Toe",
     "21. Memory Match", "22. Whack-A-Mole", "23. Lunar Lander",
-    "24. Color Match", "25. Ninja Spike", "26. Sperm Race", "27. Frogger"
+    "24. Color Match", "25. Ninja Spike", "26. Sperm Race", "27. Frogger","28. Frogger 2"
   };
   int sel = lastGameIndex;
   if (sel >= GAME_COUNT) sel = 0;
   int top = 0;
   const int VISIBLE = 4;
+  
+  // 🔥 হোল্ড ট্র্যাকিং - আলাদা টাইমার
+  static uint32_t upHoldTime = 0;
+  static uint32_t downHoldTime = 0;
+  const uint32_t HOLD_DELAY = 150;    // চেপে ধরে রাখলে প্রতি 100ms এ একবার
 
   while (true) {
     if (btnLongPressed(BTN_MENU, 200)) {
@@ -3578,29 +3685,151 @@ int menuSelect() {
     if (top + VISIBLE < GAME_COUNT) u8g2.drawStr(SCREEN_W - 8, 62, "v");
 
     u8g2.sendBuffer();
-    delay(100);
     
-    if (btnPressed(BTN_UP)) { 
-      sel = (sel + GAME_COUNT - 1) % GAME_COUNT; 
-      beep(800, 20, soundLevel); 
+    uint32_t now = millis();
+    
+    // ==========================================
+    // 🔥 UP বাটন - চেপে ধরে রাখলে বারবার (100ms)
+    // ==========================================
+    if (digitalRead(BTN_UP) == LOW) {
+      if (now - upHoldTime > HOLD_DELAY) {
+        upHoldTime = now;
+        sel = (sel + GAME_COUNT - 1) % GAME_COUNT;
+        beep(800, 20, soundLevel);
+      }
+    } else {
+      upHoldTime = 0;  // বাটন রিলিজ করলে রিসেট
     }
-    else if (btnPressed(BTN_DOWN)) { 
-      sel = (sel + 1) % GAME_COUNT; 
-      beep(800, 20, soundLevel); 
+    
+    // ==========================================
+    // 🔥 DOWN বাটন - চেপে ধরে রাখলে বারবার (100ms)
+    // ==========================================
+    if (digitalRead(BTN_DOWN) == LOW) {
+      if (now - downHoldTime > HOLD_DELAY) {
+        downHoldTime = now;
+        sel = (sel + 1) % GAME_COUNT;
+        beep(800, 20, soundLevel);
+      }
+    } else {
+      downHoldTime = 0;  // বাটন রিলিজ করলে রিসেট
     }
-    else if (btnPressed(BTN_ENTER)) { 
+    
+    // ==========================================
+    // 🔥 ENTER বাটন - শুধু একবার
+    // ==========================================
+    if (btnPressed(BTN_ENTER)) { 
       beep(1200, 40, soundLevel); 
       waitRelease(); 
       lastGameIndex = sel;
       return sel; 
     }
-    else if (btnPressed(BTN_MENU)) { 
+    
+    // ==========================================
+    // 🔥 MENU বাটন - শুধু একবার
+    // ==========================================
+    if (btnPressed(BTN_MENU)) { 
       playMenuButtonSound(); 
       waitRelease();
       return -1; 
     }
+    
+    delay(10);  // ডিলে কমানো হয়েছে
   }
 }
+
+
+// int menuSelect() {
+//   const char *names[GAME_COUNT] = {
+//     "1. Asteroids", "2. Breakout", "3. Dino Run", "4. Flappy Bird",
+//     "5. Snake 1", "6. Snake 2", "7. Pong", "8. Pacman",
+//     "9. Space Invaders", "10. Tetris", "11. Tank Battle",
+//     "12. Maze Runner", "13. RPS Game", "14. Car Racer",
+//     "15. 2-Lane Racer", "16. T-Rex Run", "17. T-Rex Run 2",
+//     "18. Meteor Defenders", "19. Death Star", "20. Tic-Tac-Toe",
+//     "21. Memory Match", "22. Whack-A-Mole", "23. Lunar Lander",
+//     "24. Color Match", "25. Ninja Spike", "26. Sperm Race", "27. Frogger"
+//   };
+//   int sel = lastGameIndex;
+//   if (sel >= GAME_COUNT) sel = 0;
+//   int top = 0;
+//   const int VISIBLE = 4;
+
+//   while (true) {
+//     if (btnLongPressed(BTN_MENU, 200)) {
+//       playMenuButtonSound();
+//       return -1;
+//     }
+    
+//     if (sel < top) top = sel;
+//     if (sel >= top + VISIBLE) top = sel - VISIBLE + 1;
+
+//     u8g2.clearBuffer();
+//     u8g2.setFont(u8g2_font_ncenB08_tr);
+//     u8g2.drawBox(0, 0, SCREEN_W, 11);
+//     u8g2.setDrawColor(0);
+//     centreStr("SELECT GAME", 9);
+//     u8g2.setDrawColor(1);
+
+//     u8g2.setFont(u8g2_font_ncenB08_tr);
+//     for (int i = 0; i < VISIBLE; i++) {
+//       int idx = top + i;
+//       if (idx >= GAME_COUNT) break;
+//       int y = 14 + i * 12;
+      
+//       if (idx == sel) {
+//         u8g2.drawRBox(0, y-1, SCREEN_W, 11, 2);
+//         u8g2.setDrawColor(0);
+//         if (isFavorite(idx)) {
+//           u8g2.drawStr(6, y + 9, names[idx]);
+//           int nameWidth = u8g2.getStrWidth(names[idx]);
+//           drawHeart(6 + nameWidth + 7, y + 2);
+//         } else {
+//           u8g2.drawStr(6, y + 9, names[idx]);
+//         }
+//         u8g2.setDrawColor(1);
+//       } else {
+//         if (isFavorite(idx)) {
+//           int nameWidth = u8g2.getStrWidth(names[idx]);
+//           u8g2.drawStr(6, y + 9, names[idx]);
+//           drawHeart(6 + nameWidth + 7, y + 2);
+//         } else {
+//           u8g2.drawStr(6, y + 9, names[idx]);
+//         }
+//       }
+//     }
+
+//     u8g2.drawFrame(SCREEN_W - 7, 12, 6, 52);
+//     int thumbH = max(6, 52 / GAME_COUNT * VISIBLE);
+//     int thumbY = 12 + (sel * (52 - thumbH)) / (GAME_COUNT - 1);
+//     u8g2.drawBox(SCREEN_W - 6, thumbY, 4, thumbH);
+
+//     if (top > 0) u8g2.drawStr(SCREEN_W - 8, 13, "^");
+//     if (top + VISIBLE < GAME_COUNT) u8g2.drawStr(SCREEN_W - 8, 62, "v");
+
+//     u8g2.sendBuffer();
+//     delay(100);
+    
+//     if (btnPressed(BTN_UP)) { 
+//       sel = (sel + GAME_COUNT - 1) % GAME_COUNT; 
+//       beep(800, 20, soundLevel); 
+//     }
+//     else if (btnPressed(BTN_DOWN)) { 
+//       sel = (sel + 1) % GAME_COUNT; 
+//       beep(800, 20, soundLevel); 
+//     }
+//     else if (btnPressed(BTN_ENTER)) { 
+//       beep(1200, 40, soundLevel); 
+//       waitRelease(); 
+//       lastGameIndex = sel;
+//       return sel; 
+//     }
+//     else if (btnPressed(BTN_MENU)) { 
+//       playMenuButtonSound(); 
+//       waitRelease();
+//       return -1; 
+//     }
+//   }
+// }
 
 // ============================================================
 // NEW GAME: MEMORY MATCH
@@ -8586,135 +8815,261 @@ void game_ninja_spike() {
 // ============================================================
 // NEW GAME: SPERM RACE
 // ============================================================
-
 void game_sperm_race() {
-  const int PLAYER_W = 6;
-  const int PLAYER_H = 10;
-  const int OBSTACLE_COUNT = 8;
-  
-  float playerX = 64 - PLAYER_W/2;
-  float playerY = 54;
-  bool playerJumping = false;
-  float jumpVel = 0;
-  float gravity = 0.15;
-  float score = 0;
+  const int ENEMY_COUNT = 4;
+  const int WASTE_COUNT = 8;
+  const int PLAYER_R = 3;
+  const int HEART_W = 8;
+  const int HEART_H = 8;
+  const int ENEMY_RADIUS = 3;
+  const int TOP_BAR_H = 11;
+
+  float moveSpeed = 2.2;
+  float gameSpeed = 1.3;
+
+  float playerX = 12, playerY = (TOP_BAR_H + SCREEN_H) / 2.0;
+  unsigned long score = 0;
+  static unsigned long highScore = 0;
+
+  int lives = 3;
+  bool dead = false;
+
+  bool isBlinking = false;
+  bool isHealing = false;
+  int blinkCount = 0;
+  unsigned long blinkTimer = 0;
+
+  unsigned long lastScoreUpdate = 0;
   uint32_t lastFrame = millis();
-  
-  struct Obstacle {
-    float x, y;
-    float speed;
-    bool active;
-    int width, height;
+  float tailPhase = 0;
+
+  struct Enemy { float x, y; };
+  Enemy enemies[ENEMY_COUNT];
+
+  struct Particle { float x, y; float speed; };
+  Particle waste[WASTE_COUNT];
+
+  bool heartActive = false;
+  float heartX = 0, heartY = 0;
+  unsigned long nextHeartSpawn = millis() + 7000;
+
+  auto getSafeY = [&](int index) {
+    float ny;
+    bool safe;
+    int attempts = 0;
+    do {
+      safe = true;
+      ny = random(TOP_BAR_H + 2, SCREEN_H - 6);
+      attempts++;
+      for (int i = 0; i < ENEMY_COUNT; i++) {
+        if (i != index && fabs(ny - enemies[i].y) < 18) { safe = false; break; }
+      }
+    } while (!safe && attempts < 15);
+    return ny;
   };
-  
-  Obstacle obstacles[OBSTACLE_COUNT];
-  for (int i = 0; i < OBSTACLE_COUNT; i++) {
-    obstacles[i].active = false;
-    obstacles[i].width = random(4, 10);
-    obstacles[i].height = random(4, 8);
-    obstacles[i].speed = 1.0 + random(0, 10) * 0.1;
-  }
-  
-  uint32_t lastSpawn = 0;
-  bool gameOver = false;
-  
+
+  auto resetGame = [&]() {
+    score = 0;
+    lives = 3;
+    gameSpeed = 1.3;
+    playerX = 12;
+    playerY = (TOP_BAR_H + SCREEN_H) / 2.0;
+    dead = false;
+    isBlinking = false;
+    heartActive = false;
+    nextHeartSpawn = millis() + 7000;
+
+    for (int i = 0; i < ENEMY_COUNT; i++) {
+      enemies[i].x = SCREEN_W + i * 25 + 10;
+      enemies[i].y = getSafeY(i);
+    }
+    for (int i = 0; i < WASTE_COUNT; i++) {
+      waste[i].x = random(0, SCREEN_W);
+      waste[i].y = random(TOP_BAR_H + 2, SCREEN_H - 2);
+      waste[i].speed = 0.4 + random(0, 8) * 0.1;
+    }
+  };
+
+  resetGame();
+
+  // ---- Title Screen ----
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
-  centreStr("SPERM RACE", 20);
+  centreStr("SPERM RACE", 18);
   u8g2.setFont(u8g2_font_6x10_tr);
-  centreStr("Race to the finish!", 38);
-  centreStr("UP to jump", 50);
-  centreStr("Dodge the obstacles!", 60);
+  centreStr("Dodge the red eggs", 32);
+  centreStr("Grab hearts for +life", 44);
   u8g2.sendBuffer();
-  delay(1500);
+  delay(1800);
   waitRelease();
-  
-  while (!gameOver) {
+
+  while (!dead) {
     if (checkPause("SPERM RACE")) return;
     if (checkMenuAndReturn()) return;
-    
+
     uint32_t now = millis();
     float dt = (now - lastFrame) / 16.0f;
     if (dt > 2.0f) dt = 2.0f;
     lastFrame = now;
-    
-    if (btnPressed(BTN_UP) && !playerJumping) {
-      jumpVel = -4.0;
-      playerJumping = true;
-      beep(800, 15, soundLevel);
+
+    // Score increase + gradual speed up
+    if (now - lastScoreUpdate > 250) {
+      score++;
+      lastScoreUpdate = now;
+      if (gameSpeed < 2.5) gameSpeed += 0.003;
     }
-    
-    if (btnHeld(BTN_LEFT)) playerX -= 2.0 * dt;
-    if (btnHeld(BTN_RIGHT)) playerX += 2.0 * dt;
-    
-    if (playerJumping) {
-      playerY += jumpVel * dt;
-      jumpVel += gravity * dt;
-      if (playerY >= 54) {
-        playerY = 54;
-        playerJumping = false;
-        jumpVel = 0;
+
+    // ---- Movement ----
+    if (btnHeld(BTN_UP))    playerY -= moveSpeed * dt;
+    if (btnHeld(BTN_DOWN))  playerY += moveSpeed * dt;
+    if (btnHeld(BTN_LEFT))  playerX -= moveSpeed * dt;
+    if (btnHeld(BTN_RIGHT)) playerX += moveSpeed * dt;
+
+    if (playerX < PLAYER_R) playerX = PLAYER_R;
+    if (playerX > SCREEN_W - PLAYER_R) playerX = SCREEN_W - PLAYER_R;
+    if (playerY < TOP_BAR_H + 2) playerY = TOP_BAR_H + 2;
+    if (playerY > SCREEN_H - 2) playerY = SCREEN_H - 2;
+
+    // ---- Background particles (NO BLINKING, always visible) ----
+    for (int i = 0; i < WASTE_COUNT; i++) {
+      waste[i].x -= waste[i].speed * dt;
+      if (waste[i].x < 0) {
+        waste[i].x = SCREEN_W;
+        waste[i].y = random(TOP_BAR_H + 2, SCREEN_H - 2);
+        waste[i].speed = 0.4 + random(0, 8) * 0.1;
       }
     }
-    
-    if (playerX < 0) playerX = 0;
-    if (playerX > SCREEN_W - PLAYER_W) playerX = SCREEN_W - PLAYER_W;
-    
-    if (now - lastSpawn > 500) {
-      lastSpawn = now;
-      for (int i = 0; i < OBSTACLE_COUNT; i++) {
-        if (!obstacles[i].active) {
-          obstacles[i].active = true;
-          obstacles[i].x = SCREEN_W + 10;
-          obstacles[i].y = random(5, 54);
-          obstacles[i].width = random(4, 10);
-          obstacles[i].height = random(4, 8);
-          obstacles[i].speed = 1.5 + random(0, 15) * 0.1;
-          break;
-        }
+
+    // ---- Enemies ----
+    bool hit = false;
+    for (int i = 0; i < ENEMY_COUNT; i++) {
+      enemies[i].x -= gameSpeed * dt;
+      if (enemies[i].x < -6) {
+        enemies[i].x = SCREEN_W + 6 + random(0, 30);
+        enemies[i].y = getSafeY(i);
+      }
+
+      float dx = playerX - enemies[i].x;
+      float dy = playerY - enemies[i].y;
+      if (!isBlinking && dx * dx + dy * dy < 36) {
+        hit = true;
+        enemies[i].x = SCREEN_W + 6 + random(0, 30);
+        enemies[i].y = getSafeY(i);
       }
     }
-    
-    for (int i = 0; i < OBSTACLE_COUNT; i++) {
-      if (!obstacles[i].active) continue;
-      
-      obstacles[i].x -= obstacles[i].speed * dt;
-      
-      if (obstacles[i].x < -20) {
-        obstacles[i].active = false;
-        score += 5;
-        continue;
-      }
-      
-      if (playerX < obstacles[i].x + obstacles[i].width &&
-          playerX + PLAYER_W > obstacles[i].x &&
-          playerY < obstacles[i].y + obstacles[i].height &&
-          playerY + PLAYER_H > obstacles[i].y) {
-        gameOver = true;
-        beep(200, 200, soundLevel);
+
+    if (hit) {
+      lives--;
+      beep(200, 150, soundLevel);
+      if (lives <= 0) {
+        dead = true;
+        if (score > highScore) highScore = score;
         gameOverScreen(score, 25, false);
         return;
       }
+      isBlinking = true;
+      isHealing = false;
+      blinkCount = 0;
+      blinkTimer = now;
     }
-    
+
+    // ---- Heart spawn every 7 seconds ----
+    if (!heartActive && now >= nextHeartSpawn) {
+      heartActive = true;
+      heartX = SCREEN_W + 6;
+      heartY = random(TOP_BAR_H + 2, SCREEN_H - HEART_H - 2);
+    }
+
+    if (heartActive) {
+      heartX -= (gameSpeed + 0.3) * dt;
+
+      if (heartX < -HEART_W) {
+        heartActive = false;
+        nextHeartSpawn = now + 7000;
+      } else {
+        float hdx = playerX - heartX;
+        float hdy = playerY - heartY;
+        if (!isBlinking && hdx * hdx + hdy * hdy < 49) {
+          if (lives < 5) lives++;
+          heartActive = false;
+          nextHeartSpawn = now + 7000;
+          beep(1200, 40, soundLevel);
+          delay(60);
+          beep(1600, 60, soundLevel);
+          isBlinking = true;
+          isHealing = true;
+          blinkCount = 0;
+          blinkTimer = now;
+        }
+      }
+    }
+
+    // ---- Blink logic ----
+    if (isBlinking) {
+      if (now - blinkTimer > 80) {
+        blinkTimer = now;
+        blinkCount++;
+      }
+      if (blinkCount >= 6) isBlinking = false;
+    }
+
+    // ==========================================
+    // TAIL ANIMATION - FASTER & BIGGER CURVE
+    // ==========================================
+    tailPhase += 1.4;
+
+    // ==========================================
+    // DRAWING
+    // ==========================================
     u8g2.clearBuffer();
-    
-    u8g2.drawEllipse((int)playerX + PLAYER_W/2, (int)playerY + PLAYER_H/2, PLAYER_W/2, PLAYER_H/2);
-    u8g2.drawLine((int)playerX + PLAYER_W/2, (int)playerY, (int)playerX + PLAYER_W/2, (int)playerY - 3);
-    u8g2.drawLine((int)playerX + PLAYER_W/2, (int)playerY - 3, (int)playerX + PLAYER_W/2 - 2, (int)playerY - 5);
-    u8g2.drawLine((int)playerX + PLAYER_W/2, (int)playerY - 3, (int)playerX + PLAYER_W/2 + 2, (int)playerY - 5);
-    
-    for (int i = 0; i < OBSTACLE_COUNT; i++) {
-      if (!obstacles[i].active) continue;
-      u8g2.drawBox((int)obstacles[i].x, (int)obstacles[i].y,
-                   obstacles[i].width, obstacles[i].height);
+
+    // ---- Background particles (NO BLINKING, always drawn) ----
+    for (int i = 0; i < WASTE_COUNT; i++) {
+      u8g2.drawPixel((int)waste[i].x, (int)waste[i].y);
     }
-    
+
+    // ---- Enemies - fully coloured (filled discs) ----
+    for (int i = 0; i < ENEMY_COUNT; i++) {
+      u8g2.drawDisc((int)enemies[i].x, (int)enemies[i].y, ENEMY_RADIUS);
+    }
+
+    // Heart pickup
+    if (heartActive) {
+      u8g2.drawXBMP((int)heartX, (int)heartY, HEART_W, HEART_H, heart_bmp);
+    }
+
+    // ---- Player (sperm) with tail ----
+    bool drawPlayer = true;
+    if (isBlinking && !isHealing && (blinkCount % 2 == 0)) drawPlayer = false;
+
+    if (drawPlayer) {
+      u8g2.drawDisc((int)playerX, (int)playerY, PLAYER_R);
+
+      // Tail: length = 7, faster & bigger sine curve
+      for (int i = 0; i < 7; i++) {
+        int tx = (int)playerX - PLAYER_R - i * 2;
+        int ty = (int)playerY + (int)(sin(tailPhase + i * 0.5) * (i * 0.6));
+        u8g2.drawPixel(tx, ty);
+      }
+    }
+
+    u8g2.setDrawColor(1);  // White fill
+    u8g2.drawBox(0, 0, SCREEN_W, TOP_BAR_H);
+    u8g2.setDrawColor(0);  // Black text and hearts
     u8g2.setFont(u8g2_font_5x7_tr);
-    char info[20];
-    snprintf(info, sizeof(info), "Score: %.0f", score);
+
+    char info[24];
+    snprintf(info, sizeof(info), "HI:%lu", highScore);
     u8g2.drawStr(2, 8, info);
-    
+    snprintf(info, sizeof(info), "S:%lu", score);
+    u8g2.drawStr(SCREEN_W - 30, 8, info);
+
+    // Lives (hearts) inside the box
+    for (int i = 0; i < lives; i++) {
+      u8g2.drawXBMP(32 + i * (HEART_W + 2), 2, HEART_W, HEART_H, heart_bmp);
+    }
+
+    u8g2.setDrawColor(1);  // Reset to white for drawing
     u8g2.sendBuffer();
     delay(16);
   }
@@ -8729,35 +9084,48 @@ void game_frogger() {
   const int FROG_H = 6;
   const int LANE_COUNT = 4;
   const int CAR_COUNT_PER_LANE = 3;
-  
-  float frogX = 64 - FROG_W/2;
-  float frogY = 56;
+
+  // ðŸ”¥ à¦²à§‡à¦¨à¦—à§à¦²à§‹à¦° Y à¦ªà¦œà¦¿à¦¶à¦¨ (à¦—à¦¾à¦¡à¦¼à¦¿à¦° à¦²à§‡à¦¨à§‡à¦° à¦¸à¦¾à¦¥à§‡ à¦à¦•à§à¦¸à§à¦¯à¦¾à¦•à§à¦Ÿ à¦®à¦¿à¦² à¦¥à¦¾à¦•à¦¤à§‡ à¦¹à¦¬à§‡)
+  const int laneY[LANE_COUNT] = {48, 36, 24, 12}; // à¦¨à¦¿à¦š à¦¥à§‡à¦•à§‡ à¦‰à¦ªà¦°à§‡à¦° à¦¦à¦¿à¦•à§‡ à¦•à§à¦°à¦®
+  const int SAFE_BOTTOM_Y = 56; // à¦¶à§à¦°à§à¦° à¦¨à¦¿à¦°à¦¾à¦ªà¦¦ à¦œà¦¾à¦¯à¦¼à¦—à¦¾
+  const int SAFE_TOP_Y = 2;     // à¦«à¦¿à¦¨à¦¿à¦¶ à¦²à¦¾à¦‡à¦¨à§‡à¦° à¦¨à¦¿à¦°à¦¾à¦ªà¦¦ à¦œà¦¾à¦¯à¦¼à¦—à¦¾
+
+  // frogLane: 0 = à¦¨à¦¿à¦šà§‡à¦° à¦¨à¦¿à¦°à¦¾à¦ªà¦¦ à¦œà¦¾à¦¯à¦¼à¦—à¦¾, 1..LANE_COUNT = à¦°à¦¾à¦¸à§à¦¤à¦¾à¦° à¦²à§‡à¦¨, LANE_COUNT+1 = à¦‰à¦ªà¦°à§‡ à¦ªà§Œà¦à¦›à§‡ à¦—à§‡à¦›à§‡
   int frogLane = 0;
+
+  auto laneToY = [&](int lane) -> int {
+    if (lane <= 0) return SAFE_BOTTOM_Y;
+    if (lane > LANE_COUNT) return SAFE_TOP_Y;
+    return laneY[lane - 1];
+  };
+
+  float frogX = 64 - FROG_W / 2;
+  int frogY = laneToY(frogLane);
   bool gameOver = false;
   int score = 0;
   int lives = 3;
   uint32_t lastFrame = millis();
-  
+
   struct Car {
     float x, y;
     float speed;
     int width, height;
     bool active;
   };
-  
+
   Car cars[LANE_COUNT][CAR_COUNT_PER_LANE];
-  
+
   for (int lane = 0; lane < LANE_COUNT; lane++) {
     for (int c = 0; c < CAR_COUNT_PER_LANE; c++) {
       cars[lane][c].y = 12 + lane * 12;
       cars[lane][c].x = random(0, SCREEN_W);
-      cars[lane][c].speed = (lane % 2 == 0) ? (1.0 + random(0, 10) * 0.1) : -(1.0 + random(0, 10) * 0.1);
+      cars[lane][c].speed = (lane % 2 == 0) ? (0.45 + random(0, 5) * 0.1) : -(0.45 + random(0, 5) * 0.1);
       cars[lane][c].width = random(6, 12);
       cars[lane][c].height = 6;
       cars[lane][c].active = true;
     }
   }
-  
+
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
   centreStr("FROGGER", 20);
@@ -8768,24 +9136,27 @@ void game_frogger() {
   u8g2.sendBuffer();
   delay(1500);
   waitRelease();
-  
+
   while (!gameOver) {
     if (checkPause("FROGGER")) return;
     if (checkMenuAndReturn()) return;
-    
+
     uint32_t now = millis();
     float dt = (now - lastFrame) / 16.0f;
     if (dt > 2.0f) dt = 2.0f;
     lastFrame = now;
-    
-    if (btnPressed(BTN_UP) && frogY > 10) {
-      frogY -= 12;
+
+    // ==========================================
+    // ðŸ”¥ à¦®à§à¦­à¦®à§‡à¦¨à§à¦Ÿ - à¦à¦–à¦¨ lane-index à¦­à¦¿à¦¤à§à¦¤à¦¿à¦•, à¦¤à¦¾à¦‡ à¦¸à¦¬à¦¸à¦®à¦¯à¦¼ à¦²à§‡à¦¨à§‡à¦° à¦¸à¦¾à¦¥à§‡ exact align à¦¹à¦¬à§‡
+    // ==========================================
+    if (btnPressed(BTN_UP) && frogLane <= LANE_COUNT) {
       frogLane++;
+      frogY = laneToY(frogLane);
       beep(600, 10, soundLevel);
     }
-    if (btnPressed(BTN_DOWN) && frogY < 56) {
-      frogY += 12;
+    if (btnPressed(BTN_DOWN) && frogLane > 0) {
       frogLane--;
+      frogY = laneToY(frogLane);
       beep(600, 10, soundLevel);
     }
     if (btnPressed(BTN_LEFT)) {
@@ -8798,21 +9169,28 @@ void game_frogger() {
       if (frogX > SCREEN_W - FROG_W) frogX = SCREEN_W - FROG_W;
       beep(600, 10, soundLevel);
     }
-    
-    if (frogY < 10) {
+
+    // ==========================================
+    // ðŸ”¥ à¦«à¦¿à¦¨à¦¿à¦¶ à¦²à¦¾à¦‡à¦¨à§‡ à¦ªà§Œà¦à¦›à¦¾à¦²à§‡
+    // ==========================================
+    if (frogLane > LANE_COUNT) {
       score += 50;
-      frogY = 56;
       frogLane = 0;
-      frogX = 64 - FROG_W/2;
+      frogY = laneToY(frogLane);
+      frogX = 64 - FROG_W / 2;
       beep(1200, 50, soundLevel);
       delay(200);
       beep(1500, 50, soundLevel);
     }
-    
-    for (int lane = 0; lane < LANE_COUNT; lane++) {
+
+    // ==========================================
+    // ðŸ”¥ à¦—à¦¾à¦¡à¦¼à¦¿ à¦†à¦ªà¦¡à§‡à¦Ÿ + à¦•à¦²à¦¿à¦¶à¦¨ à¦šà§‡à¦• (à¦à¦•à¦‡ à¦«à§à¦°à§‡à¦®à§‡ à¦à¦•à¦¾à¦§à¦¿à¦•à¦¬à¦¾à¦° à¦²à¦¾à¦‡à¦« à¦•à¦¾à¦Ÿà¦¾ à¦¬à¦¨à§à¦§ à¦•à¦°à¦¤à§‡ break à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡)
+    // ==========================================
+    bool hit = false;
+    for (int lane = 0; lane < LANE_COUNT && !hit; lane++) {
       for (int c = 0; c < CAR_COUNT_PER_LANE; c++) {
         cars[lane][c].x += cars[lane][c].speed * dt;
-        
+
         if (cars[lane][c].x > SCREEN_W + 10) {
           cars[lane][c].x = -20;
           cars[lane][c].speed = (lane % 2 == 0) ? (1.0 + random(0, 10) * 0.1) : -(1.0 + random(0, 10) * 0.1);
@@ -8821,52 +9199,54 @@ void game_frogger() {
           cars[lane][c].x = SCREEN_W + 10;
           cars[lane][c].speed = (lane % 2 == 0) ? (1.0 + random(0, 10) * 0.1) : -(1.0 + random(0, 10) * 0.1);
         }
-        
+
         if (frogY >= cars[lane][c].y - 3 && frogY <= cars[lane][c].y + 3) {
           if (frogX < cars[lane][c].x + cars[lane][c].width &&
               frogX + FROG_W > cars[lane][c].x) {
+            hit = true;
             lives--;
             beep(200, 150, soundLevel);
-            frogY = 56;
             frogLane = 0;
-            frogX = 64 - FROG_W/2;
-            
+            frogY = laneToY(frogLane);
+            frogX = 64 - FROG_W / 2;
+
             if (lives <= 0) {
               gameOver = true;
               gameOverScreen(score, 26, false);
               return;
             }
             delay(500);
+            break; // à¦à¦‡ à¦²à§‡à¦¨à§‡à¦° à¦¬à¦¾à¦•à¦¿ à¦—à¦¾à¦¡à¦¼à¦¿ à¦šà§‡à¦• à¦•à¦°à¦¾à¦° à¦¦à¦°à¦•à¦¾à¦° à¦¨à§‡à¦‡
           }
         }
       }
     }
-    
+
     u8g2.clearBuffer();
-    
+
     for (int i = 0; i < LANE_COUNT; i++) {
       int y = 12 + i * 12;
       u8g2.drawHLine(0, y, SCREEN_W);
       u8g2.drawHLine(0, y + 6, SCREEN_W);
     }
-    
+
     for (int lane = 0; lane < LANE_COUNT; lane++) {
       for (int c = 0; c < CAR_COUNT_PER_LANE; c++) {
         u8g2.drawBox((int)cars[lane][c].x, (int)cars[lane][c].y,
                      cars[lane][c].width, cars[lane][c].height);
       }
     }
-    
+
     u8g2.drawBox((int)frogX, (int)frogY, FROG_W, FROG_H);
-    u8g2.drawCircle((int)frogX + FROG_W/2, (int)frogY - 1, 3);
-    
+    u8g2.drawCircle((int)frogX + FROG_W / 2, (int)frogY - 1, 3);
+
     u8g2.setFont(u8g2_font_5x7_tr);
     char info[20];
     snprintf(info, sizeof(info), "Score: %d", score);
     u8g2.drawStr(2, 8, info);
     snprintf(info, sizeof(info), "Lives: %d", lives);
     u8g2.drawStr(SCREEN_W - 30, 8, info);
-    
+
     u8g2.sendBuffer();
     delay(16);
   }
@@ -9250,6 +9630,303 @@ void game_tictactoe() {
     }
   }
 }
+
+
+
+void game_frogger2() {
+  const int FROG_W = 6;
+  const int FROG_H = 6;
+  const int ROAD_LANES = 2;
+  const int RIVER_LANES = 2;
+  const int CARS_PER_LANE = 2;
+  const int LOGS_PER_LANE = 2;
+  const int PAD_COUNT = 3;
+ 
+  // 🔥 সবগুলো "রো" - নিচ থেকে উপরে - lane-index snapping (কোনো misalignment bug নেই)
+  // 0=স্টার্ট, 1-2=রোড, 3=মিডিয়ান, 4-5=নদী, 6=গোল (lily pad সারি)
+  const int TOTAL_ROWS = 7;
+  const int laneY[TOTAL_ROWS] = {58, 49, 40, 31, 22, 13, 4};
+  int frogRow = 0;
+ 
+  const int padCenterX[PAD_COUNT] = {14, 60, 106};
+  const int padHalfW = 12;
+  bool padFilled[PAD_COUNT] = {false, false, false};
+ 
+  float frogX = 64 - FROG_W / 2;
+  int frogY = laneY[frogRow];
+  int lives = 3;
+  int score = 0;
+  int level = 1;
+  bool gameOver = false;
+  uint32_t lastFrame = millis();
+ 
+  struct Mover {
+    float x, y;
+    float speed;
+    int width, height;
+  };
+ 
+  Mover cars[ROAD_LANES][CARS_PER_LANE];
+  Mover logs[RIVER_LANES][LOGS_PER_LANE];
+ 
+  auto spawnCars = [&]() {
+    for (int lane = 0; lane < ROAD_LANES; lane++) {
+      float baseSpeed = 0.9 + level * 0.15;
+      for (int c = 0; c < CARS_PER_LANE; c++) {
+        cars[lane][c].y = laneY[1 + lane];
+        cars[lane][c].x = random(0, SCREEN_W) + c * (SCREEN_W / CARS_PER_LANE);
+        cars[lane][c].speed = (lane % 2 == 0) ? (baseSpeed + random(0, 5) * 0.1)
+                                                : -(baseSpeed + random(0, 5) * 0.1);
+        cars[lane][c].width = random(6, 12);
+        cars[lane][c].height = 6;
+      }
+    }
+  };
+ 
+  auto spawnLogs = [&]() {
+    for (int lane = 0; lane < RIVER_LANES; lane++) {
+      float baseSpeed = 0.6 + level * 0.1;
+      for (int c = 0; c < LOGS_PER_LANE; c++) {
+        logs[lane][c].y = laneY[4 + lane];
+        logs[lane][c].x = random(0, SCREEN_W) + c * (SCREEN_W / LOGS_PER_LANE);
+        logs[lane][c].speed = (lane % 2 == 0) ? (baseSpeed + random(0, 4) * 0.1)
+                                                : -(baseSpeed + random(0, 4) * 0.1);
+        logs[lane][c].width = random(20, 34);
+        logs[lane][c].height = 6;
+      }
+    }
+  };
+ 
+  spawnCars();
+  spawnLogs();
+ 
+  auto resetFrog = [&]() {
+    frogRow = 0;
+    frogY = laneY[frogRow];
+    frogX = 64 - FROG_W / 2;
+  };
+ 
+  // ---------------- টাইটেল স্ক্রিন ----------------
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  centreStr("FROGGER 2", 18);
+  u8g2.setFont(u8g2_font_6x10_tr);
+  centreStr("Cross road & river", 32);
+  centreStr("Ride logs, avoid cars", 44);
+  centreStr("Fill 3 lily pads!", 56);
+  u8g2.sendBuffer();
+  delay(1800);
+  waitRelease();
+ 
+  while (!gameOver) {
+    if (checkPause("FROGGER 2")) return;
+    if (checkMenuAndReturn()) return;
+ 
+    uint32_t now = millis();
+    float dt = (now - lastFrame) / 16.0f;
+    if (dt > 2.0f) dt = 2.0f;
+    lastFrame = now;
+ 
+    // ==========================================
+    // 🔥 মুভমেন্ট - lane-index ভিত্তিক, তাই সবসময় সঠিক রো-তে ল্যান্ড করবে
+    // ==========================================
+    if (btnPressed(BTN_UP) && frogRow < TOTAL_ROWS - 1) {
+      frogRow++;
+      frogY = laneY[frogRow];
+      beep(700, 15, soundLevel);
+    }
+    if (btnPressed(BTN_DOWN) && frogRow > 0) {
+      frogRow--;
+      frogY = laneY[frogRow];
+      beep(500, 15, soundLevel);
+    }
+    if (btnPressed(BTN_LEFT)) {
+      frogX -= 10;
+      if (frogX < 0) frogX = 0;
+      beep(600, 10, soundLevel);
+    }
+    if (btnPressed(BTN_RIGHT)) {
+      frogX += 10;
+      if (frogX > SCREEN_W - FROG_W) frogX = SCREEN_W - FROG_W;
+      beep(600, 10, soundLevel);
+    }
+ 
+    // ==========================================
+    // 🔥 রোড লেন গাড়ি আপডেট + কলিশন
+    // ==========================================
+    bool died = false;
+    for (int lane = 0; lane < ROAD_LANES && !died; lane++) {
+      for (int c = 0; c < CARS_PER_LANE; c++) {
+        cars[lane][c].x += cars[lane][c].speed * dt;
+        if (cars[lane][c].x > SCREEN_W + 12) cars[lane][c].x = -14;
+        if (cars[lane][c].x < -14) cars[lane][c].x = SCREEN_W + 12;
+ 
+        if (frogRow == 1 + lane) {
+          if (frogX < cars[lane][c].x + cars[lane][c].width &&
+              frogX + FROG_W > cars[lane][c].x) {
+            died = true;
+            break;
+          }
+        }
+      }
+    }
+ 
+    // ==========================================
+    // 🔥 নদী লেন লগ আপডেট + রাইড / ডুবে যাওয়া চেক
+    // ==========================================
+    bool onLog = false;
+    float rideSpeed = 0;
+    for (int lane = 0; lane < RIVER_LANES; lane++) {
+      for (int c = 0; c < LOGS_PER_LANE; c++) {
+        logs[lane][c].x += logs[lane][c].speed * dt;
+        if (logs[lane][c].x > SCREEN_W + 20) logs[lane][c].x = -logs[lane][c].width - 4;
+        if (logs[lane][c].x < -logs[lane][c].width - 4) logs[lane][c].x = SCREEN_W + 20;
+ 
+        if (frogRow == 4 + lane) {
+          if (frogX + FROG_W > logs[lane][c].x &&
+              frogX < logs[lane][c].x + logs[lane][c].width) {
+            onLog = true;
+            rideSpeed = logs[lane][c].speed;
+          }
+        }
+      }
+    }
+ 
+    // নদীতে থেকে কোনো লগে না থাকলে ডুবে যাবে
+    if ((frogRow == 4 || frogRow == 5) && !onLog) {
+      died = true;
+    }
+ 
+    // লগে চড়ে থাকলে ফ্রগ লগের সাথে ভাসবে
+    if (onLog) {
+      frogX += rideSpeed * dt;
+      if (frogX < 0 || frogX > SCREEN_W - FROG_W) {
+        died = true; // পানিতে পড়ে গেল কিনারার বাইরে গিয়ে
+      }
+    }
+ 
+    if (died) {
+      lives--;
+      beep(200, 150, soundLevel);
+      resetFrog();
+      if (lives <= 0) {
+        gameOver = true;
+        // ⚠️ gameNames[] এ "Frogger 2" যোগ করে সঠিক ইনডেক্স এখানে বসান
+        gameOverScreen(score, 27, false);
+        return;
+      }
+      delay(400);
+    }
+ 
+    // ==========================================
+    // 🔥 গোল সারিতে পৌঁছালে - lily pad চেক
+    // ==========================================
+    if (frogRow == TOTAL_ROWS - 1) {
+      int padHit = -1;
+      for (int p = 0; p < PAD_COUNT; p++) {
+        if (frogX + FROG_W / 2 > padCenterX[p] - padHalfW &&
+            frogX + FROG_W / 2 < padCenterX[p] + padHalfW) {
+          padHit = p;
+          break;
+        }
+      }
+ 
+      if (padHit == -1 || padFilled[padHit]) {
+        // ফাঁকা জায়গায় বা আগে থেকে ভরা প্যাডে পড়লে
+        lives--;
+        beep(200, 150, soundLevel);
+        resetFrog();
+        if (lives <= 0) {
+          gameOver = true;
+          gameOverScreen(score, 27, false);
+          return;
+        }
+      } else {
+        padFilled[padHit] = true;
+        score += 100;
+        beep(1200, 40, soundLevel);
+        delay(80);
+        beep(1600, 60, soundLevel);
+        resetFrog();
+ 
+        bool allFilled = true;
+        for (int p = 0; p < PAD_COUNT; p++) if (!padFilled[p]) allFilled = false;
+ 
+        if (allFilled) {
+          score += 300;
+          level++;
+          for (int p = 0; p < PAD_COUNT; p++) padFilled[p] = false;
+          spawnCars();
+          spawnLogs();
+          beep(1500, 80, soundLevel);
+          delay(100);
+          beep(1900, 100, soundLevel);
+          delay(100);
+          beep(2200, 120, soundLevel);
+        }
+      }
+    }
+ 
+    // ==========================================
+    // 🔥 ড্রয়িং
+    // ==========================================
+    u8g2.clearBuffer();
+ 
+    // নদী (dashed lines দিয়ে পানি বোঝানো)
+    for (int i = 0; i < RIVER_LANES; i++) {
+      int y = laneY[4 + i] - 4;
+      for (int x = 0; x < SCREEN_W; x += 6) {
+        u8g2.drawPixel(x, y);
+        u8g2.drawPixel(x + 2, y + 8);
+      }
+    }
+ 
+    // রাস্তার লেন বর্ডার
+    for (int i = 0; i < ROAD_LANES; i++) {
+      int y = laneY[1 + i] - 4;
+      u8g2.drawHLine(0, y, SCREEN_W);
+      u8g2.drawHLine(0, y + 9, SCREEN_W);
+    }
+ 
+    // মিডিয়ান স্ট্রিপ
+    u8g2.drawHLine(0, laneY[3] - 4, SCREEN_W);
+ 
+    // লিলি প্যাড
+
+ 
+    // গাড়ি
+    for (int lane = 0; lane < ROAD_LANES; lane++) {
+      for (int c = 0; c < CARS_PER_LANE; c++) {
+        u8g2.drawBox((int)cars[lane][c].x, (int)cars[lane][c].y,
+                     cars[lane][c].width, cars[lane][c].height);
+      }
+    }
+ 
+    // লগ
+    for (int lane = 0; lane < RIVER_LANES; lane++) {
+      for (int c = 0; c < LOGS_PER_LANE; c++) {
+        u8g2.drawRFrame((int)logs[lane][c].x, (int)logs[lane][c].y,
+                        logs[lane][c].width, logs[lane][c].height, 2);
+      }
+    }
+ 
+    // ব্যাঙ
+    u8g2.drawBox((int)frogX, frogY, FROG_W, FROG_H);
+    u8g2.drawCircle((int)frogX + FROG_W / 2, frogY - 1, 3);
+ 
+    // HUD
+    u8g2.setFont(u8g2_font_5x7_tr);
+    char info[24];
+    snprintf(info, sizeof(info), "S:%d", score);
+    u8g2.drawStr(1, 64, info);
+    snprintf(info, sizeof(info), "L:%d", lives);
+    u8g2.drawStr(SCREEN_W - 22, 64, info);
+ 
+    u8g2.sendBuffer();
+    delay(16);
+  }
+}
+
 
 // ============================================================
 // SETUP & LOOP
