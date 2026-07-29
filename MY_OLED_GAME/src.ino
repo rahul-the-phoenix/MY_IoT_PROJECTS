@@ -2765,7 +2765,7 @@ void showMainGridMenu() {
 // ============================================================
 
 void showMediaMenu() {
-  const char* options[] = {"IMAGE", "VIDEO"};
+  const char* options[] = {"1.  IMAGE", "2.  VIDEO"};
   int sel = 0;
   
   while (true) {
@@ -2774,9 +2774,12 @@ void showMediaMenu() {
       return;
     }
     
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_ncenB08_tr);
-    centreStr("MEDIA", 10);
+      u8g2.clearBuffer();
+      u8g2.setFont(u8g2_font_ncenB08_tr);
+      u8g2.drawBox(0, 0, SCREEN_W, 11);
+      u8g2.setDrawColor(0);
+      centreStr("MEDIA", 9);
+      u8g2.setDrawColor(1);
     
     for (int i = 0; i < 2; i++) {
       int y = 30 + i * 16;
@@ -2822,9 +2825,13 @@ void showImageMenu() {
       return;
     }
     
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_ncenB08_tr);
-    centreStr("IMAGES", 10);
+      u8g2.clearBuffer();
+      u8g2.setFont(u8g2_font_ncenB08_tr);
+      u8g2.drawBox(0, 0, SCREEN_W, 11);
+      u8g2.setDrawColor(0);
+      centreStr(" ALL IMAGES", 9);
+      u8g2.setDrawColor(1);
+
     
     u8g2.setFont(u8g2_font_6x10_tr);
     for (int i = 0; i < 1; i++) {
