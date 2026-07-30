@@ -8218,149 +8218,187 @@ void game_death_star() {
 }
 
 
-
 void game_memory_match() {
-  const int GRID_SIZE = 4;
-  const int TOTAL_CARDS = GRID_SIZE * GRID_SIZE;
-  const int PAIRS = TOTAL_CARDS / 2;
-  
-  int cards[GRID_SIZE][GRID_SIZE];
-  bool revealed[GRID_SIZE][GRID_SIZE];
-  int selectedX = -1, selectedY = -1;
-  int firstX = -1, firstY = -1;
-  int firstValue = -1;
-  int pairsFound = 0;
-  int attempts = 0;
-  bool waiting = false;
-  uint32_t waitStart = 0;
+  const int COLS = 4;
+  const int ROWS = 3;
+  const int CARDS = COLS * ROWS;   // 12 cards
+  const int PAIRS = CARDS / 2;     // 6 pairs
+
+  struct Card {
+    int symbol;
+    bool matched;
+    bool revealed;
+  };
+
+  Card cards[CARDS];
+  int cursorX = 0, cursorY = 0;
+  int score = 0, moves = 0, matches = 0;
+  int firstPick = -1, secondPick = -1;
+  bool waitingResolve = false;
+  uint32_t mismatchTime = 0;
+  uint32_t gameStart = millis();
   bool gameOver = false;
-  
+
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
   centreStr("MEMORY MATCH", 20);
   u8g2.setFont(u8g2_font_6x10_tr);
-  centreStr("Find all pairs!", 38);
-  centreStr("Use D-pad to move", 50);
-  centreStr("ENTER to flip", 60);
+  centreStr("Find all the pairs!", 38);
+  centreStr("ENTER to flip a card", 50);
   u8g2.sendBuffer();
   delay(1500);
   waitRelease();
-  
-  int values[PAIRS];
-  for (int i = 0; i < PAIRS; i++) {
-    values[i] = i + 1;
-  }
-  
-  int shuffled[TOTAL_CARDS];
-  for (int i = 0; i < TOTAL_CARDS; i++) {
-    shuffled[i] = values[i % PAIRS];
-  }
-  
-  for (int i = TOTAL_CARDS - 1; i > 0; i--) {
+
+  // --- build & shuffle the board ---
+  int pool[CARDS];
+  for (int i = 0; i < CARDS; i++) pool[i] = i % PAIRS;
+  for (int i = CARDS - 1; i > 0; i--) {
     int j = random(0, i + 1);
-    int temp = shuffled[i];
-    shuffled[i] = shuffled[j];
-    shuffled[j] = temp;
+    int tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
   }
-  
-  int idx = 0;
-  for (int r = 0; r < GRID_SIZE; r++) {
-    for (int c = 0; c < GRID_SIZE; c++) {
-      cards[r][c] = shuffled[idx++];
-      revealed[r][c] = false;
+  for (int i = 0; i < CARDS; i++) {
+    cards[i].symbol = pool[i];
+    cards[i].matched = false;
+    cards[i].revealed = false;
+  }
+
+  const int cardW = 28, cardH = 16, gapX = 3, gapY = 2;
+  const int startX = (SCREEN_W - (COLS * cardW + (COLS - 1) * gapX)) / 2;
+  const int startY = 3;
+
+  auto cellPos = [&](int i, int &x, int &y) {
+    int row = i / COLS, col = i % COLS;
+    x = startX + col * (cardW + gapX);
+    y = startY + row * (cardH + gapY);
+  };
+
+  auto drawSymbol = [&](int symbol, int cx, int cy) {
+    switch (symbol) {
+      case 0: u8g2.drawDisc(cx, cy, 5); break;                          // filled circle
+      case 1: u8g2.drawBox(cx - 5, cy - 5, 10, 10); break;              // filled square
+      case 2:                                                          // triangle
+        u8g2.drawLine(cx, cy - 6, cx - 6, cy + 5);
+        u8g2.drawLine(cx, cy - 6, cx + 6, cy + 5);
+        u8g2.drawLine(cx - 6, cy + 5, cx + 6, cy + 5);
+        break;
+      case 3:                                                          // X
+        u8g2.drawLine(cx - 5, cy - 5, cx + 5, cy + 5);
+        u8g2.drawLine(cx - 5, cy + 5, cx + 5, cy - 5);
+        break;
+      case 4:                                                          // plus
+        u8g2.drawBox(cx - 1, cy - 6, 3, 13);
+        u8g2.drawBox(cx - 6, cy - 1, 13, 3);
+        break;
+      case 5:                                                          // diamond
+        u8g2.drawLine(cx, cy - 6, cx - 6, cy);
+        u8g2.drawLine(cx - 6, cy, cx, cy + 6);
+        u8g2.drawLine(cx, cy + 6, cx + 6, cy);
+        u8g2.drawLine(cx + 6, cy, cx, cy - 6);
+        break;
     }
+  };
+
+  // --- brief "memorize" preview: flash every card face-up ---
+  u8g2.clearBuffer();
+  // u8g2.setFont(u8g2_font_6x10_tr);
+  // centreStr("Memorize!", 10);
+  for (int i = 0; i < CARDS; i++) {
+    int x, y; cellPos(i, x, y);
+    u8g2.drawRFrame(x, y, cardW, cardH, 3);
+    drawSymbol(cards[i].symbol, x + cardW / 2, y + cardH / 2);
   }
-  
-  int cursorX = 0, cursorY = 0;
-  
+  u8g2.sendBuffer();
+  delay(4200);
+  waitRelease();
+
   while (!gameOver) {
     if (checkPause("MEMORY MATCH")) return;
     if (checkMenuAndReturn()) return;
-    
-    if (waiting) {
-      if (millis() - waitStart > 1000) {
-        revealed[firstX][firstY] = false;
-        revealed[selectedX][selectedY] = false;
-        firstX = -1; firstY = -1; firstValue = -1;
-        selectedX = -1; selectedY = -1;
-        waiting = false;
-      }
-    } else {
+
+    uint32_t now = millis();
+
+    if (waitingResolve && now - mismatchTime > 700) {
+      if (firstPick != -1 && !cards[firstPick].matched) cards[firstPick].revealed = false;
+      if (secondPick != -1 && !cards[secondPick].matched) cards[secondPick].revealed = false;
+      firstPick = -1;
+      secondPick = -1;
+      waitingResolve = false;
+    }
+
+    if (!waitingResolve) {
       if (btnPressed(BTN_UP) && cursorY > 0) { cursorY--; beep(600, 10, soundLevel); }
-      if (btnPressed(BTN_DOWN) && cursorY < GRID_SIZE - 1) { cursorY++; beep(600, 10, soundLevel); }
+      if (btnPressed(BTN_DOWN) && cursorY < ROWS - 1) { cursorY++; beep(600, 10, soundLevel); }
       if (btnPressed(BTN_LEFT) && cursorX > 0) { cursorX--; beep(600, 10, soundLevel); }
-      if (btnPressed(BTN_RIGHT) && cursorX < GRID_SIZE - 1) { cursorX++; beep(600, 10, soundLevel); }
-      
-      if (btnPressed(BTN_ENTER) && !revealed[cursorY][cursorX]) {
-        revealed[cursorY][cursorX] = true;
-        
-        if (firstX == -1) {
-          firstX = cursorX;
-          firstY = cursorY;
-          firstValue = cards[cursorY][cursorX];
-        } else {
-          selectedX = cursorX;
-          selectedY = cursorY;
-          int secondValue = cards[cursorY][cursorX];
-          attempts++;
-          
-          if (firstValue == secondValue) {
-            pairsFound++;
-            beep(1200, 30, soundLevel);
-            firstX = -1; firstY = -1; firstValue = -1;
-            selectedX = -1; selectedY = -1;
-            
-            if (pairsFound == PAIRS) {
-              gameOver = true;
-              uint16_t score = max(0, 100 - attempts * 2 + pairsFound * 5);
-              gameOverScreen(score, 20, true);
-              return;
+      if (btnPressed(BTN_RIGHT) && cursorX < COLS - 1) { cursorX++; beep(600, 10, soundLevel); }
+
+      if (btnPressed(BTN_ENTER)) {
+        int idx = cursorY * COLS + cursorX;
+        if (!cards[idx].matched && !cards[idx].revealed) {
+          cards[idx].revealed = true;
+          beep(700, 20, soundLevel);
+
+          if (firstPick == -1) {
+            firstPick = idx;
+          } else if (idx != firstPick) {
+            secondPick = idx;
+            moves++;
+            if (cards[firstPick].symbol == cards[secondPick].symbol) {
+              cards[firstPick].matched = true;
+              cards[secondPick].matched = true;
+              matches++;
+              score += 50;
+              beep(1000, 30, soundLevel);
+              beep(1300, 30, soundLevel);
+              firstPick = -1;
+              secondPick = -1;
+              if (matches == PAIRS) {
+                uint32_t elapsedSec = (now - gameStart) / 1000;
+                int timeBonus = (int)max(0, 200 - (int)elapsedSec * 2);
+                score += timeBonus;
+                gameOver = true;
+                gameOverScreen(score, 22, true);
+                return;
+              }
+            } else {
+              score = max(0, score - 5);
+              beep(250, 60, soundLevel);
+              waitingResolve = true;
+              mismatchTime = now;
             }
-          } else {
-            beep(300, 80, soundLevel);
-            waiting = true;
-            waitStart = millis();
           }
         }
       }
     }
-    
+
     u8g2.clearBuffer();
-    
-    int cellSize = 18;
-    int startX = (SCREEN_W - GRID_SIZE * cellSize) / 2;
-    int startY = (SCREEN_H - GRID_SIZE * cellSize) / 2 + 4;
-    
-    for (int r = 0; r < GRID_SIZE; r++) {
-      for (int c = 0; c < GRID_SIZE; c++) {
-        int x = startX + c * cellSize;
-        int y = startY + r * cellSize;
-        
-        if (revealed[r][c]) {
-          u8g2.drawBox(x, y, cellSize - 1, cellSize - 1);
-          u8g2.setDrawColor(0);
-          char val[3];
-          snprintf(val, sizeof(val), "%d", cards[r][c]);
-          u8g2.setFont(u8g2_font_ncenB10_tr);
-          centreStr(val, y + cellSize/2 + 3);
-          u8g2.setDrawColor(1);
+
+    for (int i = 0; i < CARDS; i++) {
+      int x, y; cellPos(i, x, y);
+      int cx = x + cardW / 2, cy = y + cardH / 2;
+
+      if (cards[i].matched) {
+        u8g2.drawRBox(x, y, cardW, cardH, 3);
+        u8g2.setDrawColor(0);
+        drawSymbol(cards[i].symbol, cx, cy);
+        u8g2.setDrawColor(1);
+      } else {
+        u8g2.drawRFrame(x, y, cardW, cardH, 3);
+        if (cards[i].revealed) {
+          drawSymbol(cards[i].symbol, cx, cy);
         } else {
-          u8g2.drawFrame(x, y, cellSize - 1, cellSize - 1);
           u8g2.setFont(u8g2_font_5x7_tr);
-          centreStr("?", y + cellSize/2 + 3);
-        }
-        
-        if (r == cursorY && c == cursorX && !waiting) {
-          u8g2.drawFrame(x - 1, y - 1, cellSize + 1, cellSize + 1);
+          u8g2.drawStr(cx - 2, cy + 3, "?");
         }
       }
+
+      int row = i / COLS, col = i % COLS;
+      if (row == cursorY && col == cursorX) {
+        u8g2.drawFrame(x - 2, y - 2, cardW + 4, cardH + 4);
+      }
     }
-    
-    u8g2.setFont(u8g2_font_5x7_tr);
-    char info[20];
-    snprintf(info, sizeof(info), "Pairs: %d/%d", pairsFound, PAIRS);
-    centreStr(info, SCREEN_H - 2);
-    
+
+
+
     u8g2.sendBuffer();
     delay(20);
   }
@@ -8368,27 +8406,35 @@ void game_memory_match() {
 
 // ============================================================
 // NEW GAME: WHACK-A-MOLE
-// ============================================================
-
 void game_whack_a_mole() {
-  const int HOLES = 9;
+  const int HOLES = 6;
   const int COLS = 3;
-  const int ROWS = 3;
-  
+  const int ROWS = 2;
+
+
   struct Hole {
     int x, y;
     bool hasMole;
     uint32_t moleAppearTime;
   };
-  
+
   Hole holes[HOLES];
   int score = 0;
   int lives = 5;
+  int combo = 0;
+  int bestCombo = 0;
+
+  enum FxType { FX_NONE, FX_HIT, FX_MISS, FX_ESCAPE };
+  FxType fxType = FX_NONE;
+  int fxHole = -1;
+  uint32_t fxTime = 0;
+  const uint32_t FX_DURATION = 220;
+
   uint32_t lastMoleSpawn = 0;
   uint32_t gameStart = millis();
   int cursorX = 0, cursorY = 0;
   bool gameOver = false;
-  
+
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
   centreStr("WHACK-A-MOLE", 20);
@@ -8398,9 +8444,9 @@ void game_whack_a_mole() {
   u8g2.sendBuffer();
   delay(1500);
   waitRelease();
-  
-  int startX = 15, startY = 15;
-  int spacing = 30;
+
+  int startX = 25, startY = 14;
+  int spacing = 27;
   for (int i = 0; i < HOLES; i++) {
     int row = i / COLS;
     int col = i % COLS;
@@ -8409,20 +8455,36 @@ void game_whack_a_mole() {
     holes[i].hasMole = false;
     holes[i].moleAppearTime = 0;
   }
-  
+
   while (!gameOver) {
     if (checkPause("WHACK-A-MOLE")) return;
     if (checkMenuAndReturn()) return;
-    
+
     uint32_t now = millis();
-    
-    if (now - lastMoleSpawn > (uint32_t)random(600, 1500)) {
+
+    // --- progressive difficulty ---
+    int diffLevel = 1 + score / 40;
+    if (diffLevel > 10) diffLevel = 10;
+    uint32_t spawnMin = (uint32_t)max(220, 650 - diffLevel * 40);
+    uint32_t spawnMax = (uint32_t)max(450, 1450 - diffLevel * 90);
+    // মোলের লাইফটাইম র্যান্ডম - ১৪০০, ১৫০০, ১৬০০, ১৭০০ ms
+const uint32_t lifetimes[] = {1300, 1400, 1500, 1600};
+uint32_t moleLifetime = lifetimes[random(0, 4)];
+
+    // Count current moles
+    int activeMoles = 0;
+    for (int i = 0; i < HOLES; i++) {
+      if (holes[i].hasMole) activeMoles++;
+    }
+
+    // Spawn new mole only if less than 2 moles are active
+    if (activeMoles < 2 && (now - lastMoleSpawn > (uint32_t)random(spawnMin, spawnMax))) {
       lastMoleSpawn = now;
       int emptyHoles = 0;
       for (int i = 0; i < HOLES; i++) {
         if (!holes[i].hasMole) emptyHoles++;
       }
-      
+
       if (emptyHoles > 0 && random(0, 10) < 7) {
         int idx = random(0, HOLES);
         int attempts = 0;
@@ -8436,11 +8498,16 @@ void game_whack_a_mole() {
         }
       }
     }
-    
+
+    // Check for escaped moles
     for (int i = 0; i < HOLES; i++) {
-      if (holes[i].hasMole && now - holes[i].moleAppearTime > 2000) {
+      if (holes[i].hasMole && now - holes[i].moleAppearTime > moleLifetime) {
         holes[i].hasMole = false;
         lives--;
+        combo = 0;
+        fxType = FX_ESCAPE;
+        fxHole = i;
+        fxTime = now;
         beep(300, 100, soundLevel);
         if (lives <= 0) {
           gameOver = true;
@@ -8449,170 +8516,374 @@ void game_whack_a_mole() {
         }
       }
     }
-    
+
+    // Cursor movement
     if (btnPressed(BTN_UP) && cursorY > 0) { cursorY--; beep(600, 10, soundLevel); }
     if (btnPressed(BTN_DOWN) && cursorY < ROWS - 1) { cursorY++; beep(600, 10, soundLevel); }
     if (btnPressed(BTN_LEFT) && cursorX > 0) { cursorX--; beep(600, 10, soundLevel); }
     if (btnPressed(BTN_RIGHT) && cursorX < COLS - 1) { cursorX++; beep(600, 10, soundLevel); }
-    
+
+    // Enter button pressed
     if (btnPressed(BTN_ENTER)) {
       int idx = cursorY * COLS + cursorX;
       if (holes[idx].hasMole) {
+        // Hit a mole
         holes[idx].hasMole = false;
-        score += 10;
+        combo++;
+        if (combo > bestCombo) bestCombo = combo;
+        int gain = 10 + min(combo - 1, 5) * 2;
+        score += gain;
+
+        fxType = FX_HIT;
+        fxHole = idx;
+        fxTime = now;
+
         beep(1000, 30, soundLevel);
         beep(1200, 20, soundLevel);
+        if (combo > 0 && combo % 5 == 0) {
+          beep(1500, 40, soundLevel);
+          beep(1800, 40, soundLevel);
+        }
       } else {
+        // Missed - lose a life
+        combo = 0;
+        lives--;
+        fxType = FX_MISS;
+        fxHole = idx;
+        fxTime = now;
         beep(200, 50, soundLevel);
+        
+        if (lives <= 0) {
+          gameOver = true;
+          gameOverScreen(score, 21, false);
+          return;
+        }
       }
     }
-    
+
     u8g2.clearBuffer();
-    
+
+    bool fxActive = (fxType != FX_NONE) && (now - fxTime < FX_DURATION);
+    if (!fxActive) fxType = FX_NONE;
+
+    // Draw holes and moles
     for (int i = 0; i < HOLES; i++) {
       int row = i / COLS;
       int col = i % COLS;
       int x = holes[i].x;
       int y = holes[i].y;
-      
-      u8g2.drawCircle(x + 10, y + 10, 10);
+      int cx = x + 10, cy = y + 10;
+
+      // dirt mound
+      u8g2.drawCircle(cx, cy + 2, 11);
+      u8g2.drawCircle(cx, cy, 10);
       u8g2.setDrawColor(0);
-      u8g2.drawCircle(x + 10, y + 10, 8);
+      u8g2.drawDisc(cx, cy, 8);
       u8g2.setDrawColor(1);
-      
+      u8g2.drawCircle(cx, cy, 8);
+
+      // Draw mole if present
       if (holes[i].hasMole) {
-        u8g2.drawCircle(x + 10, y + 8, 6);
+        int my = y + 8;
+        u8g2.drawDisc(cx, my, 6);
         u8g2.setDrawColor(0);
-        u8g2.drawPixel(x + 8, y + 7);
-        u8g2.drawPixel(x + 12, y + 7);
-        u8g2.drawPixel(x + 10, y + 9);
+        u8g2.drawPixel(cx - 2, my - 1);
+        u8g2.drawPixel(cx + 2, my - 1);
+        u8g2.drawHLine(cx - 1, my + 2, 3);
         u8g2.setDrawColor(1);
+        u8g2.drawDisc(cx - 5, my - 4, 2);
+        u8g2.drawDisc(cx + 5, my - 4, 2);
       }
-      
+
+      // Effects (hit, miss, escape)
+      if (fxActive && fxHole == i) {
+        if (fxType == FX_HIT) {
+          u8g2.drawLine(cx - 10, cy - 2, cx - 6, cy - 2);
+          u8g2.drawLine(cx + 6, cy - 2, cx + 10, cy - 2);
+          u8g2.drawLine(cx - 8, cy - 9, cx - 5, cy - 6);
+          u8g2.drawLine(cx + 5, cy - 6, cx + 8, cy - 9);
+        } else if (fxType == FX_MISS) {
+          u8g2.drawLine(cx - 6, cy - 6, cx + 6, cy + 6);
+          u8g2.drawLine(cx - 6, cy + 6, cx + 6, cy - 6);
+        } else if (fxType == FX_ESCAPE) {
+          u8g2.setFont(u8g2_font_5x7_tr);
+          u8g2.drawStr(cx - 4, y - 3, "-1");
+        }
+      }
+
+      // Cursor highlight
       if (row == cursorY && col == cursorX) {
         u8g2.drawFrame(x - 2, y - 2, 24, 24);
       }
     }
-    
+
+    // HUD - White background box
+    u8g2.setDrawColor(1);
+    u8g2.drawBox(0, 0, SCREEN_W, 12);
+    u8g2.setDrawColor(0);
     u8g2.setFont(u8g2_font_5x7_tr);
-    char info[20];
-    snprintf(info, sizeof(info), "Score: %d", score);
-    u8g2.drawStr(2, 8, info);
-    snprintf(info, sizeof(info), "Lives: %d", lives);
-    u8g2.drawStr(SCREEN_W - 40, 8, info);
     
+    char info[24];
+    
+    // Score
+    snprintf(info, sizeof(info), "S:%d", score);
+    u8g2.drawStr(2, 8, info);
+
+    // Level
+    snprintf(info, sizeof(info), "Lv%d", diffLevel);
+    int lvW = u8g2.getStrWidth(info);
+    u8g2.drawStr((SCREEN_W / 2 - lvW / 2) - 15, 8, info);
+
+    // Draw hearts
+    int heartX = SCREEN_W - 6;
+    for (int h = 0; h < lives; h++) {
+      heartX -= 10;
+      u8g2.drawXBMP(heartX, 2, 8, 8, heart_bmp);
+    }
+    
+    // Reset to white for game elements
+    u8g2.setDrawColor(1);
+
+    
+
     u8g2.sendBuffer();
     delay(20);
   }
 }
-
 // ============================================================
 // NEW GAME: LUNAR LANDER
 // ============================================================
 
 void game_lunar_lander() {
-  float x = 64, y = 10;
-  float vx = 0, vy = 0;
-  float fuel = 100;
-  bool landed = false;
-  bool crashed = false;
-  uint32_t startTime = millis();
-  float thrust = 0;
-  
+  // Assumes SCREEN_W and SCREEN_H exist (e.g. 128 x 64), same as your other games.
+ 
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
   centreStr("LUNAR LANDER", 20);
   u8g2.setFont(u8g2_font_6x10_tr);
-  centreStr("Land softly on the moon!", 38);
-  centreStr("UP=Thrust  L/R=Move", 52);
+  centreStr("UP=thrust  L/R=steer", 38);
+  centreStr("Land soft on the pad!", 50);
   u8g2.sendBuffer();
   delay(1500);
   waitRelease();
-  
-  while (!landed && !crashed) {
+ 
+  // --- generate jagged moon terrain with one flat landing pad ---
+  // Surface starts 5 pixels LOWER
+  int terrain[SCREEN_W];
+  terrain[0] = SCREEN_H - 5;
+  for (int x = 1; x < SCREEN_W; x++) {
+    int step = random(-2, 3);
+    int h = terrain[x - 1] + step;
+    if (h < SCREEN_H - 20) h = SCREEN_H - 20;
+    if (h > SCREEN_H - 2) h = SCREEN_H - 2;
+    terrain[x] = h;
+  }
+  const int padWidth = 18;
+  int padX = random(8, SCREEN_W - padWidth - 8);
+  int padHeight = terrain[padX + padWidth / 2];
+  for (int x = padX; x <= padX + padWidth; x++) terrain[x] = padHeight;
+ 
+  // background stars, generated once
+  const int STAR_COUNT = 14;
+  int starX[STAR_COUNT], starY[STAR_COUNT];
+  for (int i = 0; i < STAR_COUNT; i++) {
+    starX[i] = random(0, SCREEN_W);
+    starY[i] = random(2, SCREEN_H - 20);
+  }
+ 
+  // --- flight state ---
+  float posX = SCREEN_W / 2.0f;
+  float posY = 6.0f;
+  float velX = 0.0f, velY = 0.0f;
+  float fuel = 100.0f;
+ 
+  // 🔥 FIXED: Better balanced speeds
+  const float gravity = 32.0f;        // Slightly faster than before
+  const float mainThrust = 55.0f;     // Strong enough to counter gravity
+  const float sideThrust = 80.0f;     // 🔥 MUCH FASTER steering (was 35)
+  const float mainBurn = 18.0f;
+  const float sideBurn = 12.0f;       // Slightly more fuel for steering
+  const float maxSafeVy = 20.0f;
+  const float maxSafeVx = 15.0f;
+ 
+  bool thrustUp = false, thrustLeft = false, thrustRight = false;
+  uint32_t lastMainBeep = 0, lastSideBeep = 0;
+  uint32_t lastFrame = millis();
+  bool gameOver = false;
+ 
+  while (!gameOver) {
     if (checkPause("LUNAR LANDER")) return;
     if (checkMenuAndReturn()) return;
-    
+ 
     uint32_t now = millis();
-    float dt = 0.05;
+    float dt = (now - lastFrame) / 1000.0f;
+    if (dt > 0.08f) dt = 0.08f;
+    lastFrame = now;
+ 
+    // 🔥 FIXED: Use btnHeld() for continuous thrust
+    thrustUp = btnHeld(BTN_UP) && fuel > 0.0f;
+    thrustLeft = btnHeld(BTN_LEFT) && fuel > 0.0f;
+    thrustRight = btnHeld(BTN_RIGHT) && fuel > 0.0f;
+ 
+    // 🔥 FIXED: Apply gravity and thrust with proper dt
+    velY += gravity * dt;
     
-    thrust = 0;
-    if (btnHeld(BTN_UP) && fuel > 0) {
-      thrust = 0.3;
-      fuel -= 0.2;
-      if (fuel < 0) fuel = 0;
-    }
-    if (btnHeld(BTN_LEFT)) vx -= 0.02;
-    if (btnHeld(BTN_RIGHT)) vx += 0.02;
-    
-    vy += 0.01;
-    vy -= thrust;
-    x += vx;
-    y += vy;
-    
-    if (x < 2) { x = 2; vx = 0; }
-    if (x > SCREEN_W - 8) { x = SCREEN_W - 8; vx = 0; }
-    
-    if (y >= SCREEN_H - 10) {
-      y = SCREEN_H - 10;
-      if (abs(vy) < 0.3 && abs(vx) < 0.1) {
-        landed = true;
-        beep(1200, 100, soundLevel);
-        delay(100);
-        beep(1500, 100, soundLevel);
-      } else {
-        crashed = true;
-        beep(200, 300, soundLevel);
+    if (thrustUp) {
+      velY -= mainThrust * dt;
+      fuel -= mainBurn * dt;
+      if (now - lastMainBeep > 150) { 
+        beep(90, 15, soundLevel); 
+        lastMainBeep = now; 
       }
     }
     
+    // 🔥 FIXED: Side thrust now works much faster
+    if (thrustLeft) {
+      velX -= sideThrust * dt;
+      fuel -= sideBurn * dt;
+      if (now - lastSideBeep > 180) { 
+        beep(320, 12, soundLevel); 
+        lastSideBeep = now; 
+      }
+    }
+    
+    if (thrustRight) {
+      velX += sideThrust * dt;
+      fuel -= sideBurn * dt;
+      if (now - lastSideBeep > 180) { 
+        beep(320, 12, soundLevel); 
+        lastSideBeep = now; 
+      }
+    }
+    
+    if (fuel < 0) fuel = 0;
+ 
+    // Speed limits
+    if (velX > 100) velX = 100; 
+    if (velX < -100) velX = -100;
+    if (velY > 100) velY = 100; 
+    if (velY < -100) velY = -100;
+ 
+    // 🔥 FIXED: Apply velocity with dt properly
+    posX += velX * dt;
+    posY += velY * dt;
+ 
+    // Boundary checks
+    if (posX < 4) { 
+      posX = 4; 
+      velX = 0; 
+    }
+    if (posX > SCREEN_W - 4) { 
+      posX = SCREEN_W - 4; 
+      velX = 0; 
+    }
+    if (posY < 4) { 
+      posY = 4; 
+      velY = 0; 
+    }
+ 
+    int gx = (int)posX;
+    if (gx < 0) gx = 0; 
+    if (gx > SCREEN_W - 1) gx = SCREEN_W - 1;
+    int groundHere = terrain[gx];
+ 
+    // Ground collision
+    if (posY + 5 >= groundHere) {
+      bool onPad = (gx >= padX && gx <= padX + padWidth);
+      bool softVy = fabs(velY) <= maxSafeVy;
+      bool softVx = fabs(velX) <= maxSafeVx;
+      posY = groundHere - 5;
+ 
+      if (onPad && softVy && softVx) {
+        int score = (int)(300 + fuel * 3 - fabs(velY) * 2 - fabs(velX) * 2);
+        if (score < 50) score = 50;
+ 
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_ncenB10_tr);
+        centreStr("LANDED SAFELY!", 24);
+        u8g2.setFont(u8g2_font_6x10_tr);
+        char line[24];
+        snprintf(line, sizeof(line), "Fuel left: %d%%", (int)fuel);
+        centreStr(line, 40);
+        snprintf(line, sizeof(line), "Touchdown: %d px/s", (int)fabs(velY));
+        centreStr(line, 52);
+        u8g2.sendBuffer();
+        beep(1200, 60, soundLevel);
+        beep(1600, 80, soundLevel);
+        delay(1800);
+ 
+        gameOver = true;
+        gameOverScreen(score, 23, true);
+        return;
+      } else {
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_ncenB10_tr);
+        centreStr("CRASHED!", 26);
+        u8g2.sendBuffer();
+        beep(150, 200, soundLevel);
+        for (int r = 2; r < 16; r += 3) {
+          u8g2.clearBuffer();
+          u8g2.setFont(u8g2_font_ncenB10_tr);
+          centreStr("CRASHED!", 26);
+          u8g2.drawCircle((int)posX, groundHere - 5, r);
+          u8g2.sendBuffer();
+          delay(60);
+        }
+        delay(600);
+ 
+        gameOver = true;
+        gameOverScreen(0, 23, false);
+        return;
+      }
+    }
+ 
+    // --- DRAW FRAME ---
     u8g2.clearBuffer();
-    
-    u8g2.drawHLine(0, SCREEN_H - 8, SCREEN_W);
-    for (int i = 0; i < SCREEN_W; i += 5) {
-      int h = random(0, 4);
-      u8g2.drawVLine(i, SCREEN_H - 8 - h, h);
+ 
+    for (int i = 0; i < STAR_COUNT; i++) u8g2.drawPixel(starX[i], starY[i]);
+ 
+    // Draw terrain
+    for (int x = 0; x < SCREEN_W - 1; x++) {
+      u8g2.drawLine(x, terrain[x], x + 1, terrain[x + 1]);
     }
-    
-    int lx = (int)x, ly = (int)y;
-    u8g2.drawTriangle(lx + 4, ly, lx, ly + 8, lx + 8, ly + 8);
-    u8g2.drawLine(lx + 2, ly + 4, lx + 6, ly + 4);
-    
-    if (thrust > 0) {
-      u8g2.drawLine(lx + 2, ly + 8, lx + 1, ly + 13);
-      u8g2.drawLine(lx + 4, ly + 8, lx + 4, ly + 15);
-      u8g2.drawLine(lx + 6, ly + 8, lx + 7, ly + 13);
-    }
-    
+    u8g2.drawBox(padX, padHeight, padWidth + 1, 2);
+    u8g2.drawVLine(padX, padHeight - 4, 4);
+    u8g2.drawVLine(padX + padWidth, padHeight - 4, 4);
     u8g2.setFont(u8g2_font_5x7_tr);
-    char info[20];
-    snprintf(info, sizeof(info), "Fuel: %.0f", fuel);
+    u8g2.drawStr(padX + padWidth / 2 - 4, padHeight - 5, "LZ");
+ 
+    int cx = (int)posX, cy = (int)posY;
+    u8g2.drawTriangle(cx, cy - 5, cx - 4, cy + 4, cx + 4, cy + 4);
+    u8g2.drawLine(cx - 4, cy + 4, cx - 6, cy + 7);
+    u8g2.drawLine(cx + 4, cy + 4, cx + 6, cy + 7);
+ 
+    if (thrustUp) {
+      int flameLen = random(4, 8);
+      u8g2.drawTriangle(cx - 2, cy + 5, cx + 2, cy + 5, cx, cy + 5 + flameLen);
+    }
+    if (thrustLeft) {
+      int flameLen = random(3, 6);
+      u8g2.drawLine(cx + 4, cy + 1, cx + 4 + flameLen, cy + 1);
+    }
+    if (thrustRight) {
+      int flameLen = random(3, 6);
+      u8g2.drawLine(cx - 4, cy + 1, cx - 4 - flameLen, cy + 1);
+    }
+ 
+    u8g2.setFont(u8g2_font_5x7_tr);
+    char info[24];
+    snprintf(info, sizeof(info), "Fuel:%d%%", (int)fuel);
     u8g2.drawStr(2, 8, info);
-    snprintf(info, sizeof(info), "V: %.1f", vy);
-    u8g2.drawStr(2, 16, info);
-    
+ 
+    int speed = (int)sqrt(velX * velX + velY * velY);
+    snprintf(info, sizeof(info), "Spd:%d", speed);
+    int spW = u8g2.getStrWidth(info);
+    u8g2.drawStr(SCREEN_W - spW - 2, 8, info);
+ 
     u8g2.sendBuffer();
-    delay(30);
+    delay(20);
   }
-  
-  if (landed) {
-    uint32_t time = (millis() - startTime) / 1000;
-    uint16_t score = 1000 - time * 2 + (int)(fuel * 5);
-    if (score < 0) score = 0;
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_ncenB18_tr);
-    centreStr("LANDED!", 28);
-    u8g2.setFont(u8g2_font_6x10_tr);
-    char buf[20];
-    snprintf(buf, sizeof(buf), "Score: %d", score);
-    centreStr(buf, 44);
-    u8g2.sendBuffer();
-    delay(2000);
-    gameOverScreen(score, 22, true);
-  } else {
-    gameOverScreen(0, 22, false);
-  }
-}
+}  
 
 // ============================================================
 // NEW GAME: COLOR MATCHING
@@ -9058,7 +9329,7 @@ void game_sperm_race() {
     u8g2.setDrawColor(0);  // Black text and hearts
     u8g2.setFont(u8g2_font_5x7_tr);
 
-    char info[24];
+    char info[24]; 
     snprintf(info, sizeof(info), "HI:%lu", highScore);
     u8g2.drawStr(2, 8, info);
     snprintf(info, sizeof(info), "S:%lu", score);
