@@ -2389,11 +2389,7 @@ void loadInvertSetting() {
   EEPROM.end();
   
   // Apply inversion
-  if (invertDisplay) {
-    u8g2.setDrawColor(0);  // Inverted mode
-  } else {
-    u8g2.setDrawColor(1);  // Normal mode
-  }
+u8g2.sendF("c", invertDisplay ? 0xA7 : 0xA6);
 }
 
 void saveInvertSetting() {
@@ -2403,11 +2399,7 @@ void saveInvertSetting() {
   EEPROM.end();
   
   // Apply inversion immediately
-  if (invertDisplay) {
-    u8g2.setDrawColor(0);
-  } else {
-    u8g2.setDrawColor(1);
-  }
+u8g2.sendF("c", invertDisplay ? 0xA7 : 0xA6);
 }
 
 void saveTotalGames(int gameIndex) {
@@ -2704,66 +2696,83 @@ void showGameSubMenu(const char* gameName, int gameIndex) {
     if (sel >= top + VISIBLE) top = sel - VISIBLE + 1;
     
     u8g2.clearBuffer();
+
+    // ── Outer cartridge-style frame ──
+    u8g2.drawFrame(0, 0, SCREEN_W, SCREEN_H);
+    u8g2.drawHLine(1, 15, SCREEN_W - 2);
+
+    // ── Title banner with corner ticks ──
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.drawRBox(5, 2, SCREEN_W - 10, 12, 2);
-    u8g2.setDrawColor(0);
-    
+    int titleW = u8g2.getStrWidth(gameName);
+    int titleX = (SCREEN_W - titleW) / 2;
+    u8g2.drawStr(titleX, 11, gameName);
+
+    u8g2.drawLine(3, 3, 8, 3);
+    u8g2.drawLine(3, 3, 3, 8);
+    u8g2.drawLine(SCREEN_W - 9, 3, SCREEN_W - 4, 3);
+    u8g2.drawLine(SCREEN_W - 4, 3, SCREEN_W - 4, 8);
+
     if (isFavorite(gameIndex)) {
-      u8g2.drawStr(10, 11, gameName);
-      int nameWidth = u8g2.getStrWidth(gameName);
-      drawHeart(10 + nameWidth + 7, 4);
-    } else {
-      centreStr(gameName, 11);
+      drawHeart(titleX + titleW + 6, 3);
     }
-    u8g2.setDrawColor(1);
-    
+
+    // ── Menu options as pill buttons ──
     u8g2.setFont(u8g2_font_6x10_tr);
-    for (int i = 0; i < VISIBLE; i++) {
-      int idx = top + i;
-      if (idx >= TOTAL_OPTIONS) break;
-      int y = 25 + i * 13;
-      
-      if (idx == sel) {
-        u8g2.drawRBox(10, y - 7, SCREEN_W - 20, 11, 2);
+    for (int i = 0; i < TOTAL_OPTIONS; i++) {
+      int y = 19 + i * 15;
+      bool selected = (i == sel);
+
+      if (selected) {
+        u8g2.drawRBox(14, y, SCREEN_W - 24, 13, 4);
         u8g2.setDrawColor(0);
-        if (idx == 1) {
-          char scoreText[30];
-          if (gameIndex == 12) {
-            uint16_t winRate = 0;
-            if (totalGamesPlayed[12] > 0) {
-              winRate = (rpsWins[12] * 100) / totalGamesPlayed[12];
-            }
-            snprintf(scoreText, sizeof(scoreText), "High Score = %u%%", winRate);
-          } else {
-            snprintf(scoreText, sizeof(scoreText), "High Score = %u", highScores[gameIndex]);
-          }
-          centreStr(scoreText, y + 3);
-        } else {
-          centreStr(options[idx], y + 3);
-        }
-        u8g2.setDrawColor(1);
       } else {
-        if (idx == 1) {
-          char scoreText[30];
-          if (gameIndex == 12) {
-            uint16_t winRate = 0;
-            if (totalGamesPlayed[12] > 0) {
-              winRate = (rpsWins[12] * 100) / totalGamesPlayed[12];
-            }
-            snprintf(scoreText, sizeof(scoreText), "High Score = %u%%", winRate);
-          } else {
-            snprintf(scoreText, sizeof(scoreText), "High Score = %u", highScores[gameIndex]);
+        u8g2.drawRFrame(14, y, SCREEN_W - 24, 13, 4);
+      }
+
+      int iconCX = 14 + 10;
+      int iconCY = y + 6;
+
+      if (i == 0) {
+        u8g2.drawTriangle(iconCX - 3, iconCY - 4, iconCX - 3, iconCY + 4, iconCX + 4, iconCY);
+      } else if (i == 1) {
+        u8g2.drawVLine(iconCX - 3, iconCY + 3, 4);
+        u8g2.drawVLine(iconCX, iconCY, 7);
+        u8g2.drawVLine(iconCX + 3, iconCY - 3, 10);
+      } else {
+        drawHeart(iconCX - 4, iconCY - 4);
+      }
+
+      char scoreText[30];
+      const char* label;
+      if (i == 1) {
+        if (gameIndex == 12) {
+          uint16_t winRate = 0;
+          if (totalGamesPlayed[12] > 0) {
+            winRate = (rpsWins[12] * 100) / totalGamesPlayed[12];
           }
-          centreStr(scoreText, y + 3);
+          snprintf(scoreText, sizeof(scoreText), "BEST %u%%", winRate);
         } else {
-          centreStr(options[idx], y + 3);
+          snprintf(scoreText, sizeof(scoreText), "BEST %u", highScores[gameIndex]);
+        }
+        label = scoreText;
+      } else if (i == 2) {
+        label = isFavorite(gameIndex) ? "REMOVE FAV" : "ADD FAVORITE";
+      } else {
+        label = "PLAY";
+      }
+
+      u8g2.drawStr(30, y + 9, label);
+
+      if (selected) {
+        u8g2.setDrawColor(1);
+        if ((millis() / 250) % 2 == 0) {
+          int ax = SCREEN_W - 22;
+          u8g2.drawLine(ax, y + 2, ax + 4, y + 6);
+          u8g2.drawLine(ax + 4, y + 6, ax, y + 10);
         }
       }
     }
-    
-    if (top > 0) u8g2.drawStr(SCREEN_W - 8, 23, "^");
-    if (top + VISIBLE < TOTAL_OPTIONS) u8g2.drawStr(SCREEN_W - 8, 62, "v");
-    
+
     u8g2.sendBuffer();
     
     if (btnPressed(BTN_UP)) {
@@ -3201,97 +3210,155 @@ void showVideoMenu() {
 // showSetupMenu() ফাংশন আপডেট করুন (লাইন ~1600)
 
 void showSetupMenu() {
-  const char* options[] = {"1. SETTINGS", "2. TORCH", "3. FAV GAMES", 
-                           "4. TIMER", "5. STOPWATCH", "6. POMODORO", 
-                           "7. DEVICE INFO", "8. BUTTON MAP"};
-  
+  const char* shortLabels[8] = {
+    "SETTINGS", "TORCH", "FAV GAMES", "TIMER",
+    "STOPWATCH", "POMODORO", "DEVICE INFO", "BUTTON MAP"
+  };
+
   int sel = 0;
   const int TOTAL_OPTIONS = 8;
   const int VISIBLE = 4;
-  const int LINE_HEIGHT = 13;
-  
-  // Hold detection
+  const int HEADER_H = 12;
+  const int ITEM_H = 12;          // ── ফিক্সড: 4 আইটেম এখন ঠিক 48px এ ফিট করবে
+  const int LIST_TOP = HEADER_H + 1;
+
   static uint32_t lastHoldTime = 0;
   const uint32_t HOLD_DELAY = 120;
-  
+
   while (true) {
     if (btnLongPressed(BTN_MENU, 200)) {
       playMenuButtonSound();
       return;
     }
-    
-    u8g2.clearBuffer();
-    u8g2.setFont(u8g2_font_ncenB08_tr);
-    
-    // ── হেডার ──
-    u8g2.drawBox(0, 0, SCREEN_W, 11);
-    u8g2.setDrawColor(0);
-    centreStr("SETUP", 9);  // হেডার সেন্টার থাকবে
-    u8g2.setDrawColor(1);
-    
-    u8g2.setFont(u8g2_font_ncenB08_tr);
-    
+
     int startIdx = 0;
     if (sel >= VISIBLE) startIdx = sel - VISIBLE + 1;
     if (startIdx > TOTAL_OPTIONS - VISIBLE) startIdx = TOTAL_OPTIONS - VISIBLE;
-    
-    // ✅ LEFT ALIGNED - বাম দিক থেকে শুরু
-    int leftX = 15;
-    
+
+    u8g2.clearBuffer();
+
+    // ── Header banner with corner ticks ──
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    centreStr("SETUP", 9);
+    u8g2.drawLine(3, 2, 8, 2);
+    u8g2.drawLine(3, 2, 3, 7);
+    u8g2.drawLine(SCREEN_W - 9, 2, SCREEN_W - 4, 2);
+    u8g2.drawLine(SCREEN_W - 4, 2, SCREEN_W - 4, 7);
+    u8g2.drawHLine(0, HEADER_H, SCREEN_W - 6);
+
+    // ── List items ──
+    u8g2.setFont(u8g2_font_6x10_tr);
     for (int i = 0; i < VISIBLE && (startIdx + i) < TOTAL_OPTIONS; i++) {
       int idx = startIdx + i;
-      int y = 21 + i * LINE_HEIGHT;
-      
-      if (idx == sel) {
-        // সিলেক্টেড আইটেম - বক্স সহ
-        int textWidth = u8g2.getStrWidth(options[idx]);
-        int boxWidth = textWidth + 24;
-        
-        u8g2.drawRBox(leftX - 5, y - 7, boxWidth, 11, 2);
+      int y = LIST_TOP + i * ITEM_H;
+      bool selected = (idx == sel);
+
+      if (selected) {
+        u8g2.drawRBox(2, y, SCREEN_W - 12, ITEM_H - 1, 3);
         u8g2.setDrawColor(0);
-        u8g2.drawStr(leftX, y + 4, options[idx]);
+      }
+
+      // ── unique icon per option ──
+      int icx = 9, icy = y + (ITEM_H - 1) / 2;
+      switch (idx) {
+        case 0: // Settings - gear
+          u8g2.drawCircle(icx, icy, 3);
+          u8g2.drawPixel(icx, icy - 4);
+          u8g2.drawPixel(icx, icy + 4);
+          u8g2.drawPixel(icx - 4, icy);
+          u8g2.drawPixel(icx + 4, icy);
+          break;
+        case 1: // Torch - bulb
+          u8g2.drawCircle(icx, icy - 1, 3);
+          u8g2.drawVLine(icx, icy + 2, 3);
+          u8g2.drawHLine(icx - 1, icy + 5, 3);
+          break;
+        case 2: // Fav games - heart
+          drawHeart(icx - 4, icy - 4);
+          break;
+        case 3: // Timer - clock
+          u8g2.drawCircle(icx, icy, 4);
+          u8g2.drawLine(icx, icy, icx, icy - 3);
+          u8g2.drawLine(icx, icy, icx + 2, icy);
+          break;
+        case 4: // Stopwatch - clock with top button
+          u8g2.drawCircle(icx, icy + 1, 4);
+          u8g2.drawVLine(icx, icy - 3, 2);
+          u8g2.drawLine(icx, icy + 1, icx, icy - 1);
+          u8g2.drawLine(icx, icy + 1, icx + 2, icy + 2);
+          break;
+        case 5: // Pomodoro - dot in circle
+          u8g2.drawDisc(icx, icy, 3);
+          u8g2.setDrawColor(selected ? 1 : 0);
+          u8g2.drawDisc(icx, icy, 1);
+          u8g2.setDrawColor(selected ? 0 : 1);
+          break;
+        case 6: // Device info - "i"
+          u8g2.drawCircle(icx, icy, 4);
+          u8g2.drawPixel(icx, icy - 2);
+          u8g2.drawVLine(icx, icy, 2);
+          break;
+        case 7: // Button map - dpad
+          u8g2.drawBox(icx - 1, icy - 3, 2, 6);
+          u8g2.drawBox(icx - 3, icy - 1, 6, 2);
+          break;
+      }
+
+      u8g2.drawStr(18, y + ITEM_H - 3, shortLabels[idx]);
+
+      if (selected) {
         u8g2.setDrawColor(1);
-      } else {
-        u8g2.drawStr(leftX, y + 4, options[idx]);
+        if ((millis() / 250) % 2 == 0) {
+          int ax = SCREEN_W - 16;
+          u8g2.drawLine(ax, y + 2, ax + 4, y + (ITEM_H - 1) / 2);
+          u8g2.drawLine(ax + 4, y + (ITEM_H - 1) / 2, ax, y + ITEM_H - 3);
+        }
       }
     }
-    
-    // ── স্ক্রল ইন্ডিকেটর ──
-    u8g2.setFont(u8g2_font_5x7_tr);
-    if (startIdx > 0) u8g2.drawStr(SCREEN_W - 10, 15, "^");
-    if (startIdx + VISIBLE < TOTAL_OPTIONS) u8g2.drawStr(SCREEN_W - 10, 62, "v");
-    
+
+    // ── vertical scrollbar (right edge) ──
+    int barTop = LIST_TOP;
+    int barH = VISIBLE * ITEM_H - 1;
+    u8g2.drawFrame(SCREEN_W - 5, barTop, 4, barH);
+    int thumbH = max(5, barH * VISIBLE / TOTAL_OPTIONS);
+    int thumbY = barTop + (sel * (barH - thumbH)) / (TOTAL_OPTIONS - 1);
+    u8g2.drawBox(SCREEN_W - 4, thumbY, 2, thumbH);
+
     u8g2.sendBuffer();
-    
-    // ── বাটন হ্যান্ডলিং ──
+
+    // ── বাটন হ্যান্ডলিং (smooth hold-repeat + wrap-around) ──
     uint32_t now = millis();
-    
-    if (btnPressed(BTN_UP)) { 
-      sel = (sel + TOTAL_OPTIONS - 1) % TOTAL_OPTIONS; 
+
+    if (btnPressed(BTN_UP)) {
+      sel = (sel + TOTAL_OPTIONS - 1) % TOTAL_OPTIONS;
       beep(800, 20, soundLevel);
       lastHoldTime = now;
     }
     else if (btnHeld(BTN_UP) && now - lastHoldTime > HOLD_DELAY) {
       lastHoldTime = now;
-      sel = (sel + TOTAL_OPTIONS - 1) % TOTAL_OPTIONS; 
+      sel = (sel + TOTAL_OPTIONS - 1) % TOTAL_OPTIONS;
       beep(800, 20, soundLevel);
     }
-    
-    if (btnPressed(BTN_DOWN)) { 
-      sel = (sel + 1) % TOTAL_OPTIONS; 
+
+    if (btnPressed(BTN_DOWN)) {
+      sel = (sel + 1) % TOTAL_OPTIONS;
       beep(800, 20, soundLevel);
       lastHoldTime = now;
     }
     else if (btnHeld(BTN_DOWN) && now - lastHoldTime > HOLD_DELAY) {
       lastHoldTime = now;
-      sel = (sel + 1) % TOTAL_OPTIONS; 
+      sel = (sel + 1) % TOTAL_OPTIONS;
       beep(800, 20, soundLevel);
     }
-    
-    if (btnPressed(BTN_ENTER)) { 
-      beep(1200, 40, soundLevel); 
+
+    if (!btnHeld(BTN_UP) && !btnHeld(BTN_DOWN)) {
+      lastHoldTime = 0;
+    }
+
+    if (btnPressed(BTN_ENTER)) {
+      beep(1200, 40, soundLevel);
       waitRelease();
-      
+
       if (sel == 0) {
         showSettingsMenu();
       }
@@ -3306,7 +3373,7 @@ void showSetupMenu() {
         beep(1200, 50, soundLevel);
         delay(100);
         beep(1500, 50, soundLevel);
-        
+
         while (torchOn) {
           static uint32_t lastRefresh = 0;
           if (millis() - lastRefresh > 100) {
@@ -3350,13 +3417,13 @@ void showSetupMenu() {
         showButtonMapping();
       }
     }
-    else if (btnPressed(BTN_MENU)) { 
-      playMenuButtonSound(); 
+    else if (btnPressed(BTN_MENU)) {
+      playMenuButtonSound();
       waitRelease();
       return;
     }
-    
-    delay(80);  // ডিলে কমানো হয়েছে
+
+    delay(60);
   }
 }
 
@@ -3505,7 +3572,7 @@ void showMusicMenu() {
 // ============================================================
 
 void showSettingsMenu() {
-  const char* options[] = {"1. Brightness", "2. Sound", "3. Invert Display", "4. Reset Device"};
+  const char* options[] = {"1. Brightness", "2. Sound", "3.Night Mode ", "4. Reset Device"};
   int sel = 0;
   
   while (true) {
@@ -3515,24 +3582,25 @@ void showSettingsMenu() {
     }
     
     u8g2.clearBuffer();
-    
-    // 🔥 ইনভার্ট সাপোর্ট সহ হেডার
-    u8g2.setDrawColor(invertDisplay ? 0 : 1);
-    u8g2.setFont(u8g2_font_ncenB08_tr);
-    centreStr("SETTINGS", 10);
-    
-    for (int i = 0; i < 4; i++) {
-      int y = 25 + i * 13;
-      if (i == sel) {
-        u8g2.drawRBox(10, y - 8, SCREEN_W - 20, 12, 2);
-        u8g2.setDrawColor(invertDisplay ? 1 : 0);  // ইনভার্টেড কালার
-        centreStr(options[i], y + 3);
-        u8g2.setDrawColor(invertDisplay ? 0 : 1);
-      } else {
-        centreStr(options[i], y + 3);
-      }
-    }
-    u8g2.sendBuffer();
+u8g2.setFont(u8g2_font_ncenB08_tr);
+u8g2.drawBox(0, 0, SCREEN_W, 11);
+u8g2.setDrawColor(0);
+centreStr("SETTINGS", 9);
+u8g2.setDrawColor(1);
+
+u8g2.setFont(u8g2_font_ncenB08_tr);
+for (int i = 0; i < 4; i++) {
+  int y = 14 + i * 12;
+  if (i == sel) {
+    u8g2.drawRBox(0, y - 1, SCREEN_W, 11, 2);
+    u8g2.setDrawColor(0);
+    u8g2.drawStr(6, y + 9, options[i]);
+    u8g2.setDrawColor(1);
+  } else {
+    u8g2.drawStr(6, y + 9, options[i]);
+  }
+}
+u8g2.sendBuffer();
     
     if (btnPressed(BTN_UP)) { sel = (sel + 3) % 4; beep(800, 20, soundLevel); }
     else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 4; beep(800, 20, soundLevel); }
@@ -3676,17 +3744,17 @@ void showSettingsMenu() {
         
         // Show feedback
         u8g2.clearBuffer();
-        u8g2.setDrawColor(invertDisplay ? 0 : 1);
+         u8g2.sendF("c", invertDisplay ? 0xA7 : 0xA6); 
         u8g2.setFont(u8g2_font_ncenB10_tr);
         if (invertDisplay) {
-          centreStr("INVERT", 28);
-          centreStr("ENABLED", 42);
+          centreStr("NIGHT MODE", 28);
+          centreStr("ENABLED", 47);
           beep(1200, 40, soundLevel);
           delay(80);
           beep(1500, 40, soundLevel);
         } else {
-          centreStr("INVERT", 28);
-          centreStr("DISABLED", 42);
+          centreStr("NIGHT MODE", 28);
+          centreStr("DISABLED", 47);
           beep(600, 40, soundLevel);
           delay(80);
           beep(500, 40, soundLevel);
@@ -10494,7 +10562,7 @@ void setup() {
   
   // ✅ ইনভার্ট সেটিং লোড হয়েছে (loadHighScores() এ)
   // এখন শুধু ড্রইং কালার সেট করুন
-  u8g2.setDrawColor(invertDisplay ? 0 : 1);
+   u8g2.sendF("c", invertDisplay ? 0xA7 : 0xA6); 
   u8g2.setBitmapMode(0);
   showSplash();
 }
