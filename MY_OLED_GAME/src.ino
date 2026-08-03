@@ -35,7 +35,9 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, OLED_SCL, OLED_
 
 // ── Buzzer ─────────────────────────────
 #define BUZZER_PIN 10
-
+// ── ইনভার্ট-সাপোর্টেড কালার ম্যাক্রো ──
+#define DRAW_COLOR (invertDisplay ? 0 : 1)
+#define ERASE_COLOR (invertDisplay ? 1 : 0)
 // ── EEPROM for high scores ────────────
 #define EEPROM_SIZE 512
 #define GAME_COUNT 28
@@ -626,6 +628,7 @@ bool stopwatchRunning = false;
 bool stopwatchPaused = false;
 uint32_t lastStopwatchUpdate = 0;
 uint32_t lastBeepTime = 0;
+bool invertDisplay = false;
 
 // ── Pomodoro Variables ────────────────
 uint32_t pomodoroWorkTime = 25 * 60;
@@ -638,6 +641,17 @@ uint32_t pomodoroStartTime = 0;
 int pomodoroSessions = 0;
 bool pomodoroInputMode = false;
 int pomodoroInputPos = 0;
+uint32_t pomodoroIntervalHours;
+uint32_t pomodoroTotalHours = 0;
+uint32_t pomodoroTotalMinutes = 25;
+uint32_t pomodoroIntervalMinutes = 25;
+uint32_t pomodoroBreakMinutes = 5;
+uint32_t pomodoroTotalSeconds = 0;
+uint32_t pomodoroTotalRemaining = 0;
+uint32_t pomodoroIntervalSeconds = 0;
+uint32_t pomodoroBreakSeconds = 0;
+uint32_t pomodoroPhaseRemaining = 0;
+int pomodoroSetupStep = 0;
 
 // Menu navigation state
 int lastGameIndex = 0;
@@ -982,10 +996,13 @@ void resetDevice() {
   soundLevel = 3;
   soundEnabled = true;
   currentMusicVolume = 3;
+  invertDisplay = false;  // ✅ রিসেটে ইনভার্ট অফ
   saveBrightness();
   saveSoundSetting();
+  saveInvertSetting();  // ✅ ইনভার্ট সেভ করুন
   
   u8g2.clearBuffer();
+  u8g2.setDrawColor(invertDisplay ? 0 : 1);
   u8g2.setFont(u8g2_font_ncenB10_tr);
   centreStr("RESET", 24);
   centreStr("COMPLETE!", 40);
@@ -994,7 +1011,6 @@ void resetDevice() {
   u8g2.sendBuffer();
   delay(2000);
 }
-
 // ============================================================
 // MUSIC PLAYER (WITH VOLUME CONTROL)
 // ============================================================
@@ -1656,214 +1672,393 @@ void showStopwatchMenu() {
 // ============================================================
 // POMODORO TIMER
 // ============================================================
-
 void showPomodoroMenu() {
-  pomodoroWorkTime = 25 * 60;
-  pomodoroBreakTime = 5 * 60;
-  pomodoroRemaining = pomodoroWorkTime;
+  // ── Setup defaults ──
+  pomodoroTotalHours = 0;
+  pomodoroTotalMinutes = 25;     // default total study time
+  pomodoroIntervalHours = 0;
+  pomodoroIntervalMinutes = 25;  // default study interval
+  pomodoroBreakMinutes = 5;      // default break time
+
+  pomodoroTotalSeconds = 0;
+  pomodoroTotalRemaining = 0;
+  pomodoroIntervalSeconds = 0;
+  pomodoroBreakSeconds = 0;
+  pomodoroPhaseRemaining = 0;
+
+  pomodoroIsWork = true;
   pomodoroRunning = false;
   pomodoroPaused = false;
-  pomodoroIsWork = true;
   pomodoroStartTime = 0;
   pomodoroSessions = 0;
+
   pomodoroInputMode = true;
-  pomodoroInputPos = 0;
-  
+  pomodoroSetupStep = 0;   // 0 = total study time, 1 = interval, 2 = break time
+  pomodoroInputPos = 0;    // used only in step 0 (HOUR / MIN)
+
+  uint32_t lastHoldTime = 0;
+  const uint32_t HOLD_DELAY = 100;
+
+  bool musicPlaying = false;
+
   while (true) {
     if (checkMenuAndReturn()) return;
-    
+
     uint32_t now = millis();
-    
+
     if (pomodoroInputMode) {
-      if (btnPressed(BTN_LEFT)) {
-        pomodoroInputPos = (pomodoroInputPos + 1) % 2;
-        beep(600, 10, soundLevel);
-      }
-      if (btnPressed(BTN_RIGHT)) {
-        pomodoroInputPos = (pomodoroInputPos + 1) % 2;
-        beep(600, 10, soundLevel);
-      }
-      
-      if (btnPressed(BTN_UP)) {
-        if (pomodoroInputPos == 0) {
-          pomodoroWorkTime = min((uint32_t)3600, pomodoroWorkTime + 60);
-        } else {
-          pomodoroBreakTime = min((uint32_t)1800, pomodoroBreakTime + 60);
+
+      // ══════════ STEP 0: TOTAL STUDY TIME (HOUR / MIN) ══════════
+      if (pomodoroSetupStep == 0) {
+        if (btnPressed(BTN_LEFT)) {
+          pomodoroInputPos = 0; // HOUR
+          beep(600, 10, soundLevel);
+          lastHoldTime = 0;
         }
-        beep(800, 10, soundLevel);
-      }
-      if (btnPressed(BTN_DOWN)) {
-        if (pomodoroInputPos == 0) {
-          pomodoroWorkTime = max((uint32_t)60, pomodoroWorkTime - 60);
-        } else {
-          pomodoroBreakTime = max((uint32_t)60, pomodoroBreakTime - 60);
+        if (btnPressed(BTN_RIGHT)) {
+          pomodoroInputPos = 1; // MIN
+          beep(600, 10, soundLevel);
+          lastHoldTime = 0;
         }
-        beep(800, 10, soundLevel);
+
+        if (btnHeld(BTN_UP)) {
+          if (now - lastHoldTime >= HOLD_DELAY) {
+            lastHoldTime = now;
+            if (pomodoroInputPos == 0) pomodoroTotalHours = (pomodoroTotalHours + 1) % 24;
+            else pomodoroTotalMinutes = (pomodoroTotalMinutes + 1) % 60;
+            beep(800, 10, soundLevel);
+          }
+        }
+        if (btnHeld(BTN_DOWN)) {
+          if (now - lastHoldTime >= HOLD_DELAY) {
+            lastHoldTime = now;
+            if (pomodoroInputPos == 0) pomodoroTotalHours = (pomodoroTotalHours + 23) % 24;
+            else pomodoroTotalMinutes = (pomodoroTotalMinutes + 59) % 60;
+            beep(800, 10, soundLevel);
+          }
+        }
+        if (!btnHeld(BTN_UP) && !btnHeld(BTN_DOWN)) lastHoldTime = 0;
+
+        if (btnPressed(BTN_ENTER)) {
+          if (pomodoroTotalHours > 0 || pomodoroTotalMinutes > 0) {
+            beep(1000, 30, soundLevel);
+            waitRelease();
+            pomodoroSetupStep = 1;
+            pomodoroInputPos = 0;
+            delay(50);
+            continue;
+          }
+        }
+
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_ncenB08_tr);
+        u8g2.drawBox(0, 0, SCREEN_W, 11);
+        u8g2.setDrawColor(0);
+        centreStr("STUDY TIME", 9);
+        u8g2.setDrawColor(1);
+
+        u8g2.setFont(u8g2_font_6x10_tr);
+        centreStr(" HOUR      MIN ", 26);
+
+        u8g2.setFont(u8g2_font_ncenB24_tr);
+        char hoursStr[3], minutesStr[3];
+        snprintf(hoursStr, sizeof(hoursStr), "%02d", pomodoroTotalHours);
+        snprintf(minutesStr, sizeof(minutesStr), "%02d", pomodoroTotalMinutes);
+
+        int hoursX = 20, minutesX = 76, yPos = 59;
+        u8g2.drawStr(hoursX, yPos, hoursStr);
+        u8g2.drawStr(hoursX + 32, yPos - 3, " : ");
+        u8g2.drawStr(minutesX, yPos, minutesStr);
+
+        int cursorX = (pomodoroInputPos == 0) ? hoursX - 1 : minutesX - 1;
+        int cursorY = 33, cursorW = 40, cursorH = 30;
+        if ((now / 300) % 2 == 0) u8g2.drawFrame(cursorX, cursorY, cursorW, cursorH);
+
+        u8g2.sendBuffer();
       }
-      
-      if (btnPressed(BTN_ENTER)) {
-        if (pomodoroWorkTime > 0 && pomodoroBreakTime > 0) {
-          pomodoroRemaining = pomodoroWorkTime;
+
+      // ══════════ STEP 1: STUDY INTERVAL (HOUR / MIN) ══════════
+      else if (pomodoroSetupStep == 1) {
+        if (btnPressed(BTN_LEFT)) {
+          pomodoroInputPos = 0; // HOUR
+          beep(600, 10, soundLevel);
+          lastHoldTime = 0;
+        }
+        if (btnPressed(BTN_RIGHT)) {
+          pomodoroInputPos = 1; // MIN
+          beep(600, 10, soundLevel);
+          lastHoldTime = 0;
+        }
+
+        if (btnHeld(BTN_UP)) {
+          if (now - lastHoldTime >= HOLD_DELAY) {
+            lastHoldTime = now;
+            if (pomodoroInputPos == 0) pomodoroIntervalHours = (pomodoroIntervalHours + 1) % 24;
+            else pomodoroIntervalMinutes = (pomodoroIntervalMinutes + 1) % 60;
+            beep(800, 10, soundLevel);
+          }
+        }
+        if (btnHeld(BTN_DOWN)) {
+          if (now - lastHoldTime >= HOLD_DELAY) {
+            lastHoldTime = now;
+            if (pomodoroInputPos == 0) pomodoroIntervalHours = (pomodoroIntervalHours + 23) % 24;
+            else pomodoroIntervalMinutes = (pomodoroIntervalMinutes + 59) % 60;
+            beep(800, 10, soundLevel);
+          }
+        }
+        if (!btnHeld(BTN_UP) && !btnHeld(BTN_DOWN)) lastHoldTime = 0;
+
+        if (btnPressed(BTN_ENTER)) {
+          if (pomodoroIntervalHours > 0 || pomodoroIntervalMinutes > 0) {
+            beep(1000, 30, soundLevel);
+            waitRelease();
+            pomodoroSetupStep = 2;
+            pomodoroInputPos = 0;
+            delay(50);
+            continue;
+          }
+        }
+
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_ncenB08_tr);
+        u8g2.drawBox(0, 0, SCREEN_W, 11);
+        u8g2.setDrawColor(0);
+        centreStr("STUDY INTERVAL", 9);
+        u8g2.setDrawColor(1);
+
+        u8g2.setFont(u8g2_font_6x10_tr);
+        centreStr(" HOUR      MIN ", 26);
+
+        u8g2.setFont(u8g2_font_ncenB24_tr);
+        char hoursStr[3], minutesStr[3];
+        snprintf(hoursStr, sizeof(hoursStr), "%02d", pomodoroIntervalHours);
+        snprintf(minutesStr, sizeof(minutesStr), "%02d", pomodoroIntervalMinutes);
+
+        int hoursX = 20, minutesX = 76, yPos = 59;
+        u8g2.drawStr(hoursX, yPos, hoursStr);
+        u8g2.drawStr(hoursX + 32, yPos - 3, " : ");
+        u8g2.drawStr(minutesX, yPos, minutesStr);
+
+        int cursorX = (pomodoroInputPos == 0) ? hoursX - 1 : minutesX - 1;
+        int cursorY = 33, cursorW = 40, cursorH = 30;
+        if ((now / 300) % 2 == 0) u8g2.drawFrame(cursorX, cursorY, cursorW, cursorH);
+
+        u8g2.sendBuffer();
+      }
+
+      // ══════════ STEP 2: BREAK TIME (MIN only) ══════════
+      else if (pomodoroSetupStep == 2) {
+        if (btnHeld(BTN_UP)) {
+          if (now - lastHoldTime >= HOLD_DELAY) {
+            lastHoldTime = now;
+            pomodoroBreakMinutes = min((uint32_t)60, pomodoroBreakMinutes + 1);
+            beep(800, 10, soundLevel);
+          }
+        }
+        if (btnHeld(BTN_DOWN)) {
+          if (now - lastHoldTime >= HOLD_DELAY) {
+            lastHoldTime = now;
+            pomodoroBreakMinutes = max((uint32_t)1, pomodoroBreakMinutes - 1);
+            beep(800, 10, soundLevel);
+          }
+        }
+        if (!btnHeld(BTN_UP) && !btnHeld(BTN_DOWN)) lastHoldTime = 0;
+
+        if (btnPressed(BTN_ENTER)) {
+          // ── All setup done, start the run ──
+          pomodoroTotalSeconds = pomodoroTotalHours * 3600UL + pomodoroTotalMinutes * 60UL;
+          pomodoroTotalRemaining = pomodoroTotalSeconds;
+          pomodoroIntervalSeconds = pomodoroIntervalHours * 3600UL + pomodoroIntervalMinutes * 60UL;
+          pomodoroBreakSeconds = pomodoroBreakMinutes * 60UL;
+
           pomodoroIsWork = true;
+          pomodoroPhaseRemaining = min(pomodoroIntervalSeconds, pomodoroTotalRemaining);
           pomodoroRunning = true;
           pomodoroPaused = false;
           pomodoroStartTime = now;
+          pomodoroSessions = 0;
           pomodoroInputMode = false;
+
           beep(1000, 30, soundLevel);
           waitRelease();
+          delay(50);
+          continue; // skip this frame's setup redraw, go straight to running mode
         }
+
+        u8g2.clearBuffer();
+        u8g2.setFont(u8g2_font_ncenB08_tr);
+        u8g2.drawBox(0, 0, SCREEN_W, 11);
+        u8g2.setDrawColor(0);
+        centreStr("BREAK TIME", 9);
+        u8g2.setDrawColor(1);
+
+        u8g2.setFont(u8g2_font_6x10_tr);
+        centreStr("MINUTES", 26);
+
+        u8g2.setFont(u8g2_font_ncenB24_tr);
+        char minStr[3];
+        snprintf(minStr, sizeof(minStr), "%02d", pomodoroBreakMinutes);
+        int numX = 48, yPos = 59;
+        u8g2.drawStr(numX, yPos, minStr);
+
+        if ((now / 300) % 2 == 0) u8g2.drawFrame(numX - 6, 33, 46, 30);
+
+        u8g2.sendBuffer();
       }
-      
-      u8g2.clearBuffer();
-      u8g2.setFont(u8g2_font_ncenB10_tr);
-      centreStr("POMODORO", 12);
-      
-      u8g2.setFont(u8g2_font_6x10_tr);
-      char workStr[20];
-      snprintf(workStr, sizeof(workStr), "Work: %02d:%02d", pomodoroWorkTime / 60, pomodoroWorkTime % 60);
-      centreStr(workStr, 30);
-      
-      char breakStr[20];
-      snprintf(breakStr, sizeof(breakStr), "Break: %02d:%02d", pomodoroBreakTime / 60, pomodoroBreakTime % 60);
-      centreStr(breakStr, 42);
-      
-      int cursorX = (pomodoroInputPos == 0) ? 20 : 20;
-      int cursorY = (pomodoroInputPos == 0) ? 22 : 34;
-      if ((now / 300) % 2 == 0) {
-        u8g2.drawFrame(cursorX, cursorY, 88, 10);
-      }
-      
-      u8g2.setFont(u8g2_font_5x7_tr);
-      centreStr("L/R=Select  UP/DOWN=Set", 56);
-      centreStr("ENTER=Start  MENU=Back", 64);
-      u8g2.sendBuffer();
     }
     else {
+      // ══════════════════ RUNNING MODE ══════════════════
       if (pomodoroRunning && !pomodoroPaused) {
-        uint32_t elapsed = (now - pomodoroStartTime);
-        uint32_t elapsedSeconds = elapsed / 1000;
-        
-        if (elapsedSeconds >= pomodoroRemaining) {
+        uint32_t elapsed = (now - pomodoroStartTime) / 1000;
+        uint32_t phaseTotal = pomodoroIsWork
+                                 ? min(pomodoroIntervalSeconds, pomodoroTotalRemaining)
+                                 : pomodoroBreakSeconds;
+
+        if (elapsed >= phaseTotal) {
           pomodoroRunning = false;
-          beep(2000, 200, soundLevel);
-          delay(200);
-          beep(2000, 200, soundLevel);
-          
+
           if (pomodoroIsWork) {
+            // a study interval just finished -> consume it from the total
+            pomodoroTotalRemaining -= phaseTotal;
             pomodoroSessions++;
-            u8g2.clearBuffer();
-            u8g2.setFont(u8g2_font_ncenB18_tr);
-            centreStr("WORK DONE!", 28);
-            u8g2.setFont(u8g2_font_6x10_tr);
-            char sessStr[20];
-            snprintf(sessStr, sizeof(sessStr), "Sessions: %d", pomodoroSessions);
-            centreStr(sessStr, 44);
-            u8g2.setFont(u8g2_font_5x7_tr);
-            centreStr("Press ENTER for break", 56);
-            u8g2.sendBuffer();
-            
-            while (true) {
-              if (btnPressed(BTN_ENTER)) {
-                pomodoroRemaining = pomodoroBreakTime;
-                pomodoroIsWork = false;
-                pomodoroRunning = true;
-                pomodoroPaused = false;
-                pomodoroStartTime = now;
-                beep(1000, 50, soundLevel);
-                break;
+
+            if (pomodoroTotalRemaining == 0) {
+              // ── TOTAL STUDY TIME COVERED -> TIME UP screen ──
+              u8g2.clearBuffer();
+              u8g2.setFont(u8g2_font_ncenB18_tr);
+              centreStr("TIME UP!", 32);
+              u8g2.setFont(u8g2_font_6x10_tr);
+              centreStr("Press MENU to stop", 55);
+              u8g2.sendBuffer();
+
+              if (!musicPlaying) {
+                playHappyBirthdayMusic();
+                musicPlaying = true;
               }
-              if (btnPressed(BTN_MENU)) {
-                pomodoroRunning = false;
-                pomodoroInputMode = true;
-                playMenuButtonSound();
-                break;
+
+              bool timeUpActive = true;
+              while (timeUpActive) {
+                if (checkMenuAndReturn()) {
+                  stopMusicPlayer();
+                  musicPlaying = false;
+                  return;
+                }
+
+                u8g2.clearBuffer();
+                u8g2.setFont(u8g2_font_ncenB18_tr);
+                centreStr("TIME'S UP!", 32);
+                u8g2.setFont(u8g2_font_6x10_tr);
+                centreStr("Press MENU to stop", 55);
+                u8g2.sendBuffer();
+
+                if (btnPressed(BTN_MENU) || btnPressed(BTN_ENTER)) {
+                  stopMusicPlayer();
+                  musicPlaying = false;
+                  playMenuButtonSound();
+                  timeUpActive = false;
+                  pomodoroInputMode = true;
+                  pomodoroSetupStep = 0;
+                  pomodoroTotalHours = 0;
+                  pomodoroTotalMinutes = 25;
+                  pomodoroIntervalHours = 0;
+                  pomodoroIntervalMinutes = 25;
+                  waitRelease();
+                  break;
+                }
+
+                delay(50);
               }
-              delay(50);
+              continue;
             }
-          } else {
-            u8g2.clearBuffer();
-            u8g2.setFont(u8g2_font_ncenB18_tr);
-            centreStr("BREAK OVER!", 28);
-            u8g2.setFont(u8g2_font_6x10_tr);
-            centreStr("Ready to work again?", 44);
-            u8g2.setFont(u8g2_font_5x7_tr);
-            centreStr("Press ENTER to start", 56);
-            u8g2.sendBuffer();
-            
-            while (true) {
-              if (btnPressed(BTN_ENTER)) {
-                pomodoroRemaining = pomodoroWorkTime;
-                pomodoroIsWork = true;
-                pomodoroRunning = true;
-                pomodoroPaused = false;
-                pomodoroStartTime = now;
-                beep(1000, 50, soundLevel);
-                break;
-              }
-              if (btnPressed(BTN_MENU)) {
-                pomodoroRunning = false;
-                pomodoroInputMode = true;
-                playMenuButtonSound();
-                break;
-              }
-              delay(50);
+            else {
+              // ── STUDY INTERVAL DONE, TOTAL TIME STILL LEFT -> BREAK ──
+              // high-pitch 10 second buzzer to signal break start
+              beep(2800, 5000, soundLevel);
+
+              pomodoroIsWork = false;
+              pomodoroPhaseRemaining = pomodoroBreakSeconds;
+              pomodoroRunning = true;
+              pomodoroPaused = false;
+              pomodoroStartTime = now;
+              continue;
             }
           }
-          continue;
+          else {
+            // ── BREAK FINISHED -> BACK TO STUDY ──
+            pomodoroIsWork = true;
+            pomodoroPhaseRemaining = min(pomodoroIntervalSeconds, pomodoroTotalRemaining);
+            pomodoroRunning = true;
+            pomodoroPaused = false;
+            pomodoroStartTime = now;
+            beep(1000, 30, soundLevel);
+            continue;
+          }
         }
-        
-        pomodoroRemaining = (pomodoroIsWork ? pomodoroWorkTime : pomodoroBreakTime) - elapsedSeconds;
-        
+
+        pomodoroPhaseRemaining = phaseTotal - elapsed;
+
         if (now - lastBeepTime >= 1000) {
           lastBeepTime = now;
-          if (pomodoroRemaining <= 10) {
-            beep(1000, 30, soundLevel);
+          if (pomodoroIsWork) {
+            beep(800, 20, soundLevel);
           }
         }
       }
-      
+
       if (btnPressed(BTN_PAUSE) && pomodoroRunning) {
         pomodoroPaused = !pomodoroPaused;
         if (pomodoroPaused) {
           playPauseSound();
+          uint32_t elapsed = (now - pomodoroStartTime) / 1000;
+          uint32_t phaseTotal = pomodoroIsWork
+                                   ? min(pomodoroIntervalSeconds, pomodoroTotalRemaining)
+                                   : pomodoroBreakSeconds;
+          pomodoroPhaseRemaining = phaseTotal - elapsed;
         } else {
           playResumeSound();
-          pomodoroStartTime = now - (pomodoroRemaining) * 1000;
+          uint32_t phaseTotal = pomodoroIsWork
+                                   ? min(pomodoroIntervalSeconds, pomodoroTotalRemaining)
+                                   : pomodoroBreakSeconds;
+          pomodoroStartTime = now - (phaseTotal - pomodoroPhaseRemaining) * 1000;
         }
         waitRelease();
       }
-      
+
+      // ── DRAW RUNNING ──
       u8g2.clearBuffer();
-      
-      u8g2.setFont(u8g2_font_6x10_tr);
-      if (pomodoroIsWork) {
-        centreStr("WORKING...", 10);
-      } else {
-        centreStr("BREAK TIME!", 10);
-      }
-      
-      uint32_t minutes = pomodoroRemaining / 60;
-      uint32_t seconds = pomodoroRemaining % 60;
-      
-      char timeStr[20];
-      snprintf(timeStr, sizeof(timeStr), "%02d:%02d", minutes, seconds);
+
+      u8g2.setFont(u8g2_font_ncenB08_tr);
+      u8g2.drawBox(0, 0, SCREEN_W, 11);
+      u8g2.setDrawColor(0);
+      centreStr(pomodoroIsWork ? "STUDY TIME" : "BREAK TIME", 9);
+      u8g2.setDrawColor(1);
+
+      uint32_t hours = pomodoroPhaseRemaining / 3600;
+      uint32_t minutes = (pomodoroPhaseRemaining % 3600) / 60;
+      uint32_t seconds = pomodoroPhaseRemaining % 60;
+
+      char remStr[20];
+      snprintf(remStr, sizeof(remStr), "%02d:%02d:%02d", hours, minutes, seconds);
+
       u8g2.setFont(u8g2_font_ncenB24_tr);
-      centreStr(timeStr, 40);
-      
-      u8g2.setFont(u8g2_font_5x7_tr);
+      centreStr(remStr, 45);
+
+      u8g2.setFont(u8g2_font_6x10_tr);
       char sessStr[20];
       snprintf(sessStr, sizeof(sessStr), "Sessions: %d", pomodoroSessions);
-      centreStr(sessStr, 52);
-      
+      centreStr(sessStr, 62);
+
       if (pomodoroPaused) {
-        centreStr("** PAUSED **", 62);
+        u8g2.setFont(u8g2_font_6x10_tr);
+        centreStr("PAUSED", 61);
       }
-      
+
       u8g2.sendBuffer();
     }
     delay(50);
   }
 }
+ 
 
 // ============================================================
 // DEVICE INFO
@@ -2182,6 +2377,37 @@ void loadHighScores() {
   loadFavorites();
   loadBrightness();
   loadSoundSetting();
+  loadInvertSetting();  // ✅ এই লাইনটি যোগ করুন
+}
+
+void loadInvertSetting() {
+  EEPROM.begin(EEPROM_SIZE);
+  uint8_t val;
+  EEPROM.get(470, val);
+  if (val > 1) val = 0;
+  invertDisplay = (val == 1);
+  EEPROM.end();
+  
+  // Apply inversion
+  if (invertDisplay) {
+    u8g2.setDrawColor(0);  // Inverted mode
+  } else {
+    u8g2.setDrawColor(1);  // Normal mode
+  }
+}
+
+void saveInvertSetting() {
+  EEPROM.begin(EEPROM_SIZE);
+  EEPROM.put(470, (uint8_t)(invertDisplay ? 1 : 0));
+  EEPROM.commit();
+  EEPROM.end();
+  
+  // Apply inversion immediately
+  if (invertDisplay) {
+    u8g2.setDrawColor(0);
+  } else {
+    u8g2.setDrawColor(1);
+  }
 }
 
 void saveTotalGames(int gameIndex) {
@@ -3279,7 +3505,7 @@ void showMusicMenu() {
 // ============================================================
 
 void showSettingsMenu() {
-  const char* options[] = {"1. Brightness", "2. Sound", "3. Reset Device"};
+  const char* options[] = {"1. Brightness", "2. Sound", "3. Invert Display", "4. Reset Device"};
   int sel = 0;
   
   while (true) {
@@ -3289,29 +3515,33 @@ void showSettingsMenu() {
     }
     
     u8g2.clearBuffer();
+    
+    // 🔥 ইনভার্ট সাপোর্ট সহ হেডার
+    u8g2.setDrawColor(invertDisplay ? 0 : 1);
     u8g2.setFont(u8g2_font_ncenB08_tr);
     centreStr("SETTINGS", 10);
     
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 4; i++) {
       int y = 25 + i * 13;
       if (i == sel) {
         u8g2.drawRBox(10, y - 8, SCREEN_W - 20, 12, 2);
-        u8g2.setDrawColor(0);
+        u8g2.setDrawColor(invertDisplay ? 1 : 0);  // ইনভার্টেড কালার
         centreStr(options[i], y + 3);
-        u8g2.setDrawColor(1);
+        u8g2.setDrawColor(invertDisplay ? 0 : 1);
       } else {
         centreStr(options[i], y + 3);
       }
     }
     u8g2.sendBuffer();
     
-    if (btnPressed(BTN_UP)) { sel = (sel + 2) % 3; beep(800, 20, soundLevel); }
-    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 3; beep(800, 20, soundLevel); }
+    if (btnPressed(BTN_UP)) { sel = (sel + 3) % 4; beep(800, 20, soundLevel); }
+    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 4; beep(800, 20, soundLevel); }
     else if (btnPressed(BTN_ENTER)) { 
       beep(1000, 30, soundLevel); 
       waitRelease();
       
       if (sel == 0) {
+        // Brightness settings (আগের মতো)
         bool adjusting = true;
         while (adjusting) {
           if (btnLongPressed(BTN_MENU, 200)) {
@@ -3321,6 +3551,7 @@ void showSettingsMenu() {
           }
           
           u8g2.clearBuffer();
+          u8g2.setDrawColor(invertDisplay ? 0 : 1);
           u8g2.setFont(u8g2_font_ncenB08_tr);
           centreStr("BRIGHTNESS", 10);
           
@@ -3337,10 +3568,13 @@ void showSettingsMenu() {
           for (int i = 0; i < 7; i++) {
             int x = 12 + i * 15;
             int h = (i < brightnessLevel) ? 14 : 4;
+            u8g2.setDrawColor(invertDisplay ? 0 : 1);
             u8g2.drawBox(x, 42 - h/2, 11, h);
+            u8g2.setDrawColor(invertDisplay ? 0 : 1);
             u8g2.drawFrame(x, 42 - 7, 11, 14);
           }
           
+          u8g2.setDrawColor(invertDisplay ? 0 : 1);
           u8g2.setFont(u8g2_font_5x7_tr);
           centreStr("LEFT=LESS    RIGHT=MORE", 63);
           u8g2.sendBuffer();
@@ -3371,6 +3605,7 @@ void showSettingsMenu() {
         }
       }
       else if (sel == 1) {
+        // Sound settings (আগের মতো)
         bool adjusting = true;
         while (adjusting) {
           if (btnLongPressed(BTN_MENU, 200)) {
@@ -3380,6 +3615,7 @@ void showSettingsMenu() {
           }
           
           u8g2.clearBuffer();
+          u8g2.setDrawColor(invertDisplay ? 0 : 1);
           u8g2.setFont(u8g2_font_ncenB08_tr);
           centreStr("SOUND", 10);
           
@@ -3394,10 +3630,13 @@ void showSettingsMenu() {
           for (int i = 0; i < 3; i++) {
             int x = 35 + i * 22;
             int h = (i < soundLevel) ? 12 : 3;
+            u8g2.setDrawColor(invertDisplay ? 0 : 1);
             u8g2.drawBox(x, 42 - h/2, 14, h);
+            u8g2.setDrawColor(invertDisplay ? 0 : 1);
             u8g2.drawFrame(x, 42 - 6, 14, 12);
           }
           
+          u8g2.setDrawColor(invertDisplay ? 0 : 1);
           u8g2.setFont(u8g2_font_5x7_tr);
           centreStr("LEFT=LOW     RIGHT=HIGH", 63);
           u8g2.sendBuffer();
@@ -3431,6 +3670,33 @@ void showSettingsMenu() {
         }
       }
       else if (sel == 2) {
+        // 🔥🔥🔥 INVERT DISPLAY TOGGLE 🔥🔥🔥
+        invertDisplay = !invertDisplay;
+        saveInvertSetting();
+        
+        // Show feedback
+        u8g2.clearBuffer();
+        u8g2.setDrawColor(invertDisplay ? 0 : 1);
+        u8g2.setFont(u8g2_font_ncenB10_tr);
+        if (invertDisplay) {
+          centreStr("INVERT", 28);
+          centreStr("ENABLED", 42);
+          beep(1200, 40, soundLevel);
+          delay(80);
+          beep(1500, 40, soundLevel);
+        } else {
+          centreStr("INVERT", 28);
+          centreStr("DISABLED", 42);
+          beep(600, 40, soundLevel);
+          delay(80);
+          beep(500, 40, soundLevel);
+        }
+        u8g2.sendBuffer();
+        delay(800);
+        waitRelease();
+      }
+      else if (sel == 3) {
+        // Reset Device
         bool confirmReset = true;
         int confirmSel = 0;
         const char* confirmOptions[] = {"YES", "NO"};
@@ -3443,6 +3709,7 @@ void showSettingsMenu() {
           }
           
           u8g2.clearBuffer();
+          u8g2.setDrawColor(invertDisplay ? 0 : 1);
           u8g2.setFont(u8g2_font_ncenB10_tr);
           centreStr("RESET", 18);
           u8g2.setFont(u8g2_font_6x10_tr);
@@ -3462,9 +3729,9 @@ void showSettingsMenu() {
             
             if (i == confirmSel) {
               u8g2.drawRBox(x, y - boxH + 2, boxW, boxH, 2);
-              u8g2.setDrawColor(0);
+              u8g2.setDrawColor(invertDisplay ? 1 : 0);
               centreStrBox(confirmOptions[i], x, boxW, y -2);
-              u8g2.setDrawColor(1);
+              u8g2.setDrawColor(invertDisplay ? 0 : 1);
             } else {
               u8g2.drawFrame(x, y - boxH + 2, boxW, boxH);
               centreStrBox(confirmOptions[i], x, boxW, y -2);
@@ -10224,7 +10491,10 @@ void setup() {
   uint8_t contrast = map(brightnessLevel, 1, 7, 30, 255);
   u8g2.setContrast(contrast);
   u8g2.setFont(u8g2_font_6x10_tr);
-  u8g2.setDrawColor(1);
+  
+  // ✅ ইনভার্ট সেটিং লোড হয়েছে (loadHighScores() এ)
+  // এখন শুধু ড্রইং কালার সেট করুন
+  u8g2.setDrawColor(invertDisplay ? 0 : 1);
   u8g2.setBitmapMode(0);
   showSplash();
 }
