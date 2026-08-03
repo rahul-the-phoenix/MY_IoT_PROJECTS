@@ -5212,6 +5212,9 @@ void playGameMenuTransition() {
 // ============================================================
 // SELECT GAME — CLEAN 4-PER-SCREEN LIST VIEW (no clutter)
 // ============================================================
+// ============================================================
+// SELECT GAME — CLEAN 3-PER-SCREEN, BIG FONT, UNIQUE STYLE
+// ============================================================
 int menuSelect() {
   const char *names[GAME_COUNT] = {
     "Asteroids", "Breakout", "Dino Run", "Flappy Bird",
@@ -5227,60 +5230,68 @@ int menuSelect() {
   int sel = lastGameIndex;
   if (sel >= GAME_COUNT) sel = 0;
 
-  const int VISIBLE = 4;
-  const int ITEM_H = 13;          // 4 * 13 = 52, fits under 11px header in 64px screen
+  const int VISIBLE = 3;
+  const int ITEM_H = 17;          // 3 * 17 = 51, fits nicely under an 11px header
   const int LIST_TOP = 12;
-  int top = (sel / VISIBLE) * VISIBLE;  // snap to page containing sel
+  int top = (sel / VISIBLE) * VISIBLE;
 
   static uint32_t upHoldTime = 0;
   static uint32_t downHoldTime = 0;
-  const uint32_t HOLD_DELAY = 140;
+  const uint32_t HOLD_DELAY = 150;
 
-  // ── small unique icon per game (drawn ~9px, centered at cx,cy) ──
+  // ── unique icon per game, drawn ~11px, centered at cx,cy ──
   auto drawGameIcon = [&](int idx, int cx, int cy) {
     switch (idx % 8) {
       case 0: // rocket/ship
-        u8g2.drawTriangle(cx, cy - 4, cx - 3, cy + 3, cx + 3, cy + 3);
+        u8g2.drawTriangle(cx, cy - 5, cx - 4, cy + 4, cx + 4, cy + 4);
+        u8g2.drawLine(cx - 2, cy + 4, cx - 3, cy + 6);
+        u8g2.drawLine(cx + 2, cy + 4, cx + 3, cy + 6);
         break;
-      case 1: // block/brick
-        u8g2.drawFrame(cx - 4, cy - 3, 4, 3);
-        u8g2.drawFrame(cx, cy - 3, 4, 3);
-        u8g2.drawFrame(cx - 2, cy + 1, 4, 3);
+      case 1: // brick wall
+        u8g2.drawFrame(cx - 5, cy - 4, 5, 4);
+        u8g2.drawFrame(cx, cy - 4, 5, 4);
+        u8g2.drawFrame(cx - 3, cy, 5, 4);
+        u8g2.drawFrame(cx + 2, cy, 3, 4);
         break;
-      case 2: // paw
-        u8g2.drawDisc(cx, cy + 1, 2);
-        u8g2.drawDisc(cx - 3, cy - 2, 1);
-        u8g2.drawDisc(cx + 3, cy - 2, 1);
+      case 2: // paw print
+        u8g2.drawDisc(cx, cy + 2, 3);
+        u8g2.drawDisc(cx - 4, cy - 2, 1);
+        u8g2.drawDisc(cx, cy - 4, 1);
+        u8g2.drawDisc(cx + 4, cy - 2, 1);
         break;
       case 3: // wing/bird
-        u8g2.drawLine(cx - 4, cy, cx, cy - 3);
-        u8g2.drawLine(cx, cy - 3, cx + 4, cy);
-        u8g2.drawLine(cx - 4, cy, cx, cy + 2);
-        u8g2.drawLine(cx, cy + 2, cx + 4, cy);
+        u8g2.drawLine(cx - 5, cy, cx, cy - 4);
+        u8g2.drawLine(cx, cy - 4, cx + 5, cy);
+        u8g2.drawLine(cx - 5, cy, cx, cy + 3);
+        u8g2.drawLine(cx, cy + 3, cx + 5, cy);
         break;
-      case 4: // grid/maze
-        u8g2.drawFrame(cx - 4, cy - 4, 8, 8);
-        u8g2.drawLine(cx, cy - 4, cx, cy + 4);
-        u8g2.drawLine(cx - 4, cy, cx + 4, cy);
+      case 4: // maze grid
+        u8g2.drawFrame(cx - 5, cy - 5, 10, 10);
+        u8g2.drawLine(cx, cy - 5, cx, cy + 5);
+        u8g2.drawLine(cx - 5, cy, cx + 5, cy);
         break;
       case 5: // controller
-        u8g2.drawRFrame(cx - 5, cy - 3, 10, 6, 2);
+        u8g2.drawRFrame(cx - 6, cy - 3, 12, 7, 2);
         u8g2.drawPixel(cx - 3, cy);
         u8g2.drawPixel(cx + 3, cy);
+        u8g2.drawPixel(cx - 3, cy - 1);
+        u8g2.drawPixel(cx - 3, cy + 1);
         break;
-      case 6: // star
+      case 6: // star burst
         for (int a = 0; a < 360; a += 72) {
           float rad = a * 3.14159f / 180.0f;
-          int x1 = cx + (int)(cosf(rad) * 4);
-          int y1 = cy + (int)(sinf(rad) * 4);
+          int x1 = cx + (int)(cosf(rad) * 5);
+          int y1 = cy + (int)(sinf(rad) * 5);
           u8g2.drawLine(cx, cy, x1, y1);
         }
         break;
       default: // dice
-        u8g2.drawFrame(cx - 4, cy - 4, 8, 8);
+        u8g2.drawFrame(cx - 5, cy - 5, 10, 10);
         u8g2.drawPixel(cx - 2, cy - 2);
         u8g2.drawPixel(cx + 2, cy + 2);
         u8g2.drawPixel(cx, cy);
+        u8g2.drawPixel(cx - 2, cy + 2);
+        u8g2.drawPixel(cx + 2, cy - 2);
         break;
     }
   };
@@ -5291,7 +5302,6 @@ int menuSelect() {
       return -1;
     }
 
-    // keep sel's page fully in view (page-snap, no partial scroll)
     top = (sel / VISIBLE) * VISIBLE;
 
     u8g2.clearBuffer();
@@ -5305,8 +5315,8 @@ int menuSelect() {
     centreStr(hdr, 7);
     u8g2.setDrawColor(1);
 
-    // ── Exactly 4 rows, nothing below them ──
-    u8g2.setFont(u8g2_font_6x10_tr);
+    // ── Exactly 3 rows, big font, nothing else on screen ──
+    u8g2.setFont(u8g2_font_7x14B_tr);   // big bold font
     for (int i = 0; i < VISIBLE; i++) {
       int idx = top + i;
       if (idx >= GAME_COUNT) break;
@@ -5320,14 +5330,17 @@ int menuSelect() {
         u8g2.drawRFrame(1, y, SCREEN_W - 2, ITEM_H - 2, 3);
       }
 
-      int iconCX = 11, iconCY = y + (ITEM_H - 2) / 2;
-      u8g2.drawCircle(iconCX, iconCY, 5);
+      // icon inside a circle, left side
+      int iconCX = 14, iconCY = y + (ITEM_H - 2) / 2;
+      u8g2.drawCircle(iconCX, iconCY, 7);
       drawGameIcon(idx, iconCX, iconCY);
 
-      u8g2.drawStr(23, y + ITEM_H - 5, names[idx]);
+      // game name, big font
+      u8g2.drawStr(28, y + ITEM_H - 5, names[idx]);
 
+      // favorite heart, right side, vertically centered
       if (isFavorite(idx)) {
-        drawHeart(SCREEN_W - 12, y + 2);
+        drawHeart(SCREEN_W - 14, iconCY - 4);
       }
 
       if (selected) u8g2.setDrawColor(1);
