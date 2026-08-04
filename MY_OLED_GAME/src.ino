@@ -58,6 +58,359 @@ static const unsigned char PROGMEM heart_bmp[] = {
   0b00011000
 };
 
+// ============================================================
+// QUIZ DATA
+// ============================================================
+
+struct QuizQ {
+  const char* q;
+  const char* opt[4];
+  uint8_t correct;   // index 0-3 in opt[] that is correct
+};
+
+#define QUIZ_ROUND_LEN 15   // প্রতি রাউন্ডে কতগুলো প্রশ্ন খেলা হবে (pool ছোট হলে min নেবে)
+
+// ---------------- PYTHON ----------------
+const char py_q1[] PROGMEM = "Which keyword defines a function in Python?";
+const char py_q1o0[] PROGMEM = "func"; const char py_q1o1[] PROGMEM = "def";
+const char py_q1o2[] PROGMEM = "function"; const char py_q1o3[] PROGMEM = "define";
+
+const char py_q2[] PROGMEM = "Which symbol starts a comment in Python?";
+const char py_q2o0[] PROGMEM = "//"; const char py_q2o1[] PROGMEM = "/*";
+const char py_q2o2[] PROGMEM = "#"; const char py_q2o3[] PROGMEM = "--";
+
+const char py_q3[] PROGMEM = "What is the output of print(2**3)?";
+const char py_q3o0[] PROGMEM = "6"; const char py_q3o1[] PROGMEM = "8";
+const char py_q3o2[] PROGMEM = "9"; const char py_q3o3[] PROGMEM = "23";
+
+const char py_q4[] PROGMEM = "Which of these is NOT a Python data type?";
+const char py_q4o0[] PROGMEM = "list"; const char py_q4o1[] PROGMEM = "tuple";
+const char py_q4o2[] PROGMEM = "arraylist"; const char py_q4o3[] PROGMEM = "dict";
+
+const char py_q5[] PROGMEM = "What does len() do?";
+const char py_q5o0[] PROGMEM = "Returns length"; const char py_q5o1[] PROGMEM = "Deletes item";
+const char py_q5o2[] PROGMEM = "Loops list"; const char py_q5o3[] PROGMEM = "Sorts list";
+
+const char py_q6[] PROGMEM = "Which keyword loops over a sequence?";
+const char py_q6o0[] PROGMEM = "while"; const char py_q6o1[] PROGMEM = "loop";
+const char py_q6o2[] PROGMEM = "for"; const char py_q6o3[] PROGMEM = "repeat";
+
+const char py_q7[] PROGMEM = "File extension for Python scripts?";
+const char py_q7o0[] PROGMEM = ".py"; const char py_q7o1[] PROGMEM = ".pt";
+const char py_q7o2[] PROGMEM = ".pyt"; const char py_q7o3[] PROGMEM = ".pyc";
+
+const char py_q8[] PROGMEM = "Which library is popular for data analysis?";
+const char py_q8o0[] PROGMEM = "pandas"; const char py_q8o1[] PROGMEM = "requests";
+const char py_q8o2[] PROGMEM = "flask"; const char py_q8o3[] PROGMEM = "pygame";
+
+const char py_q9[] PROGMEM = "PIP is used to?";
+const char py_q9o0[] PROGMEM = "Run scripts"; const char py_q9o1[] PROGMEM = "Install packages";
+const char py_q9o2[] PROGMEM = "Compile code"; const char py_q9o3[] PROGMEM = "Debug code";
+
+const char py_q10[] PROGMEM = "Which creates an empty list?";
+const char py_q10o0[] PROGMEM = "{}"; const char py_q10o1[] PROGMEM = "()";
+const char py_q10o2[] PROGMEM = "[]"; const char py_q10o3[] PROGMEM = "<>";
+
+const QuizQ CAT_PYTHON[] PROGMEM = {
+  {py_q1,{py_q1o0,py_q1o1,py_q1o2,py_q1o3},1},
+  {py_q2,{py_q2o0,py_q2o1,py_q2o2,py_q2o3},2},
+  {py_q3,{py_q3o0,py_q3o1,py_q3o2,py_q3o3},1},
+  {py_q4,{py_q4o0,py_q4o1,py_q4o2,py_q4o3},2},
+  {py_q5,{py_q5o0,py_q5o1,py_q5o2,py_q5o3},0},
+  {py_q6,{py_q6o0,py_q6o1,py_q6o2,py_q6o3},2},
+  {py_q7,{py_q7o0,py_q7o1,py_q7o2,py_q7o3},0},
+  {py_q8,{py_q8o0,py_q8o1,py_q8o2,py_q8o3},0},
+  {py_q9,{py_q9o0,py_q9o1,py_q9o2,py_q9o3},1},
+  {py_q10,{py_q10o0,py_q10o1,py_q10o2,py_q10o3},2},
+};
+
+// ---------------- SCIENCE ----------------
+const char sc_q1[] PROGMEM = "Chemical symbol for Gold?";
+const char sc_q1o0[] PROGMEM = "Ag"; const char sc_q1o1[] PROGMEM = "Au";
+const char sc_q1o2[] PROGMEM = "Gd"; const char sc_q1o3[] PROGMEM = "Go";
+
+const char sc_q2[] PROGMEM = "Planet closest to the Sun?";
+const char sc_q2o0[] PROGMEM = "Venus"; const char sc_q2o1[] PROGMEM = "Earth";
+const char sc_q2o2[] PROGMEM = "Mercury"; const char sc_q2o3[] PROGMEM = "Mars";
+
+const char sc_q3[] PROGMEM = "Powerhouse of the cell?";
+const char sc_q3o0[] PROGMEM = "Nucleus"; const char sc_q3o1[] PROGMEM = "Mitochondria";
+const char sc_q3o2[] PROGMEM = "Ribosome"; const char sc_q3o3[] PROGMEM = "Cytoplasm";
+
+const char sc_q4[] PROGMEM = "H2O is commonly known as?";
+const char sc_q4o0[] PROGMEM = "Salt"; const char sc_q4o1[] PROGMEM = "Water";
+const char sc_q4o2[] PROGMEM = "Oxygen"; const char sc_q4o3[] PROGMEM = "Acid";
+
+const char sc_q5[] PROGMEM = "Gas plants absorb for photosynthesis?";
+const char sc_q5o0[] PROGMEM = "Oxygen"; const char sc_q5o1[] PROGMEM = "Nitrogen";
+const char sc_q5o2[] PROGMEM = "CO2"; const char sc_q5o3[] PROGMEM = "Hydrogen";
+
+const char sc_q6[] PROGMEM = "Number of bones in adult human body?";
+const char sc_q6o0[] PROGMEM = "186"; const char sc_q6o1[] PROGMEM = "206";
+const char sc_q6o2[] PROGMEM = "226"; const char sc_q6o3[] PROGMEM = "256";
+
+const char sc_q7[] PROGMEM = "Unit of electric current?";
+const char sc_q7o0[] PROGMEM = "Volt"; const char sc_q7o1[] PROGMEM = "Watt";
+const char sc_q7o2[] PROGMEM = "Ohm"; const char sc_q7o3[] PROGMEM = "Ampere";
+
+const char sc_q8[] PROGMEM = "Which planet is called the Red Planet?";
+const char sc_q8o0[] PROGMEM = "Jupiter"; const char sc_q8o1[] PROGMEM = "Mars";
+const char sc_q8o2[] PROGMEM = "Saturn"; const char sc_q8o3[] PROGMEM = "Venus";
+
+const char sc_q9[] PROGMEM = "Force that pulls objects toward Earth?";
+const char sc_q9o0[] PROGMEM = "Magnetism"; const char sc_q9o1[] PROGMEM = "Friction";
+const char sc_q9o2[] PROGMEM = "Gravity"; const char sc_q9o3[] PROGMEM = "Tension";
+
+const char sc_q10[] PROGMEM = "Approx speed of light?";
+const char sc_q10o0[] PROGMEM = "300,000 km/s"; const char sc_q10o1[] PROGMEM = "150,000 km/s";
+const char sc_q10o2[] PROGMEM = "3,000 km/s"; const char sc_q10o3[] PROGMEM = "1,000,000 km/s";
+
+const QuizQ CAT_SCIENCE[] PROGMEM = {
+  {sc_q1,{sc_q1o0,sc_q1o1,sc_q1o2,sc_q1o3},1},
+  {sc_q2,{sc_q2o0,sc_q2o1,sc_q2o2,sc_q2o3},2},
+  {sc_q3,{sc_q3o0,sc_q3o1,sc_q3o2,sc_q3o3},1},
+  {sc_q4,{sc_q4o0,sc_q4o1,sc_q4o2,sc_q4o3},1},
+  {sc_q5,{sc_q5o0,sc_q5o1,sc_q5o2,sc_q5o3},2},
+  {sc_q6,{sc_q6o0,sc_q6o1,sc_q6o2,sc_q6o3},1},
+  {sc_q7,{sc_q7o0,sc_q7o1,sc_q7o2,sc_q7o3},3},
+  {sc_q8,{sc_q8o0,sc_q8o1,sc_q8o2,sc_q8o3},1},
+  {sc_q9,{sc_q9o0,sc_q9o1,sc_q9o2,sc_q9o3},2},
+  {sc_q10,{sc_q10o0,sc_q10o1,sc_q10o2,sc_q10o3},0},
+};
+
+// ---------------- INDIA ----------------
+const char in_q1[] PROGMEM = "Capital of India?";
+const char in_q1o0[] PROGMEM = "Mumbai"; const char in_q1o1[] PROGMEM = "New Delhi";
+const char in_q1o2[] PROGMEM = "Kolkata"; const char in_q1o3[] PROGMEM = "Chennai";
+
+const char in_q2[] PROGMEM = "National animal of India?";
+const char in_q2o0[] PROGMEM = "Lion"; const char in_q2o1[] PROGMEM = "Elephant";
+const char in_q2o2[] PROGMEM = "Tiger"; const char in_q2o3[] PROGMEM = "Leopard";
+
+const char in_q3[] PROGMEM = "Longest river in India?";
+const char in_q3o0[] PROGMEM = "Yamuna"; const char in_q3o1[] PROGMEM = "Ganga";
+const char in_q3o2[] PROGMEM = "Godavari"; const char in_q3o3[] PROGMEM = "Brahmaputra";
+
+const char in_q4[] PROGMEM = "Who is known as Father of the Nation?";
+const char in_q4o0[] PROGMEM = "Nehru"; const char in_q4o1[] PROGMEM = "Bose";
+const char in_q4o2[] PROGMEM = "Mahatma Gandhi"; const char in_q4o3[] PROGMEM = "Patel";
+
+const char in_q5[] PROGMEM = "National bird of India?";
+const char in_q5o0[] PROGMEM = "Peacock"; const char in_q5o1[] PROGMEM = "Parrot";
+const char in_q5o2[] PROGMEM = "Crane"; const char in_q5o3[] PROGMEM = "Eagle";
+
+const char in_q6[] PROGMEM = "In which year did India get independence?";
+const char in_q6o0[] PROGMEM = "1942"; const char in_q6o1[] PROGMEM = "1947";
+const char in_q6o2[] PROGMEM = "1950"; const char in_q6o3[] PROGMEM = "1930";
+
+const char in_q7[] PROGMEM = "Highest mountain peak in India?";
+const char in_q7o0[] PROGMEM = "Nanda Devi"; const char in_q7o1[] PROGMEM = "K2";
+const char in_q7o2[] PROGMEM = "Kanchenjunga"; const char in_q7o3[] PROGMEM = "Everest";
+
+const char in_q8[] PROGMEM = "Official currency of India?";
+const char in_q8o0[] PROGMEM = "Rupee"; const char in_q8o1[] PROGMEM = "Taka";
+const char in_q8o2[] PROGMEM = "Dollar"; const char in_q8o3[] PROGMEM = "Dinar";
+
+const char in_q9[] PROGMEM = "Total number of states in India?";
+const char in_q9o0[] PROGMEM = "26"; const char in_q9o1[] PROGMEM = "28";
+const char in_q9o2[] PROGMEM = "30"; const char in_q9o3[] PROGMEM = "24";
+
+const char in_q10[] PROGMEM = "Which river is called 'Sorrow of Bihar'?";
+const char in_q10o0[] PROGMEM = "Kosi"; const char in_q10o1[] PROGMEM = "Son";
+const char in_q10o2[] PROGMEM = "Gandak"; const char in_q10o3[] PROGMEM = "Ganga";
+
+const QuizQ CAT_INDIA[] PROGMEM = {
+  {in_q1,{in_q1o0,in_q1o1,in_q1o2,in_q1o3},1},
+  {in_q2,{in_q2o0,in_q2o1,in_q2o2,in_q2o3},2},
+  {in_q3,{in_q3o0,in_q3o1,in_q3o2,in_q3o3},1},
+  {in_q4,{in_q4o0,in_q4o1,in_q4o2,in_q4o3},2},
+  {in_q5,{in_q5o0,in_q5o1,in_q5o2,in_q5o3},0},
+  {in_q6,{in_q6o0,in_q6o1,in_q6o2,in_q6o3},1},
+  {in_q7,{in_q7o0,in_q7o1,in_q7o2,in_q7o3},2},
+  {in_q8,{in_q8o0,in_q8o1,in_q8o2,in_q8o3},0},
+  {in_q9,{in_q9o0,in_q9o1,in_q9o2,in_q9o3},1},
+  {in_q10,{in_q10o0,in_q10o1,in_q10o2,in_q10o3},0},
+};
+
+// ---------------- DISCOVERY ----------------
+const char dc_q1[] PROGMEM = "Who is credited for discovering gravity's laws?";
+const char dc_q1o0[] PROGMEM = "Galileo"; const char dc_q1o1[] PROGMEM = "Isaac Newton";
+const char dc_q1o2[] PROGMEM = "Einstein"; const char dc_q1o3[] PROGMEM = "Tesla";
+
+const char dc_q2[] PROGMEM = "Who invented the telephone?";
+const char dc_q2o0[] PROGMEM = "Edison"; const char dc_q2o1[] PROGMEM = "Alexander Graham Bell";
+const char dc_q2o2[] PROGMEM = "Marconi"; const char dc_q2o3[] PROGMEM = "Tesla";
+
+const char dc_q3[] PROGMEM = "Who discovered Penicillin?";
+const char dc_q3o0[] PROGMEM = "Louis Pasteur"; const char dc_q3o1[] PROGMEM = "Alexander Fleming";
+const char dc_q3o2[] PROGMEM = "Edward Jenner"; const char dc_q3o3[] PROGMEM = "Robert Koch";
+
+const char dc_q4[] PROGMEM = "Who developed the Theory of Relativity?";
+const char dc_q4o0[] PROGMEM = "Newton"; const char dc_q4o1[] PROGMEM = "Bohr";
+const char dc_q4o2[] PROGMEM = "Albert Einstein"; const char dc_q4o3[] PROGMEM = "Hawking";
+
+const char dc_q5[] PROGMEM = "Who is famous for the kite-and-key electricity experiment?";
+const char dc_q5o0[] PROGMEM = "Benjamin Franklin"; const char dc_q5o1[] PROGMEM = "Volta";
+const char dc_q5o2[] PROGMEM = "Faraday"; const char dc_q5o3[] PROGMEM = "Ampere";
+
+const char dc_q6[] PROGMEM = "Who is commonly credited with the light bulb?";
+const char dc_q6o0[] PROGMEM = "Thomas Edison"; const char dc_q6o1[] PROGMEM = "Tesla";
+const char dc_q6o2[] PROGMEM = "Faraday"; const char dc_q6o3[] PROGMEM = "Watt";
+
+const char dc_q7[] PROGMEM = "Who is credited with reaching America in 1492?";
+const char dc_q7o0[] PROGMEM = "Vasco da Gama"; const char dc_q7o1[] PROGMEM = "Christopher Columbus";
+const char dc_q7o2[] PROGMEM = "Magellan"; const char dc_q7o3[] PROGMEM = "Cook";
+
+const char dc_q8[] PROGMEM = "Who discovered X-rays?";
+const char dc_q8o0[] PROGMEM = "Wilhelm Roentgen"; const char dc_q8o1[] PROGMEM = "Curie";
+const char dc_q8o2[] PROGMEM = "Rutherford"; const char dc_q8o3[] PROGMEM = "Bohr";
+
+const char dc_q9[] PROGMEM = "Who invented the World Wide Web?";
+const char dc_q9o0[] PROGMEM = "Steve Jobs"; const char dc_q9o1[] PROGMEM = "Bill Gates";
+const char dc_q9o2[] PROGMEM = "Tim Berners-Lee"; const char dc_q9o3[] PROGMEM = "Musk";
+
+const char dc_q10[] PROGMEM = "Who is known for pioneering research on radioactivity?";
+const char dc_q10o0[] PROGMEM = "Marie Curie"; const char dc_q10o1[] PROGMEM = "Lise Meitner";
+const char dc_q10o2[] PROGMEM = "Ada Lovelace"; const char dc_q10o3[] PROGMEM = "Rosalind Franklin";
+
+const QuizQ CAT_DISCOVERY[] PROGMEM = {
+  {dc_q1,{dc_q1o0,dc_q1o1,dc_q1o2,dc_q1o3},1},
+  {dc_q2,{dc_q2o0,dc_q2o1,dc_q2o2,dc_q2o3},1},
+  {dc_q3,{dc_q3o0,dc_q3o1,dc_q3o2,dc_q3o3},1},
+  {dc_q4,{dc_q4o0,dc_q4o1,dc_q4o2,dc_q4o3},2},
+  {dc_q5,{dc_q5o0,dc_q5o1,dc_q5o2,dc_q5o3},0},
+  {dc_q6,{dc_q6o0,dc_q6o1,dc_q6o2,dc_q6o3},0},
+  {dc_q7,{dc_q7o0,dc_q7o1,dc_q7o2,dc_q7o3},1},
+  {dc_q8,{dc_q8o0,dc_q8o1,dc_q8o2,dc_q8o3},0},
+  {dc_q9,{dc_q9o0,dc_q9o1,dc_q9o2,dc_q9o3},2},
+  {dc_q10,{dc_q10o0,dc_q10o1,dc_q10o2,dc_q10o3},0},
+};
+
+// ---------------- POLITICS ----------------
+const char pl_q1[] PROGMEM = "A country governed by elected representatives is called?";
+const char pl_q1o0[] PROGMEM = "Monarchy"; const char pl_q1o1[] PROGMEM = "Democracy";
+const char pl_q1o2[] PROGMEM = "Dictatorship"; const char pl_q1o3[] PROGMEM = "Theocracy";
+
+const char pl_q2[] PROGMEM = "The head of the UN is called?";
+const char pl_q2o0[] PROGMEM = "President"; const char pl_q2o1[] PROGMEM = "Chancellor";
+const char pl_q2o2[] PROGMEM = "Secretary-General"; const char pl_q2o3[] PROGMEM = "Prime Minister";
+
+const char pl_q3[] PROGMEM = "How many permanent members in UN Security Council?";
+const char pl_q3o0[] PROGMEM = "3"; const char pl_q3o1[] PROGMEM = "5";
+const char pl_q3o2[] PROGMEM = "7"; const char pl_q3o3[] PROGMEM = "10";
+
+const char pl_q4[] PROGMEM = "Term length of a US President?";
+const char pl_q4o0[] PROGMEM = "2 years"; const char pl_q4o1[] PROGMEM = "4 years";
+const char pl_q4o2[] PROGMEM = "6 years"; const char pl_q4o3[] PROGMEM = "5 years";
+
+const char pl_q5[] PROGMEM = "Who chaired the drafting committee of India's Constitution?";
+const char pl_q5o0[] PROGMEM = "Nehru"; const char pl_q5o1[] PROGMEM = "B.R. Ambedkar";
+const char pl_q5o2[] PROGMEM = "Patel"; const char pl_q5o3[] PROGMEM = "Rajendra Prasad";
+
+const char pl_q6[] PROGMEM = "UN headquarters is located in which city?";
+const char pl_q6o0[] PROGMEM = "Geneva"; const char pl_q6o1[] PROGMEM = "Paris";
+const char pl_q6o2[] PROGMEM = "New York"; const char pl_q6o3[] PROGMEM = "London";
+
+const char pl_q7[] PROGMEM = "Power split among executive, legislative, judiciary is called?";
+const char pl_q7o0[] PROGMEM = "Separation of powers"; const char pl_q7o1[] PROGMEM = "Federalism";
+const char pl_q7o2[] PROGMEM = "Autocracy"; const char pl_q7o3[] PROGMEM = "Parliamentarism";
+
+const char pl_q8[] PROGMEM = "The basic law document of a nation is called?";
+const char pl_q8o0[] PROGMEM = "Charter"; const char pl_q8o1[] PROGMEM = "Constitution";
+const char pl_q8o2[] PROGMEM = "Treaty"; const char pl_q8o3[] PROGMEM = "Statute";
+
+const char pl_q9[] PROGMEM = "A hereditary single-ruler system is called?";
+const char pl_q9o0[] PROGMEM = "Republic"; const char pl_q9o1[] PROGMEM = "Monarchy";
+const char pl_q9o2[] PROGMEM = "Democracy"; const char pl_q9o3[] PROGMEM = "Federation";
+
+const char pl_q10[] PROGMEM = "The right to vote is called?";
+const char pl_q10o0[] PROGMEM = "Suffrage"; const char pl_q10o1[] PROGMEM = "Legislation";
+const char pl_q10o2[] PROGMEM = "Mandate"; const char pl_q10o3[] PROGMEM = "Referendum";
+
+const QuizQ CAT_POLITICS[] PROGMEM = {
+  {pl_q1,{pl_q1o0,pl_q1o1,pl_q1o2,pl_q1o3},1},
+  {pl_q2,{pl_q2o0,pl_q2o1,pl_q2o2,pl_q2o3},2},
+  {pl_q3,{pl_q3o0,pl_q3o1,pl_q3o2,pl_q3o3},1},
+  {pl_q4,{pl_q4o0,pl_q4o1,pl_q4o2,pl_q4o3},1},
+  {pl_q5,{pl_q5o0,pl_q5o1,pl_q5o2,pl_q5o3},1},
+  {pl_q6,{pl_q6o0,pl_q6o1,pl_q6o2,pl_q6o3},2},
+  {pl_q7,{pl_q7o0,pl_q7o1,pl_q7o2,pl_q7o3},0},
+  {pl_q8,{pl_q8o0,pl_q8o1,pl_q8o2,pl_q8o3},1},
+  {pl_q9,{pl_q9o0,pl_q9o1,pl_q9o2,pl_q9o3},1},
+  {pl_q10,{pl_q10o0,pl_q10o1,pl_q10o2,pl_q10o3},0},
+};
+
+// ---------------- RELIGION ----------------
+const char rl_q1[] PROGMEM = "Which religion's holy book is the Quran?";
+const char rl_q1o0[] PROGMEM = "Christianity"; const char rl_q1o1[] PROGMEM = "Islam";
+const char rl_q1o2[] PROGMEM = "Judaism"; const char rl_q1o3[] PROGMEM = "Sikhism";
+
+const char rl_q2[] PROGMEM = "Buddhism was founded by whom?";
+const char rl_q2o0[] PROGMEM = "Confucius"; const char rl_q2o1[] PROGMEM = "Buddha";
+const char rl_q2o2[] PROGMEM = "Mahavira"; const char rl_q2o3[] PROGMEM = "Guru Nanak";
+
+const char rl_q3[] PROGMEM = "The Bible is the holy book of which religion?";
+const char rl_q3o0[] PROGMEM = "Christianity"; const char rl_q3o1[] PROGMEM = "Islam";
+const char rl_q3o2[] PROGMEM = "Hinduism"; const char rl_q3o3[] PROGMEM = "Buddhism";
+
+const char rl_q4[] PROGMEM = "The Torah is central to which religion?";
+const char rl_q4o0[] PROGMEM = "Judaism"; const char rl_q4o1[] PROGMEM = "Islam";
+const char rl_q4o2[] PROGMEM = "Sikhism"; const char rl_q4o3[] PROGMEM = "Jainism";
+
+const char rl_q5[] PROGMEM = "Which religion follows the Guru Granth Sahib?";
+const char rl_q5o0[] PROGMEM = "Sikhism"; const char rl_q5o1[] PROGMEM = "Hinduism";
+const char rl_q5o2[] PROGMEM = "Jainism"; const char rl_q5o3[] PROGMEM = "Buddhism";
+
+const char rl_q6[] PROGMEM = "Diwali is a major festival of which religion?";
+const char rl_q6o0[] PROGMEM = "Hinduism"; const char rl_q6o1[] PROGMEM = "Islam";
+const char rl_q6o2[] PROGMEM = "Christianity"; const char rl_q6o3[] PROGMEM = "Judaism";
+
+const char rl_q7[] PROGMEM = "A synagogue is a place of worship for?";
+const char rl_q7o0[] PROGMEM = "Muslims"; const char rl_q7o1[] PROGMEM = "Jews";
+const char rl_q7o2[] PROGMEM = "Christians"; const char rl_q7o3[] PROGMEM = "Hindus";
+
+const char rl_q8[] PROGMEM = "Ramadan is observed by followers of which religion?";
+const char rl_q8o0[] PROGMEM = "Islam"; const char rl_q8o1[] PROGMEM = "Christianity";
+const char rl_q8o2[] PROGMEM = "Buddhism"; const char rl_q8o3[] PROGMEM = "Sikhism";
+
+const char rl_q9[] PROGMEM = "Jainism's founder is commonly said to be?";
+const char rl_q9o0[] PROGMEM = "Mahavira"; const char rl_q9o1[] PROGMEM = "Buddha";
+const char rl_q9o2[] PROGMEM = "Guru Nanak"; const char rl_q9o3[] PROGMEM = "Confucius";
+
+const char rl_q10[] PROGMEM = "Christmas celebrates the birth of whom?";
+const char rl_q10o0[] PROGMEM = "Moses"; const char rl_q10o1[] PROGMEM = "Muhammad";
+const char rl_q10o2[] PROGMEM = "Jesus Christ"; const char rl_q10o3[] PROGMEM = "Buddha";
+
+const QuizQ CAT_RELIGION[] PROGMEM = {
+  {rl_q1,{rl_q1o0,rl_q1o1,rl_q1o2,rl_q1o3},1},
+  {rl_q2,{rl_q2o0,rl_q2o1,rl_q2o2,rl_q2o3},1},
+  {rl_q3,{rl_q3o0,rl_q3o1,rl_q3o2,rl_q3o3},0},
+  {rl_q4,{rl_q4o0,rl_q4o1,rl_q4o2,rl_q4o3},0},
+  {rl_q5,{rl_q5o0,rl_q5o1,rl_q5o2,rl_q5o3},0},
+  {rl_q6,{rl_q6o0,rl_q6o1,rl_q6o2,rl_q6o3},0},
+  {rl_q7,{rl_q7o0,rl_q7o1,rl_q7o2,rl_q7o3},1},
+  {rl_q8,{rl_q8o0,rl_q8o1,rl_q8o2,rl_q8o3},0},
+  {rl_q9,{rl_q9o0,rl_q9o1,rl_q9o2,rl_q9o3},0},
+  {rl_q10,{rl_q10o0,rl_q10o1,rl_q10o2,rl_q10o3},2},
+};
+
+// ---------------- Category tables ----------------
+const QuizQ* const CAT_ARR[6] = {
+  CAT_PYTHON, CAT_SCIENCE, CAT_INDIA, CAT_DISCOVERY, CAT_POLITICS, CAT_RELIGION
+};
+const uint8_t CAT_COUNT[6] = {
+  sizeof(CAT_PYTHON)/sizeof(QuizQ),
+  sizeof(CAT_SCIENCE)/sizeof(QuizQ),
+  sizeof(CAT_INDIA)/sizeof(QuizQ),
+  sizeof(CAT_DISCOVERY)/sizeof(QuizQ),
+  sizeof(CAT_POLITICS)/sizeof(QuizQ),
+  sizeof(CAT_RELIGION)/sizeof(QuizQ)
+};
+const char* const CAT_NAMES[7] = {
+  "PYTHON","SCIENCE","INDIA","DISCOVERY","POLITICS","RELIGION","MIXED"
+};
+
+
 // ── RAHUL Bitmap (128x64) ─────────────
 static const uint8_t PROGMEM RahulBitmap[] = {
  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
@@ -655,7 +1008,11 @@ uint32_t pomodoroIntervalSeconds = 0;
 uint32_t pomodoroBreakSeconds = 0;
 uint32_t pomodoroPhaseRemaining = 0;
 int pomodoroSetupStep = 0;
-
+bool batterySaverEnabled = false;
+uint8_t savedBrightnessLevel = 4;
+uint8_t savedSoundLevel = 3;
+uint8_t selectedRingtone = 0;   // 0 = Default (Happy Birthday), 1..MUSIC_COUNT = song index+1
+ 
 // Menu navigation state
 int lastGameIndex = 0;
 
@@ -712,7 +1069,10 @@ void playHappyBirthdayMusic();
 void showTimerMenu();
 void showStopwatchMenu();
 void centreStrBox(const char *s, int boxX, int boxW, int y);
-
+void playQuizIntroAnim();
+void showQuizCategoryMenu();
+void runQuiz(int catId);
+void quizGameOverScreen(int correct, int total);
 // Game functions
 void game_asteroids();
 void game_breakout();
@@ -752,6 +1112,17 @@ void showMusicMenu();
 // ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
+
+void loadBatterySaverSetting();
+void saveBatterySaverSetting();
+void loadRingtoneSetting();
+void saveRingtoneSetting();
+void playSelectedRingtone();
+void toggleNightModeQuick();
+void toggleBatterySaver();
+void showRingtoneMenu();
+void showQuizComingSoon();
+ 
 
 bool btnPressed(uint8_t pin) {
   static uint32_t lastTime[8] = {0};
@@ -1132,6 +1503,646 @@ void playHappyBirthdayMusic() {
   
   noTone(BUZZER_PIN);
 }
+
+ 
+void playSelectedRingtone() {
+  if (selectedRingtone == 0) {
+    playHappyBirthdayMusic();
+    return;
+  }
+ 
+  int songIdx = selectedRingtone - 1;
+  if (songIdx < 0 || songIdx >= MUSIC_COUNT) {
+    playHappyBirthdayMusic();
+    return;
+  }
+ 
+  const MelodyNote* song = MUSIC_SONGS[songIdx];
+  uint16_t songLen = SONG_LENGTHS[songIdx];
+  int noteIndex = 0;
+  uint32_t noteStartTime = 0;
+  bool notePlaying = false;
+ 
+  musicPlaying = true;
+  musicPaused = false;
+ 
+  while (musicPlaying) {
+    uint32_t now = millis();
+ 
+    if (btnPressed(BTN_MENU)) {
+      musicPlaying = false;
+      noTone(BUZZER_PIN);
+      break;
+    }
+ 
+    if (!notePlaying) {
+      if (noteIndex >= songLen) noteIndex = 0;   // loop the ringtone
+      uint16_t freq = song[noteIndex].freq;
+      uint16_t dur = song[noteIndex].duration;
+ 
+      if (freq != 0 && soundEnabled) {
+        tone(BUZZER_PIN, freq, dur);
+        notePlaying = true;
+        noteStartTime = now;
+      } else {
+        noteIndex++;
+      }
+    } else {
+      uint16_t dur = song[noteIndex].duration;
+      if (now - noteStartTime >= dur) {
+        notePlaying = false;
+        noteIndex++;
+        noTone(BUZZER_PIN);
+      }
+    }
+    delay(10);
+  }
+  noTone(BUZZER_PIN);
+}
+ 
+
+ 
+void toggleNightModeQuick() {
+  invertDisplay = !invertDisplay;
+  saveInvertSetting();
+ 
+  u8g2.clearBuffer();
+  u8g2.sendF("c", invertDisplay ? 0xA7 : 0xA6);
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  if (invertDisplay) {
+    centreStr("NIGHT MODE", 28);
+    centreStr("ENABLED", 47);
+    beep(1200, 40, soundLevel);
+    delay(80);
+    beep(1500, 40, soundLevel);
+  } else {
+    centreStr("NIGHT MODE", 28);
+    centreStr("DISABLED", 47);
+    beep(600, 40, soundLevel);
+    delay(80);
+    beep(500, 40, soundLevel);
+  }
+  u8g2.sendBuffer();
+  delay(800);
+  waitRelease();
+}
+ 
+void toggleBatterySaver() {
+  batterySaverEnabled = !batterySaverEnabled;
+
+  if (batterySaverEnabled) {
+    savedBrightnessLevel = brightnessLevel;
+    savedSoundLevel = soundLevel;
+    brightnessLevel = 1;
+    soundLevel = 1;
+  } else {
+    brightnessLevel = savedBrightnessLevel;
+    soundLevel = savedSoundLevel;
+  }
+
+  uint8_t contrast = map(brightnessLevel, 1, 7, 30, 255);
+  u8g2.setContrast(contrast);
+  soundEnabled = (soundLevel > 0);
+  currentMusicVolume = soundLevel;
+
+  saveBrightness();
+  saveSoundSetting();
+  saveBatterySaverSetting();
+
+  u8g2.clearBuffer();
+  u8g2.setDrawColor(1);                     // ✅ fixed — no double-inversion
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  centreStr("BATTERY SAVER", 28);
+  if (batterySaverEnabled) {
+    centreStr("ENABLED", 47);
+    beep(1200, 40, soundLevel);
+    delay(80);
+    beep(900, 40, soundLevel);
+  } else {
+    centreStr("DISABLED", 47);
+    beep(900, 40, soundLevel);
+    delay(80);
+    beep(1200, 40, soundLevel);
+  }
+  u8g2.sendBuffer();
+  delay(800);
+  waitRelease();
+}
+ 
+void showRingtoneMenu() {
+  int sel = selectedRingtone;
+  int top = 0;
+  const int VISIBLE = 4;
+  const int TOTAL = MUSIC_COUNT + 1;   // +1 for "Default"
+ 
+  while (true) {
+    if (btnLongPressed(BTN_MENU, 200)) {
+      playMenuButtonSound();
+      return;
+    }
+ 
+    if (sel < top) top = sel;
+    if (sel >= top + VISIBLE) top = sel - VISIBLE + 1;
+ 
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    u8g2.drawBox(0, 0, SCREEN_W, 11);
+    u8g2.setDrawColor(0);
+    centreStr("RINGTONE", 9);
+    u8g2.setDrawColor(1);
+ 
+    u8g2.setFont(u8g2_font_6x10_tr);
+    for (int i = 0; i < VISIBLE; i++) {
+      int idx = top + i;
+      if (idx >= TOTAL) break;
+      int y = 14 + i * 12;
+ 
+      char label[26];
+      if (idx == 0) snprintf(label, sizeof(label), "Default (Bday tune)");
+      else snprintf(label, sizeof(label), "%s", MUSIC_NAMES[idx - 1]);
+ 
+      bool isCurrent = (idx == selectedRingtone);
+      bool isSel = (idx == sel);
+ 
+      if (isSel) {
+        u8g2.drawRBox(0, y - 1, SCREEN_W, 12, 2);
+        u8g2.setDrawColor(0);
+      }
+      u8g2.drawStr(4, y + 9, label);
+      if (isCurrent) {
+        u8g2.drawStr(SCREEN_W - 10, y + 9, "*");
+      }
+      if (isSel) u8g2.setDrawColor(1);
+    }
+ 
+    u8g2.setFont(u8g2_font_5x7_tr);
+    centreStr("ENTER=select+preview", 62);
+    u8g2.sendBuffer();
+ 
+    if (btnPressed(BTN_UP)) {
+      sel = (sel + TOTAL - 1) % TOTAL;
+      beep(800, 20, soundLevel);
+    }
+    else if (btnPressed(BTN_DOWN)) {
+      sel = (sel + 1) % TOTAL;
+      beep(800, 20, soundLevel);
+    }
+    else if (btnPressed(BTN_ENTER)) {
+      selectedRingtone = sel;
+      saveRingtoneSetting();
+      beep(1200, 30, soundLevel);
+      waitRelease();
+ 
+      // short preview of the chosen ringtone
+      if (selectedRingtone == 0) {
+        beep(1046, 90, soundLevel); delay(90);
+        beep(1319, 90, soundLevel); delay(90);
+        beep(1568, 120, soundLevel);
+      } else {
+        int songIdx = selectedRingtone - 1;
+        int previewLen = min((uint16_t)4, SONG_LENGTHS[songIdx]);
+        for (int n = 0; n < previewLen; n++) {
+          uint16_t f = MUSIC_SONGS[songIdx][n].freq;
+          uint16_t d = MUSIC_SONGS[songIdx][n].duration / 3;
+          if (d < 20) d = 20;
+          if (f != 0) beep(f, min((int)d, 130), soundLevel);
+          delay(20);
+        }
+      }
+    }
+    else if (btnPressed(BTN_MENU)) {
+      playMenuButtonSound();
+      waitRelease();
+      return;
+    }
+ 
+    delay(80);
+  }
+}
+ 
+void showQuizComingSoon() {
+  while (true) {
+    if (btnLongPressed(BTN_MENU, 200)) {
+      playMenuButtonSound();
+      return;
+    }
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    centreStr("QUIZ", 24);
+    u8g2.setFont(u8g2_font_6x10_tr);
+    centreStr("Coming Soon!", 40);
+    centreStr("Press MENU to go back", 55);
+    u8g2.sendBuffer();
+ 
+    if (btnPressed(BTN_MENU)) {
+      playMenuButtonSound();
+      waitRelease();
+      return;
+    }
+    delay(50);
+  }
+}
+
+// ============================================================
+// QUIZ ENGINE
+// ============================================================
+
+void loadQuizQuestion(const QuizQ* arr, int idx, char* qbuf, size_t qbufSize,
+                       char optbuf[4][48], uint8_t &correctIdx) {
+  QuizQ tmp;
+  memcpy_P(&tmp, &arr[idx], sizeof(QuizQ));
+  strncpy_P(qbuf, tmp.q, qbufSize - 1);
+  qbuf[qbufSize - 1] = 0;
+  for (int i = 0; i < 4; i++) {
+    strncpy_P(optbuf[i], tmp.opt[i], 47);
+    optbuf[i][47] = 0;
+  }
+  correctIdx = tmp.correct;
+}
+
+int quizWrapText(const char* text, char lines[4][32], int maxWidth) {
+  u8g2.setFont(u8g2_font_5x7_tr);
+  char buf[140];
+  strncpy(buf, text, 139); buf[139] = 0;
+  int lineCount = 0;
+  char current[32] = "";
+  char* word = strtok(buf, " ");
+  while (word != nullptr && lineCount < 4) {
+    char test[32];
+    if (current[0] == '\0') snprintf(test, sizeof(test), "%s", word);
+    else snprintf(test, sizeof(test), "%s %s", current, word);
+    if (u8g2.getStrWidth(test) <= maxWidth) {
+      strncpy(current, test, 31); current[31] = 0;
+    } else {
+      strncpy(lines[lineCount], current, 31); lines[lineCount][31] = 0;
+      lineCount++;
+      strncpy(current, word, 31); current[31] = 0;
+    }
+    word = strtok(nullptr, " ");
+  }
+  if (lineCount < 4 && current[0] != '\0') {
+    strncpy(lines[lineCount], current, 31); lines[lineCount][31] = 0;
+    lineCount++;
+  }
+  return lineCount;
+}
+
+// ── Intro animation: bulb charges up -> circuit sparks -> title reveal ──
+void playQuizIntroAnim() {
+  int cx = SCREEN_W / 2;
+
+  // Phase 1: bulb outline grows + filament flickers
+  for (int f = 0; f <= 14; f++) {
+    u8g2.clearBuffer();
+    int r = 3 + f;
+    u8g2.drawCircle(cx, 24, r);
+    if (f > 5) {
+      int baseH = min(10, (f - 5) * 2);
+      u8g2.drawBox(cx - 4, 24 + r - 2, 8, baseH);
+    }
+    if (random(0, 3) == 0) {
+      u8g2.drawLine(cx - 2, 20, cx + 2, 28);
+      u8g2.drawLine(cx + 2, 20, cx - 2, 28);
+    }
+    u8g2.sendBuffer();
+    beep(400 + f * 40, 8, soundLevel);
+    delay(22);
+  }
+
+  // Phase 2: idea rays burst outward
+  for (int burst = 0; burst < 3; burst++) {
+    u8g2.clearBuffer();
+    u8g2.drawCircle(cx, 24, 17);
+    u8g2.drawBox(cx - 4, 39, 8, 8);
+    int r = 20 + burst * 6;
+    for (int a = 0; a < 360; a += 30) {
+      float rad = a * 3.14159f / 180.0f;
+      int x1 = cx + (int)(cos(rad) * (r - 4));
+      int y1 = 24 + (int)(sin(rad) * (r - 4));
+      int x2 = cx + (int)(cos(rad) * r);
+      int y2 = 24 + (int)(sin(rad) * r);
+      u8g2.drawLine(x1, y1, x2, y2);
+    }
+    u8g2.sendBuffer();
+    beep(1200 + burst * 200, 30, soundLevel);
+    delay(70);
+  }
+
+  u8g2.clearBuffer();
+  u8g2.drawBox(0, 0, SCREEN_W, SCREEN_H);
+  u8g2.sendBuffer();
+  beep(1600, 35, soundLevel);
+  delay(40);
+  u8g2.clearBuffer();
+  u8g2.sendBuffer();
+  delay(60);
+
+  // Phase 3: decrypt-reveal title (reuses your existing decryptReveal())
+  decryptReveal("QUIZ ZONE", 30, u8g2_font_ncenB10_tr, 10);
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  int tw = u8g2.getStrWidth("QUIZ ZONE");
+  u8g2.drawHLine(cx - tw / 2, 34, tw);
+  u8g2.sendBuffer();
+  beep(900, 30, soundLevel);
+  delay(150);
+
+  // Phase 4: loading bar
+  for (int i = 0; i <= 100; i += 5) {
+    u8g2.clearBuffer();
+    u8g2.setFont(u8g2_font_ncenB10_tr);
+    centreStr("QUIZ ZONE", 30);
+    u8g2.drawHLine(cx - tw / 2, 34, tw);
+    u8g2.drawFrame(14, 46, 100, 6);
+    int fillW = (i * 96) / 100;
+    if (fillW > 0) u8g2.drawBox(16, 47, fillW, 4);
+    u8g2.setFont(u8g2_font_5x7_tr);
+    centreStr("Loading knowledge...", 60);
+    u8g2.sendBuffer();
+    if (i % 15 == 0) beep(500 + i * 4, 12, soundLevel);
+    delay(20);
+  }
+  delay(150);
+  waitRelease();
+}
+
+// ── icon per category ──
+void drawQuizCatIcon(int type, int cx, int cy) {
+  switch (type) {
+    case 0: // Python - wavy snake line
+      u8g2.drawLine(cx - 6, cy - 3, cx - 2, cy);
+      u8g2.drawLine(cx - 2, cy, cx + 2, cy - 3);
+      u8g2.drawLine(cx + 2, cy - 3, cx + 6, cy);
+      u8g2.drawDisc(cx - 6, cy - 3, 1);
+      break;
+    case 1: // Science - atom
+      u8g2.drawEllipse(cx, cy, 7, 3);
+      u8g2.drawEllipse(cx, cy, 3, 7);
+      u8g2.drawDisc(cx, cy, 1);
+      break;
+    case 2: // India - flag stripes
+      u8g2.drawFrame(cx - 7, cy - 5, 14, 10);
+      u8g2.drawHLine(cx - 7, cy - 2, 14);
+      u8g2.drawHLine(cx - 7, cy + 1, 14);
+      u8g2.drawCircle(cx, cy, 1);
+      break;
+    case 3: // Discovery - magnifying glass
+      u8g2.drawCircle(cx - 1, cy - 1, 5);
+      u8g2.drawLine(cx + 3, cy + 3, cx + 6, cy + 6);
+      break;
+    case 4: // Politics - scale
+      u8g2.drawVLine(cx, cy - 6, 10);
+      u8g2.drawHLine(cx - 6, cy - 5, 12);
+      u8g2.drawCircle(cx - 6, cy - 1, 2);
+      u8g2.drawCircle(cx + 6, cy - 1, 2);
+      break;
+    case 5: // Religion - simple star (neutral)
+      for (int a = 0; a < 360; a += 72) {
+        float rad = a * 3.14159f / 180.0f;
+        int x = cx + (int)(cos(rad) * 6);
+        int y = cy + (int)(sin(rad) * 6);
+        u8g2.drawLine(cx, cy, x, y);
+      }
+      break;
+    case 6: // Mixed - shuffle arrows
+      u8g2.drawLine(cx - 6, cy - 3, cx + 6, cy + 3);
+      u8g2.drawLine(cx - 6, cy + 3, cx + 6, cy - 3);
+      u8g2.drawTriangle(cx + 4, cy - 5, cx + 4, cy - 1, cx + 7, cy - 3);
+      break;
+  }
+}
+
+int quizLastCat = 0;
+
+void showQuizCategoryMenu() {
+  int sel = quizLastCat;
+  int top = 0;
+  const int VISIBLE = 4;
+
+  while (true) {
+    if (btnLongPressed(BTN_MENU, 200)) { playMenuButtonSound(); return; }
+
+    if (sel < top) top = sel;
+    if (sel >= top + VISIBLE) top = sel - VISIBLE + 1;
+
+    u8g2.clearBuffer();
+    u8g2.drawRBox(0, 0, SCREEN_W, 11, 2);
+    u8g2.setDrawColor(0);
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    centreStr("QUIZ ZONE", 9);
+    u8g2.setDrawColor(1);
+
+    u8g2.setFont(u8g2_font_6x10_tr);
+    for (int i = 0; i < VISIBLE; i++) {
+      int idx = top + i;
+      if (idx >= 7) break;
+      int y = 13 + i * 13;
+      bool isSel = (idx == sel);
+
+      if (isSel) { u8g2.drawRBox(0, y, SCREEN_W - 6, 12, 3); u8g2.setDrawColor(0); }
+      drawQuizCatIcon(idx, 10, y + 6);
+      u8g2.drawStr(20, y + 9, CAT_NAMES[idx]);
+      if (isSel) u8g2.setDrawColor(1);
+    }
+
+    u8g2.drawFrame(124, 12, 3, 50);
+    int thumbH = max(6, 50 * VISIBLE / 7);
+    int thumbY = 12 + (sel * (50 - thumbH)) / 6;
+    u8g2.drawBox(124, thumbY, 3, thumbH);
+
+    u8g2.sendBuffer();
+
+    if (btnPressed(BTN_UP)) { sel = (sel + 6) % 7; beep(800, 20, soundLevel); }
+    else if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 7; beep(800, 20, soundLevel); }
+    else if (btnPressed(BTN_ENTER)) {
+      beep(1200, 40, soundLevel);
+      waitRelease();
+      quizLastCat = sel;
+      runQuiz(sel);
+    }
+    else if (btnPressed(BTN_MENU)) {
+      playMenuButtonSound();
+      waitRelease();
+      return;
+    }
+    delay(80);
+  }
+}
+
+// ── cute game over screen ──
+void quizGameOverScreen(int correct, int total) {
+  uint16_t hi = 0;
+  EEPROM.begin(EEPROM_SIZE);
+  EEPROM.get(500, hi);
+  if (hi == 0xFFFF || hi > 10000) hi = 0;
+  bool newHigh = false;
+  if (correct > hi) { hi = correct; EEPROM.put(500, hi); EEPROM.commit(); newHigh = true; }
+  EEPROM.end();
+
+  bool happy = total > 0 && (correct * 100 / total) >= 50;
+
+  if (happy) { beep(1000, 60, soundLevel); delay(70); beep(1300, 60, soundLevel); delay(70); beep(1700, 100, soundLevel); }
+  else { beep(400, 100, soundLevel); delay(100); beep(300, 150, soundLevel); }
+
+  u8g2.clearBuffer();
+  int cx = 64, cy = 24;
+  u8g2.drawCircle(cx, cy, 16);
+  u8g2.drawDisc(cx - 6, cy - 3, 2);
+  u8g2.drawDisc(cx + 6, cy - 3, 2);
+  for (int dx = -7; dx <= 7; dx++) {
+    int dy = happy ? (int)(sqrt(49 - dx * dx) * 0.4f) : -(int)(sqrt(49 - dx * dx) * 0.4f);
+    u8g2.drawPixel(cx + dx, cy + 4 + dy);
+  }
+  if (happy) {
+    for (int a = 0; a < 360; a += 45) {
+      float rad = a * 3.14159f / 180.0f;
+      int x1 = cx + (int)(cos(rad) * 19);
+      int y1 = cy + (int)(sin(rad) * 19);
+      int x2 = cx + (int)(cos(rad) * 22);
+      int y2 = cy + (int)(sin(rad) * 22);
+      u8g2.drawLine(x1, y1, x2, y2);
+    }
+  }
+
+  u8g2.setFont(u8g2_font_ncenB08_tr);
+  centreStr(happy ? "WELL PLAYED!" : "NICE TRY!", 48);
+  u8g2.setFont(u8g2_font_5x7_tr);
+  char sc[24];
+  snprintf(sc, sizeof(sc), "%d / %d correct", correct, total);
+  centreStr(sc, 56);
+  if (newHigh) centreStr("NEW HIGH SCORE!", 63);
+  else { char hs[20]; snprintf(hs, sizeof(hs), "Best: %u", hi); centreStr(hs, 63); }
+
+  u8g2.sendBuffer();
+  waitRelease();
+  while (!btnPressed(BTN_ENTER) && !btnPressed(BTN_MENU)) delay(20);
+  waitRelease();
+}
+
+// ── main quiz loop ──
+void runQuiz(int catId) {
+  struct QRef { uint8_t cat; uint8_t idx; };
+  static QRef pool[350];
+  int poolSize = 0;
+
+  if (catId < 6) {
+    poolSize = CAT_COUNT[catId];
+    for (int i = 0; i < poolSize; i++) { pool[i].cat = catId; pool[i].idx = i; }
+  } else {
+    for (int c = 0; c < 6; c++)
+      for (int i = 0; i < CAT_COUNT[c] && poolSize < 350; i++) { pool[poolSize].cat = c; pool[poolSize].idx = i; poolSize++; }
+  }
+
+  for (int i = poolSize - 1; i > 0; i--) {
+    int j = random(0, i + 1);
+    QRef t = pool[i]; pool[i] = pool[j]; pool[j] = t;
+  }
+
+  int roundLen = min(poolSize, QUIZ_ROUND_LEN);
+  int hearts = 3;
+  int correctCount = 0;
+  int qNum = 0;
+
+  while (qNum < roundLen && hearts > 0) {
+    if (btnLongPressed(BTN_MENU, 200)) { playMenuButtonSound(); return; }
+
+    QRef ref = pool[qNum];
+    const QuizQ* arr = CAT_ARR[ref.cat];
+    char qbuf[140];
+    char optbuf[4][48];
+    uint8_t correctIdx;
+    loadQuizQuestion(arr, ref.idx, qbuf, sizeof(qbuf), optbuf, correctIdx);
+
+    int order[4] = {0, 1, 2, 3};
+    for (int i = 3; i > 0; i--) { int j = random(0, i + 1); int t = order[i]; order[i] = order[j]; order[j] = t; }
+    int correctPos = 0;
+    for (int i = 0; i < 4; i++) if (order[i] == correctIdx) correctPos = i;
+
+    char lines[4][32];
+    int lineCount = quizWrapText(qbuf, lines, 124);
+
+    int sel = 0;
+    bool answered = false;
+    int chosenPos = -1;
+
+    while (!answered) {
+      if (btnLongPressed(BTN_MENU, 200)) { playMenuButtonSound(); return; }
+      if (btnPressed(BTN_UP)) { sel = (sel + 3) % 4; beep(600, 10, soundLevel); }
+      if (btnPressed(BTN_DOWN)) { sel = (sel + 1) % 4; beep(600, 10, soundLevel); }
+
+      u8g2.clearBuffer();
+      u8g2.drawBox(0, 0, SCREEN_W, 9);
+      u8g2.setDrawColor(0);
+      u8g2.setFont(u8g2_font_5x7_tr);
+      char hdr[26];
+      snprintf(hdr, sizeof(hdr), "%s  Q%d/%d", CAT_NAMES[catId], qNum + 1, roundLen);
+      u8g2.drawStr(2, 7, hdr);
+      u8g2.setDrawColor(1);
+      for (int h = 0; h < hearts; h++) drawHeart(SCREEN_W - 10 - h * 10, 1);
+
+      u8g2.setFont(u8g2_font_5x7_tr);
+      for (int i = 0; i < lineCount; i++) u8g2.drawStr(2, 18 + i * 8, lines[i]);
+
+      int optY = 18 + lineCount * 8 + 3;
+      const char* letters[4] = {"A", "B", "C", "D"};
+      for (int i = 0; i < 4; i++) {
+        int y = optY + i * 10;
+        if (y > SCREEN_H - 1) break;
+        bool isSel = (i == sel);
+        if (isSel) { u8g2.drawRBox(0, y - 8, SCREEN_W, 9, 2); u8g2.setDrawColor(0); }
+        char optLine[52];
+        snprintf(optLine, sizeof(optLine), "%s) %s", letters[i], optbuf[order[i]]);
+        u8g2.drawStr(4, y, optLine);
+        if (isSel) u8g2.setDrawColor(1);
+      }
+      u8g2.sendBuffer();
+
+      if (btnPressed(BTN_ENTER)) {
+        chosenPos = sel;
+        answered = true;
+      }
+      delay(20);
+    }
+
+    bool isCorrect = (chosenPos == correctPos);
+    int optY = 18 + lineCount * 8 + 3;
+    const char* letters[4] = {"A", "B", "C", "D"};
+
+    for (int flash = 0; flash < 3; flash++) {
+      u8g2.clearBuffer();
+      u8g2.drawBox(0, 0, SCREEN_W, 9);
+      u8g2.setDrawColor(0);
+      u8g2.drawStr(2, 7, isCorrect ? "CORRECT!" : "WRONG!");
+      u8g2.setDrawColor(1);
+      for (int h = 0; h < hearts; h++) drawHeart(SCREEN_W - 10 - h * 10, 1);
+      u8g2.setFont(u8g2_font_5x7_tr);
+      for (int i = 0; i < lineCount; i++) u8g2.drawStr(2, 18 + i * 8, lines[i]);
+
+      int shakeX = (!isCorrect && flash % 2 == 0) ? random(-2, 3) : 0;
+      for (int i = 0; i < 4; i++) {
+        int y = optY + i * 10;
+        if (y > SCREEN_H - 1) break;
+        bool isRight = (i == correctPos);
+        bool isChosen = (i == chosenPos);
+        if (isRight) u8g2.drawRBox(shakeX, y - 8, SCREEN_W, 9, 2);
+        else if (isChosen) u8g2.drawFrame(shakeX, y - 8, SCREEN_W, 9);
+        char optLine[52];
+        snprintf(optLine, sizeof(optLine), "%s) %s", letters[i], optbuf[order[i]]);
+        if (isRight) { u8g2.setDrawColor(0); u8g2.drawStr(4 + shakeX, y, optLine); u8g2.setDrawColor(1); }
+        else u8g2.drawStr(4 + shakeX, y, optLine);
+      }
+      u8g2.sendBuffer();
+      delay(180);
+    }
+
+    if (isCorrect) { correctCount++; beep(1200, 30, soundLevel); delay(50); beep(1600, 40, soundLevel); }
+    else { hearts--; beep(250, 200, soundLevel); }
+    delay(500);
+    qNum++;
+  }
+
+  quizGameOverScreen(correctCount, qNum);
+}
+ 
 
 // ============================================================
 // TIMER FUNCTION
@@ -2385,6 +3396,8 @@ void loadHighScores() {
   loadBrightness();
   loadSoundSetting();
   loadInvertSetting();  // ✅ এই লাইনটি যোগ করুন
+    loadBatterySaverSetting();
+  loadRingtoneSetting();
 }
 
 void loadInvertSetting() {
@@ -2408,6 +3421,44 @@ void saveInvertSetting() {
   // Apply inversion immediately
 u8g2.sendF("c", invertDisplay ? 0xA7 : 0xA6);
 }
+
+
+void loadBatterySaverSetting() {
+  EEPROM.begin(EEPROM_SIZE);
+  uint8_t val;
+  EEPROM.get(480, val);
+  if (val > 1) val = 0;
+  batterySaverEnabled = (val == 1);
+  EEPROM.get(481, savedBrightnessLevel);
+  if (savedBrightnessLevel < 1 || savedBrightnessLevel > 7) savedBrightnessLevel = 4;
+  EEPROM.get(482, savedSoundLevel);
+  if (savedSoundLevel > 3) savedSoundLevel = 3;
+  EEPROM.end();
+}
+ 
+void saveBatterySaverSetting() {
+  EEPROM.begin(EEPROM_SIZE);
+  EEPROM.put(480, (uint8_t)(batterySaverEnabled ? 1 : 0));
+  EEPROM.put(481, savedBrightnessLevel);
+  EEPROM.put(482, savedSoundLevel);
+  EEPROM.commit();
+  EEPROM.end();
+}
+ 
+void loadRingtoneSetting() {
+  EEPROM.begin(EEPROM_SIZE);
+  EEPROM.get(490, selectedRingtone);
+  if (selectedRingtone > MUSIC_COUNT) selectedRingtone = 0;
+  EEPROM.end();
+}
+ 
+void saveRingtoneSetting() {
+  EEPROM.begin(EEPROM_SIZE);
+  EEPROM.put(490, selectedRingtone);
+  EEPROM.commit();
+  EEPROM.end();
+}
+ 
 
 void saveTotalGames(int gameIndex) {
   if (gameIndex != 12) return;
@@ -3150,6 +4201,7 @@ void showSplash() {
 // STYLISH ICON DRAWING FOR MAIN MENU (drawn ~12px, centered at cx,cy)
 // Caller must set draw color (1 or 0) before calling this.
 // ============================================================
+
 void drawMenuIcon(int type, int cx, int cy) {
   switch (type) {
     case 0: { // GAME - gamepad (d-pad + buttons)
@@ -3190,8 +4242,38 @@ void drawMenuIcon(int type, int cx, int cy) {
       u8g2.drawDisc(cx, cy, 1);
       break;
     }
+   case 4: { // NIGHT MODE - crescent moon
+  uint8_t savedColor = u8g2.getDrawColor();          // remember caller's color (0 or 1)
+  u8g2.drawCircle(cx, cy, 6);
+  u8g2.setDrawColor(savedColor == 1 ? 0 : 1);         // opposite color to "cut" the crescent
+  u8g2.drawDisc(cx + 3, cy - 2, 5);
+  u8g2.setDrawColor(savedColor);                      // restore exactly what it was before
+  break;
+}
+case 5: { // BATTERY SAVER - battery
+  u8g2.drawFrame(cx - 7, cy - 4, 14, 8);
+  u8g2.drawBox(cx + 7, cy - 2, 2, 4);
+  u8g2.drawBox(cx - 5, cy - 2, 4, 4);
+  break;
+}
+    case 6: { // RINGTONE - bell
+      u8g2.drawTriangle(cx - 5, cy + 2, cx + 5, cy + 2, cx, cy - 6);
+      u8g2.drawBox(cx - 6, cy + 1, 12, 2);
+      u8g2.drawDisc(cx, cy + 6, 2);
+      break;
+    }
+    case 7: { // QUIZ - question mark
+      u8g2.drawLine(cx - 3, cy - 4, cx - 1, cy - 6);
+      u8g2.drawLine(cx - 1, cy - 6, cx + 3, cy - 6);
+      u8g2.drawLine(cx + 3, cy - 6, cx + 4, cy - 3);
+      u8g2.drawLine(cx + 4, cy - 3, cx, cy);
+      u8g2.drawVLine(cx, cy, 3);
+      u8g2.drawPixel(cx, cy + 5);
+      break;
+    }
   }
 }
+ 
 
 
 // ============================================================
@@ -3328,20 +4410,33 @@ void playMusicMenuTransition() {
 // ============================================================
 // MAIN GRID MENU — STYLISH HUD REDESIGN
 // ============================================================
+ 
 void showMainGridMenu() {
-  const char* options[] = {"GAME", "MUSIC", "MEDIA", "SETUP"};
-  int sel = 0;
+  static const char* pageOptions[2][4] = {
+    {"GAME", "MUSIC", "MEDIA", "SETUP"},
+    {"RING", "SAVER", "NIGHT", "QUIZ"}
+  };
+  static const int pageIcons[2][4] = {
+    {0, 1, 2, 3},
+    {6, 5, 4, 7}   // RING=bell(6), SAVER=battery(5), NIGHT=moon(4), QUIZ=question(7)
+  };
+  const int TOTAL_PAGES = 2;
+  int page = 0;
   int col = 0;
   int row = 0;
 
   while (true) {
     uint32_t now = millis();
+    int sel = row * 2 + col;
+
     u8g2.clearBuffer();
     u8g2.setDrawColor(1);
 
-    // ── Header: tech HUD style ──
+    // ── Header: tech HUD style, with page number ──
+    char headerStr[16];
+    snprintf(headerStr, sizeof(headerStr), "MAIN MENU %d", page + 1);
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    centreStr("MAIN MENU", 9);
+    centreStr(headerStr, 9);
     u8g2.drawLine(2, 2, 7, 2);
     u8g2.drawLine(2, 2, 2, 7);
     u8g2.drawLine(SCREEN_W - 8, 2, SCREEN_W - 3, 2);
@@ -3372,9 +4467,25 @@ void showMainGridMenu() {
           u8g2.drawRFrame(x, y, boxW, boxH, 3);
         }
 
-        drawMenuIcon(idx, cx, cy);
+        drawMenuIcon(pageIcons[page][idx], cx, cy);
         u8g2.setFont(u8g2_font_6x10_tr);
-        u8g2.drawStr(tx, cy + 4, options[idx]);
+        u8g2.drawStr(tx, cy + 4, pageOptions[page][idx]);
+
+        // ── ON/OFF status dot for toggle tiles (SAVER / NIGHT) ──
+        bool isToggleTile = false;
+        bool toggleIsOn = false;
+        if (page == 1 && idx == 1) { isToggleTile = true; toggleIsOn = batterySaverEnabled; } // SAVER
+        if (page == 1 && idx == 2) { isToggleTile = true; toggleIsOn = invertDisplay; }        // NIGHT
+
+        if (isToggleTile) {
+          int dotX = x + boxW - 6;
+          int dotY = y + 4;
+          if (toggleIsOn) {
+            u8g2.drawDisc(dotX, dotY, 2);   // filled = ON
+          } else {
+            u8g2.drawCircle(dotX, dotY, 2); // hollow = OFF
+          }
+        }
 
         if (selected) {
           u8g2.setDrawColor(1);
@@ -3396,23 +4507,39 @@ void showMainGridMenu() {
     u8g2.sendBuffer();
 
     if (btnPressed(BTN_UP)) {
-      if (row > 0) { row--; sel = row * 2 + col; beep(800, 20, soundLevel); }
+      if (row > 0) { row--; beep(800, 20, soundLevel); }
     }
     else if (btnPressed(BTN_DOWN)) {
-      if (row < 1) { row++; sel = row * 2 + col; beep(800, 20, soundLevel); }
+      if (row < 1) { row++; beep(800, 20, soundLevel); }
     }
     else if (btnPressed(BTN_LEFT)) {
-      if (col > 0) { col--; sel = row * 2 + col; beep(800, 20, soundLevel); }
+      if (col > 0) {
+        col--;
+        beep(800, 20, soundLevel);
+      } else if (page > 0) {
+        page--;
+        col = 1;
+        beep(700, 25, soundLevel);
+      }
     }
     else if (btnPressed(BTN_RIGHT)) {
-      if (col < 1) { col++; sel = row * 2 + col; beep(800, 20, soundLevel); }
+      if (col < 1) {
+        col++;
+        beep(800, 20, soundLevel);
+      } else if (page < TOTAL_PAGES - 1) {
+        page++;
+        col = 0;
+        beep(700, 25, soundLevel);
+      }
     }
     else if (btnPressed(BTN_ENTER)) {
       beep(1200, 40, soundLevel);
       waitRelease();
 
-      if (sel == 0) {
-         playGameMenuTransition();
+      int globalIdx = page * 4 + sel;
+
+      if (globalIdx == 0) {
+        playGameMenuTransition();
         while (true) {
           int gameSel = menuSelect();
           if (gameSel >= 0 && gameSel < GAME_COUNT) {
@@ -3432,9 +4559,13 @@ void showMainGridMenu() {
           }
         }
       }
-      else if (sel == 1) {playMusicMenuTransition();  showMusicMenu(); }
-      else if (sel == 2) { showMediaMenu(); }
-      else if (sel == 3) { showSetupMenu(); }
+      else if (globalIdx == 1) { playMusicMenuTransition(); showMusicMenu(); }
+      else if (globalIdx == 2) { showMediaMenu(); }
+      else if (globalIdx == 3) { showSetupMenu(); }
+      else if (globalIdx == 4) { showRingtoneMenu(); }      // RING
+      else if (globalIdx == 5) { toggleBatterySaver(); }    // SAVER
+      else if (globalIdx == 6) { toggleNightModeQuick(); }  // NIGHT
+      else if (globalIdx == 7) { playQuizIntroAnim(); showQuizCategoryMenu(); }
     }
     else if (btnPressed(BTN_MENU)) {
       playMenuButtonSound();
@@ -3445,6 +4576,7 @@ void showMainGridMenu() {
     delay(60);
   }
 }
+ 
 
 
 // void showMainGridMenu() {
@@ -6597,104 +7729,371 @@ void game_pong() {
 // GAME: PACMAN (Fixed grid calculation)
 // ============================================================
 
+
 void game_pacman() {
-  int px = 64, py = 32;
-  int pdx = 0, pdy = 0;
-  int score = 0;
+  const int GAME_INDEX = 7;
+  const int COLS = 16, ROWS = 8;
+  const int CELL = 7;
+  const int OX = 8, OY = 12;   // leaves room for the top HUD bar
 
-  bool maze[5][10];
-  for (int y = 0; y < 5; y++)
-    for (int x = 0; x < 10; x++)
-      maze[y][x] = true;
+  uint8_t maze[ROWS][COLS];
+  bool dot[ROWS][COLS];
+  bool power[ROWS][COLS];
 
-  int gx = 10, gy = 10;
+  auto generateMaze = [&]() {
+    bool visited[ROWS][COLS];
+    for (int r = 0; r < ROWS; r++)
+      for (int c = 0; c < COLS; c++) { maze[r][c] = 15; visited[r][c] = false; }
+
+    struct Cell { uint8_t c, r; };
+    static Cell stack[ROWS * COLS + 2];
+    int sp = 0;
+    int sc = random(0, COLS), sr = random(0, ROWS);
+    stack[sp++] = { (uint8_t)sc, (uint8_t)sr };
+    visited[sr][sc] = true;
+
+    while (sp > 0) {
+      Cell cur = stack[sp - 1];
+      int c = cur.c, r = cur.r;
+      int dirs[4], nd = 0;
+      if (r > 0 && !visited[r - 1][c]) dirs[nd++] = 0;
+      if (c < COLS - 1 && !visited[r][c + 1]) dirs[nd++] = 1;
+      if (r < ROWS - 1 && !visited[r + 1][c]) dirs[nd++] = 2;
+      if (c > 0 && !visited[r][c - 1]) dirs[nd++] = 3;
+
+      if (nd == 0) { sp--; continue; }
+      int pick = dirs[random(0, nd)];
+      int nc = c, nr = r;
+      if (pick == 0) { maze[r][c] &= ~1; nr = r - 1; maze[nr][nc] &= ~4; }
+      else if (pick == 1) { maze[r][c] &= ~2; nc = c + 1; maze[nr][nc] &= ~8; }
+      else if (pick == 2) { maze[r][c] &= ~4; nr = r + 1; maze[nr][nc] &= ~1; }
+      else { maze[r][c] &= ~8; nc = c - 1; maze[nr][nc] &= ~2; }
+      visited[nr][nc] = true;
+      stack[sp++] = { (uint8_t)nc, (uint8_t)nr };
+    }
+
+    // knock a few extra walls down so ghosts/player have alternate routes
+    for (int i = 0; i < 16; i++) {
+      int c = random(0, COLS), r = random(0, ROWS);
+      int dir = random(0, 4);
+      if (dir == 0 && r > 0) { maze[r][c] &= ~1; maze[r - 1][c] &= ~4; }
+      else if (dir == 1 && c < COLS - 1) { maze[r][c] &= ~2; maze[r][c + 1] &= ~8; }
+      else if (dir == 2 && r < ROWS - 1) { maze[r][c] &= ~4; maze[r + 1][c] &= ~1; }
+      else if (dir == 3 && c > 0) { maze[r][c] &= ~8; maze[r][c - 1] &= ~2; }
+    }
+  };
+
+  int level = 1;
+  long score = 0;
+  int lives = 3;
+  int dotsLeft = 0;
+
+  int playerC = 0, playerR = 0;
+  int nextDC = 0, nextDR = 0, curDC = 0, curDR = 0;
+  uint32_t lastPlayerMove = 0;
+  uint32_t playerMoveDelay = 140;
+
+  struct Ghost {
+    int c, r;
+    int homeC, homeR;
+    bool active, scared, eaten;
+    uint32_t lastMove, respawnAt;
+  };
+  const int MAX_GHOSTS = 4;
+  Ghost ghosts[MAX_GHOSTS];
+
+  uint32_t powerUntil = 0;
+  uint32_t ghostMoveDelay = 220;
+
+  auto canMove = [&](int c, int r, int dir) -> bool {
+    // dir: 0 up,1 right,2 down,3 left  -> wall bits 1,2,4,8
+    uint8_t w = maze[r][c];
+    if (dir == 0) return !(w & 1) && r > 0;
+    if (dir == 1) return !(w & 2) && c < COLS - 1;
+    if (dir == 2) return !(w & 4) && r < ROWS - 1;
+    return !(w & 8) && c > 0;
+  };
+
+  auto stepDir = [&](int dir, int &dc, int &dr) {
+    dc = 0; dr = 0;
+    if (dir == 0) dr = -1;
+    else if (dir == 1) dc = 1;
+    else if (dir == 2) dr = 1;
+    else dc = -1;
+  };
+
+  auto setupLevel = [&]() {
+    generateMaze();
+    dotsLeft = 0;
+    for (int r = 0; r < ROWS; r++) {
+      for (int c = 0; c < COLS; c++) {
+        dot[r][c] = true;
+        power[r][c] = false;
+        dotsLeft++;
+      }
+    }
+    playerC = 0; playerR = 0;
+    dot[playerR][playerC] = false; dotsLeft--;
+    curDC = curDR = nextDC = nextDR = 0;
+
+    int pcx[2] = { COLS - 1, 0 };
+    int pcy[2] = { 0, ROWS - 1 };
+    for (int i = 0; i < 2; i++) {
+      if (dot[pcy[i]][pcx[i]]) { dot[pcy[i]][pcx[i]] = false; dotsLeft--; }
+      power[pcy[i]][pcx[i]] = true;
+    }
+
+    int ghostCount = min(MAX_GHOSTS, 1 + level / 3);
+    for (int i = 0; i < MAX_GHOSTS; i++) {
+      ghosts[i].active = (i < ghostCount);
+      ghosts[i].homeC = COLS - 1 - (i % 2) * 2;
+      ghosts[i].homeR = ROWS - 1 - (i / 2);
+      ghosts[i].c = ghosts[i].homeC;
+      ghosts[i].r = ghosts[i].homeR;
+      ghosts[i].scared = false;
+      ghosts[i].eaten = false;
+      ghosts[i].lastMove = millis();
+      ghosts[i].respawnAt = 0;
+    }
+
+    ghostMoveDelay = (uint32_t)max(90, 230 - level * 6);
+    powerUntil = 0;
+  };
+
+  setupLevel();
+  uint32_t lastFrame = millis();
+  bool hitFlash = false;
+  uint32_t hitFlashUntil = 0;
 
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
-  centreStr("PAC-MAN", 24);
+  centreStr("PAC-MAN", 22);
   u8g2.setFont(u8g2_font_6x10_tr);
-  centreStr("Use buttons to move", 40);
-  centreStr("Eat all dots!", 54);
+  centreStr("D-pad to move", 38);
+  centreStr("Big dots = power mode", 50);
+  centreStr("25+ endless levels!", 60);
   u8g2.sendBuffer();
-  delay(1500);
+  delay(1700);
   waitRelease();
 
   while (true) {
-    if (checkPause("PACMAN")) return;
+    if (checkPause("PAC-MAN")) return;
     if (checkMenuAndReturn()) return;
-    
-    uint32_t start = millis();
 
-    if (btnHeld(BTN_UP)) { pdx = 0; pdy = -2; }
-    if (btnHeld(BTN_DOWN)) { pdx = 0; pdy = 2; }
-    if (btnHeld(BTN_LEFT)) { pdx = -2; pdy = 0; }
-    if (btnHeld(BTN_RIGHT)) { pdx = 2; pdy = 0; }
+    uint32_t now = millis();
 
-    px += pdx; py += pdy;
-    if (px < 4) px = 4;
-    if (px > SCREEN_W - 4) px = SCREEN_W - 4;
-    if (py < 4) py = 4;
-    if (py > SCREEN_H - 4) py = SCREEN_H - 4;
+    if (btnHeld(BTN_UP)) { nextDC = 0; nextDR = -1; }
+    else if (btnHeld(BTN_DOWN)) { nextDC = 0; nextDR = 1; }
+    else if (btnHeld(BTN_LEFT)) { nextDC = -1; nextDR = 0; }
+    else if (btnHeld(BTN_RIGHT)) { nextDC = 1; nextDR = 0; }
 
-    // FIXED: Better grid position calculation
-    int mx = (px * 10) / SCREEN_W;
-    int my = (py * 5) / SCREEN_H;
-    if (mx >= 0 && mx < 10 && my >= 0 && my < 5) {
-      if (maze[my][mx]) {
-        maze[my][mx] = false;
-        score += 10;
-        beep(1000, 8, soundLevel);
+    if (now - lastPlayerMove > playerMoveDelay) {
+      lastPlayerMove = now;
+      uint8_t w = maze[playerR][playerC];
+      bool moved = false;
+
+      auto tryDir = [&](int dc, int dr) -> bool {
+        if (dc == 0 && dr == -1 && !(w & 1) && playerR > 0) { playerR--; return true; }
+        if (dc == 1 && dr == 0 && !(w & 2) && playerC < COLS - 1) { playerC++; return true; }
+        if (dc == 0 && dr == 1 && !(w & 4) && playerR < ROWS - 1) { playerR++; return true; }
+        if (dc == -1 && dr == 0 && !(w & 8) && playerC > 0) { playerC--; return true; }
+        return false;
+      };
+
+      if (nextDC != 0 || nextDR != 0) {
+        if (tryDir(nextDC, nextDR)) { curDC = nextDC; curDR = nextDR; moved = true; }
       }
-    }
+      if (!moved && (curDC != 0 || curDR != 0)) {
+        moved = tryDir(curDC, curDR);
+      }
 
-    static uint8_t gSpeedCount = 0;
-    if (++gSpeedCount % 2 == 0) {
-      if (gx < px) gx++;
-      else if (gx > px) gx--;
-      if (gy < py) gy++;
-      else if (gy > py) gy--;
-    }
-
-    if (abs(px - gx) < 6 && abs(py - gy) < 6) {
-      gameOverScreen(score, 7, false);
-      return;
-    }
-
-    bool win = true;
-    for (int y = 0; y < 5; y++)
-      for (int x = 0; x < 10; x++)
-        if (maze[y][x]) win = false;
-
-    if (win) {
-      u8g2.clearBuffer();
-      u8g2.setFont(u8g2_font_ncenB10_tr);
-      centreStr("YOU WIN!", 32);
-      u8g2.sendBuffer();
-      delay(2000);
-      gameOverScreen(score, 7, true);
-      return;
-    }
-
-    u8g2.clearBuffer();
-    for (int y = 0; y < 5; y++) {
-      for (int x = 0; x < 10; x++) {
-        if (maze[y][x]) {
-          int dx = (x * SCREEN_W / 10) + (SCREEN_W / 20);
-          int dy = (y * SCREEN_H / 5) + (SCREEN_H / 10);
-          u8g2.drawPixel(dx, dy);
+      if (moved) {
+        if (dot[playerR][playerC]) {
+          dot[playerR][playerC] = false;
+          dotsLeft--;
+          score += 10;
+          beep(1400, 8, soundLevel);
+        }
+        if (power[playerR][playerC]) {
+          power[playerR][playerC] = false;
+          score += 50;
+          powerUntil = now + 5000;
+          beep(700, 30, soundLevel); beep(900, 30, soundLevel);
+          for (int i = 0; i < MAX_GHOSTS; i++) if (ghosts[i].active && !ghosts[i].eaten) ghosts[i].scared = true;
         }
       }
     }
-    u8g2.drawDisc(px, py, 4);
-    u8g2.drawFrame(gx - 3, gy - 3, 7, 7);
+
+    bool powerActive = now < powerUntil;
+    if (!powerActive) for (int i = 0; i < MAX_GHOSTS; i++) ghosts[i].scared = false;
+
+    // ---- ghosts ----
+    for (int gi = 0; gi < MAX_GHOSTS; gi++) {
+      Ghost &g = ghosts[gi];
+      if (!g.active) continue;
+      if (g.eaten) {
+        if (now > g.respawnAt) { g.eaten = false; g.c = g.homeC; g.r = g.homeR; }
+        continue;
+      }
+      if (now - g.lastMove < ghostMoveDelay) continue;
+      g.lastMove = now;
+
+      int dc = playerC - g.c, dr = playerR - g.r;
+      int prefDirs[4];
+      if (g.scared) {
+        // flee: prefer directions that increase distance from the player
+        if (abs(dc) > abs(dr)) {
+          prefDirs[0] = (dc > 0) ? 3 : 1; prefDirs[1] = (dr >= 0) ? 0 : 2;
+          prefDirs[2] = (dc > 0) ? 1 : 3; prefDirs[3] = (dr >= 0) ? 2 : 0;
+        } else {
+          prefDirs[0] = (dr > 0) ? 0 : 2; prefDirs[1] = (dc >= 0) ? 3 : 1;
+          prefDirs[2] = (dr > 0) ? 2 : 0; prefDirs[3] = (dc >= 0) ? 1 : 3;
+        }
+      } else {
+        // chase: prefer directions that reduce distance to the player
+        if (abs(dc) > abs(dr)) {
+          prefDirs[0] = (dc > 0) ? 1 : 3; prefDirs[1] = (dr > 0) ? 2 : 0;
+          prefDirs[2] = (dc > 0) ? 3 : 1; prefDirs[3] = (dr > 0) ? 0 : 2;
+        } else {
+          prefDirs[0] = (dr > 0) ? 2 : 0; prefDirs[1] = (dc > 0) ? 1 : 3;
+          prefDirs[2] = (dr > 0) ? 0 : 2; prefDirs[3] = (dc > 0) ? 3 : 1;
+        }
+      }
+
+      bool moved = false;
+      for (int i = 0; i < 4 && !moved; i++) {
+        if (canMove(g.c, g.r, prefDirs[i])) {
+          int mdc, mdr; stepDir(prefDirs[i], mdc, mdr);
+          g.c += mdc; g.r += mdr;
+          moved = true;
+        }
+      }
+      if (!moved) {
+        int order[4] = {0,1,2,3};
+        for (int i = 3; i > 0; i--) { int j = random(0, i + 1); int t = order[i]; order[i] = order[j]; order[j] = t; }
+        for (int i = 0; i < 4 && !moved; i++) {
+          if (canMove(g.c, g.r, order[i])) {
+            int mdc, mdr; stepDir(order[i], mdc, mdr);
+            g.c += mdc; g.r += mdr;
+            moved = true;
+          }
+        }
+      }
+    }
+
+    // ---- collisions ----
+    for (int gi = 0; gi < MAX_GHOSTS; gi++) {
+      Ghost &g = ghosts[gi];
+      if (!g.active || g.eaten) continue;
+      if (g.c == playerC && g.r == playerR) {
+        if (g.scared) {
+          g.eaten = true;
+          g.respawnAt = now + 3000;
+          score += 100;
+          beep(1200, 20, soundLevel); beep(1600, 20, soundLevel); beep(2000, 30, soundLevel);
+        } else {
+          lives--;
+          beep(200, 250, soundLevel);
+          hitFlash = true; hitFlashUntil = now + 900;
+          if (lives <= 0) {
+            gameOverScreen(score, GAME_INDEX, false);
+            return;
+          }
+          playerC = 0; playerR = 0;
+          curDC = curDR = nextDC = nextDR = 0;
+          for (int i = 0; i < MAX_GHOSTS; i++) {
+            if (!ghosts[i].active) continue;
+            ghosts[i].c = ghosts[i].homeC; ghosts[i].r = ghosts[i].homeR;
+            ghosts[i].scared = false; ghosts[i].eaten = false;
+          }
+          powerUntil = 0;
+          delay(400);
+        }
+      }
+    }
+
+    // ---- level complete ----
+    if (dotsLeft <= 0) {
+      score += 20L * level;
+      u8g2.clearBuffer();
+      u8g2.setFont(u8g2_font_ncenB10_tr);
+      char msg[24];
+      snprintf(msg, sizeof(msg), "LEVEL %d CLEAR!", level);
+      centreStr(msg, 30);
+      u8g2.setFont(u8g2_font_6x10_tr);
+      centreStr("Next level loading...", 46);
+      u8g2.sendBuffer();
+      beep(1300, 60, soundLevel); delay(70); beep(1700, 60, soundLevel); delay(70); beep(2100, 100, soundLevel);
+      delay(900);
+      level++;
+      setupLevel();
+      continue;
+    }
+
+    // ================= DRAW =================
+    u8g2.clearBuffer();
+
+    for (int r = 0; r < ROWS; r++) {
+      for (int c = 0; c < COLS; c++) {
+        uint8_t w = maze[r][c];
+        int cx = OX + c * CELL, cy = OY + r * CELL;
+        if (w & 1) u8g2.drawHLine(cx, cy, CELL + 1);
+        if (w & 2) u8g2.drawVLine(cx + CELL, cy, CELL + 1);
+        if (w & 4) u8g2.drawHLine(cx, cy + CELL, CELL + 1);
+        if (w & 8) u8g2.drawVLine(cx, cy, CELL + 1);
+
+        if (dot[r][c]) u8g2.drawPixel(cx + CELL / 2, cy + CELL / 2);
+        if (power[r][c] && (now / 200) % 2 == 0) u8g2.drawDisc(cx + CELL / 2, cy + CELL / 2, 2);
+      }
+    }
+
+    bool showPlayer = !(hitFlash && now < hitFlashUntil && (now / 100) % 2 == 0);
+    if (hitFlash && now >= hitFlashUntil) hitFlash = false;
+    if (showPlayer) {
+      int pcx = OX + playerC * CELL + CELL / 2, pcy = OY + playerR * CELL + CELL / 2;
+      u8g2.drawDisc(pcx, pcy, 3);
+    }
+
+    for (int gi = 0; gi < MAX_GHOSTS; gi++) {
+      Ghost &g = ghosts[gi];
+      if (!g.active || g.eaten) continue;
+      int gcx = OX + g.c * CELL + CELL / 2, gcy = OY + g.r * CELL + CELL / 2;
+      if (g.scared) {
+        bool endingSoon = (powerUntil > now) && (powerUntil - now < 1500) && ((now / 150) % 2 == 0);
+        if (!endingSoon) u8g2.drawFrame(gcx - 3, gcy - 3, 6, 6);
+      } else {
+        u8g2.drawBox(gcx - 3, gcy - 3, 6, 6);
+        u8g2.setDrawColor(0);
+        u8g2.drawPixel(gcx - 1, gcy - 1);
+        u8g2.drawPixel(gcx + 1, gcy - 1);
+        u8g2.setDrawColor(1);
+      }
+    }
+
+    u8g2.setDrawColor(1);
+    u8g2.drawBox(0, 0, SCREEN_W, 10);
+    u8g2.setDrawColor(0);
     u8g2.setFont(u8g2_font_5x7_tr);
-    char sc[10];
-    itoa(score, sc, 10);
-    u8g2.drawStr(1, 63, sc);
+    char info[24];
+    snprintf(info, sizeof(info), "SC:%ld", score);
+    u8g2.drawStr(2, 8, info);
+    snprintf(info, sizeof(info), "LV:%d", level);
+    u8g2.drawStr(50, 8, info);
+    snprintf(info, sizeof(info), "DOTS:%d", dotsLeft);
+    u8g2.drawStr(82, 8, info);
+    u8g2.setDrawColor(1);
+
+    if (powerActive) {
+      int barW = (int)((powerUntil - now) * 20 / 5000);
+      u8g2.drawFrame(2, 60, 22, 3);
+      if (barW > 0) u8g2.drawBox(2, 60, min(20, barW), 3);
+    }
+
     u8g2.sendBuffer();
-    delay(30);
+    delay(20);
   }
 }
+
 
 // ============================================================
 // GAME: SPACE INVADERS (Fixed bullet detection)
@@ -7029,592 +8428,283 @@ void game_tetris() {
 // ============================================================
 
 void game_tank() {
-  // ==========================================
-  // GAME SETTINGS
-  // ==========================================
-  const int TANK_SIZE = 10;
-  const int PLAYER_SPEED = 2;
-  const int BULLET_SPEED = 4;
-  const int MAX_ENEMIES = 5;
-  const int MAX_PLAYER_BULLETS = 5;
-  const int MAX_ENEMY_BULLETS = 10;
-  const int SPAWN_DELAY = 3000;
-  const int POWERUP_DURATION = 5000;  // 5 seconds
-  // ==========================================
+  const int GAME_INDEX = 10;
+  const int TANK = 9;
+  const int TOP_H = 10;
+
+  const int MAX_WALLS = 10;
+  struct Wall { int x, y, w, h; bool alive; };
+  Wall walls[MAX_WALLS];
+
+  auto buildWalls = [&]() {
+    int i = 0;
+    int layout[][4] = {
+      {30, 20, 10, 6}, {88, 20, 10, 6},
+      {30, 40, 10, 6}, {88, 40, 10, 6},
+      {59, 30, 10, 6}
+    };
+    for (auto &L : layout) {
+      walls[i] = { L[0], L[1], L[2], L[3], true };
+      i++;
+    }
+    for (; i < MAX_WALLS; i++) walls[i].alive = false;
+  };
+
+  auto rectsOverlap = [&](float ax, float ay, int aw, int ah, int bx, int by, int bw, int bh) {
+    return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+  };
 
   struct Tank {
     float x, y;
-    int8_t dx, dy;
-    int8_t facingDx, facingDy;
+    int8_t fdx, fdy;
     bool active;
-    uint32_t lastMove;
-    uint32_t lastShot;
     int health;
-    int speed;
-    uint32_t spawnTime;
-  };
-  
-  struct Bullet {
-    float x, y;
-    int8_t dx, dy;
-    bool active;
-    bool isPlayer;
-    int damage;
-  };
-  
-  struct PowerUp {
-    float x, y;
-    int type;  // 0 = Health, 1 = Speed, 2 = Triple Shot, 3 = Shield
-    bool active;
-    uint32_t spawnTime;
+    float speed;
+    uint32_t lastShot, lastTurn;
   };
 
-  // ==========================================
-  // PLAYER TANK
-  // ==========================================
+  struct Bullet { float x, y; int8_t dx, dy; bool active, isPlayer; };
+
   Tank player;
-  player.x = SCREEN_W / 2 - TANK_SIZE / 2;
-  player.y = SCREEN_H - TANK_SIZE - 10;
-  player.dx = 0;
-  player.dy = 0;
-  player.facingDx = 0;
-  player.facingDy = -1;
+  player.x = SCREEN_W / 2 - TANK / 2;
+  player.y = SCREEN_H - TANK - 3;
+  player.fdx = 0; player.fdy = -1;
   player.active = true;
-  player.lastMove = 0;
-  player.lastShot = 0;
   player.health = 3;
-  player.speed = PLAYER_SPEED;
-  player.spawnTime = 0;
+  player.speed = 1.6f;
+  player.lastShot = 0;
 
-  // ==========================================
-  // ENEMY TANKS
-  // ==========================================
+  const int MAX_ENEMIES = 4;
   Tank enemies[MAX_ENEMIES];
-  for (int i = 0; i < MAX_ENEMIES; i++) {
-    enemies[i].active = false;
-    enemies[i].health = 2;
-    enemies[i].speed = 1;
-  }
+  for (auto &e : enemies) e.active = false;
 
-  // ==========================================
-  // BULLETS
-  // ==========================================
-  Bullet pBullets[MAX_PLAYER_BULLETS];
-  for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
-    pBullets[i].active = false;
-  }
-  
-  Bullet eBullets[MAX_ENEMY_BULLETS];
-  for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
-    eBullets[i].active = false;
-  }
+  const int MAX_PB = 4, MAX_EB = 8;
+  Bullet pBullets[MAX_PB], eBullets[MAX_EB];
+  for (auto &b : pBullets) b.active = false;
+  for (auto &b : eBullets) b.active = false;
 
-  // ==========================================
-  // POWER-UPS
-  // ==========================================
-  PowerUp powerups[3];
-  for (int i = 0; i < 3; i++) {
-    powerups[i].active = false;
-  }
+  buildWalls();
 
-  // ==========================================
-  // GAME VARIABLES
-  // ==========================================
   uint16_t score = 0;
-  uint32_t lastSpawn = 0;
-  uint32_t lastFrame = millis();
-  uint32_t lastFire = 0;
-  uint32_t lastPowerupSpawn = 0;
-  uint32_t gameTime = 0;
   int level = 1;
-  int enemiesDestroyed = 0;
-  bool gameRunning = true;
-  
-  // Player power-up states
-  bool tripleShot = false;
-  bool shieldActive = false;
-  uint32_t powerupTimer = 0;
-  uint32_t shieldTimer = 0;
-  uint32_t tripleTimer = 0;
+  int kills = 0;
+  uint32_t lastSpawn = 0, lastFrame = millis(), lastFire = 0;
 
-  // ==========================================
-  // HELPER FUNCTIONS
-  // ==========================================
   auto spawnEnemy = [&]() {
-    for (int i = 0; i < MAX_ENEMIES; i++) {
-      if (!enemies[i].active) {
-        // Spawn from top with random position
-        enemies[i].x = random(10, SCREEN_W - TANK_SIZE - 10);
-        enemies[i].y = 5;
-        enemies[i].dx = 0;
-        enemies[i].dy = 1;
-        enemies[i].facingDx = 0;
-        enemies[i].facingDy = 1;
-        enemies[i].active = true;
-        enemies[i].lastMove = millis();
-        enemies[i].lastShot = millis();
-        enemies[i].health = 1 + (level / 3);  // Health increases with level
-        enemies[i].speed = 1 + (level / 4);
-        enemies[i].spawnTime = millis();
-        beep(600, 50, soundLevel);
+    for (auto &e : enemies) {
+      if (!e.active) {
+        int side = random(0, 4);
+        if (side == 0) { e.x = random(4, SCREEN_W - TANK - 4); e.y = TOP_H + 2; }
+        else if (side == 1) { e.x = random(4, SCREEN_W - TANK - 4); e.y = SCREEN_H - TANK - 4; }
+        else if (side == 2) { e.x = 2; e.y = random(TOP_H + 2, SCREEN_H - TANK - 4); }
+        else { e.x = SCREEN_W - TANK - 2; e.y = random(TOP_H + 2, SCREEN_H - TANK - 4); }
+        e.fdx = 0; e.fdy = 1;
+        e.active = true;
+        e.health = 1 + level / 4;
+        e.speed = 0.7f + min(1.0f, level * 0.05f);
+        e.lastShot = millis();
+        e.lastTurn = millis();
         return;
       }
     }
   };
 
-  auto spawnPowerup = [&]() {
-    for (int i = 0; i < 3; i++) {
-      if (!powerups[i].active) {
-        powerups[i].x = random(20, SCREEN_W - 20);
-        powerups[i].y = random(20, SCREEN_H - 20);
-        powerups[i].type = random(0, 4);  // 0=Health, 1=Speed, 2=Triple, 3=Shield
-        powerups[i].active = true;
-        powerups[i].spawnTime = millis();
+  auto fireBullet = [&](Bullet *arr, int n, float x, float y, int dx, int dy, bool isPlayer) {
+    for (int i = 0; i < n; i++) {
+      if (!arr[i].active) {
+        arr[i] = { x, y, (int8_t)dx, (int8_t)dy, true, isPlayer };
         return;
       }
     }
   };
 
-  auto firePlayerBullet = [&](float x, float y, int dx, int dy) {
-    for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
-      if (!pBullets[i].active) {
-        pBullets[i].x = x;
-        pBullets[i].y = y;
-        pBullets[i].dx = dx;
-        pBullets[i].dy = dy;
-        pBullets[i].active = true;
-        pBullets[i].isPlayer = true;
-        pBullets[i].damage = 1;
-        return true;
-      }
-    }
-    return false;
-  };
-
-  auto fireEnemyBullet = [&](float x, float y, int dx, int dy) {
-    for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
-      if (!eBullets[i].active) {
-        eBullets[i].x = x;
-        eBullets[i].y = y;
-        eBullets[i].dx = dx;
-        eBullets[i].dy = dy;
-        eBullets[i].active = true;
-        eBullets[i].isPlayer = false;
-        eBullets[i].damage = 1;
-        return true;
-      }
-    }
-    return false;
-  };
-
-  // ==========================================
-  // SHOW START SCREEN
-  // ==========================================
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
-  centreStr("TANK BATTLE", 20);
+  centreStr("TANK BATTLE", 18);
   u8g2.setFont(u8g2_font_6x10_tr);
-  centreStr("D-pad = Move", 35);
-  centreStr("ENTER = Fire", 45);
-  centreStr("Destroy all enemies!", 55);
+  centreStr("D-pad move, ENTER fire", 34);
+  centreStr("Use walls for cover!", 46);
   u8g2.sendBuffer();
-  delay(1500);
+  delay(1600);
   waitRelease();
 
-  // ==========================================
-  // GAME LOOP
-  // ==========================================
   while (true) {
     if (checkPause("TANK BATTLE")) return;
     if (checkMenuAndReturn()) return;
-    
+
     uint32_t now = millis();
     float dt = (now - lastFrame) / 16.0f;
-    if (dt > 3.0f) dt = 3.0f;
+    if (dt > 2.5f) dt = 2.5f;
     lastFrame = now;
-    gameTime += dt;
 
-    // ==========================================
-    // SPAWN ENEMIES
-    // ==========================================
-    int spawnDelay = max(1000, SPAWN_DELAY - level * 100);
-    if (now - lastSpawn > spawnDelay) {
-      int activeEnemies = 0;
-      for (int i = 0; i < MAX_ENEMIES; i++) {
-        if (enemies[i].active) activeEnemies++;
-      }
-      if (activeEnemies < 3 + level / 2) {
-        spawnEnemy();
-        lastSpawn = now;
-      }
+    // ---- spawn ----
+    int spawnDelay = max(1200, 3200 - level * 150);
+    int activeCount = 0;
+    for (auto &e : enemies) if (e.active) activeCount++;
+    if (now - lastSpawn > (uint32_t)spawnDelay && activeCount < min(MAX_ENEMIES, 1 + level / 2)) {
+      spawnEnemy();
+      lastSpawn = now;
     }
 
-    // ==========================================
-    // SPAWN POWER-UPS
-    // ==========================================
-    if (random(0, 100) < 2 && now - lastPowerupSpawn > 5000) {
-      spawnPowerup();
-      lastPowerupSpawn = now;
-    }
+    // ---- player movement w/ wall collision ----
+    float nx = player.x, ny = player.y;
+    if (btnHeld(BTN_UP))    { ny -= player.speed * dt; player.fdx = 0; player.fdy = -1; }
+    else if (btnHeld(BTN_DOWN))  { ny += player.speed * dt; player.fdx = 0; player.fdy = 1; }
+    else if (btnHeld(BTN_LEFT))  { nx -= player.speed * dt; player.fdx = -1; player.fdy = 0; }
+    else if (btnHeld(BTN_RIGHT)) { nx += player.speed * dt; player.fdx = 1; player.fdy = 0; }
 
-    // ==========================================
-    // PLAYER MOVEMENT
-    // ==========================================
-    int moveSpeed = player.speed;
-    
-    if (btnHeld(BTN_UP)) { 
-      player.y -= moveSpeed * dt; 
-      player.facingDx = 0; 
-      player.facingDy = -1; 
-    }
-    else if (btnHeld(BTN_DOWN)) { 
-      player.y += moveSpeed * dt; 
-      player.facingDx = 0; 
-      player.facingDy = 1; 
-    }
-    else if (btnHeld(BTN_LEFT)) { 
-      player.x -= moveSpeed * dt; 
-      player.facingDx = -1; 
-      player.facingDy = 0; 
-    }
-    else if (btnHeld(BTN_RIGHT)) { 
-      player.x += moveSpeed * dt; 
-      player.facingDx = 1; 
-      player.facingDy = 0; 
-    }
+    nx = constrain(nx, 0.0f, (float)(SCREEN_W - TANK));
+    ny = constrain(ny, (float)(TOP_H + 1), (float)(SCREEN_H - TANK));
 
-    player.x = constrain(player.x, 0, SCREEN_W - TANK_SIZE);
-    player.y = constrain(player.y, 0, SCREEN_H - TANK_SIZE);
+    bool blocked = false;
+    for (auto &w : walls) if (w.alive && rectsOverlap(nx, ny, TANK, TANK, w.x, w.y, w.w, w.h)) blocked = true;
+    if (!blocked) { player.x = nx; player.y = ny; }
 
-    // ==========================================
-    // PLAYER SHOOTING
-    // ==========================================
-    if (btnPressed(BTN_ENTER) && now - lastFire > 250) {
-      float bulletX = player.x + TANK_SIZE/2 - 2;
-      float bulletY = player.y + TANK_SIZE/2 - 2;
-      
-      if (tripleShot) {
-        // Triple shot - 3 bullets in different directions
-        firePlayerBullet(bulletX, bulletY, player.facingDx, player.facingDy);
-        firePlayerBullet(bulletX, bulletY, player.facingDx + 1, player.facingDy);
-        firePlayerBullet(bulletX, bulletY, player.facingDx - 1, player.facingDy);
-        beep(1200, 20, soundLevel);
-      } else {
-        firePlayerBullet(bulletX, bulletY, player.facingDx, player.facingDy);
-        beep(1000, 15, soundLevel);
-      }
+    if (btnPressed(BTN_ENTER) && now - lastFire > 260) {
+      fireBullet(pBullets, MAX_PB, player.x + TANK / 2 - 1, player.y + TANK / 2 - 1, player.fdx, player.fdy, true);
+      beep(1000, 15, soundLevel);
       lastFire = now;
     }
 
-    // ==========================================
-    // ENEMY AI
-    // ==========================================
-    for (int i = 0; i < MAX_ENEMIES; i++) {
-      if (!enemies[i].active) continue;
-      
-      Tank &e = enemies[i];
-      
-      // Enemy movement
-      if (now - e.lastMove > 1000) {
-        // Random direction change
-        int dir = random(0, 4);
-        if (dir == 0) { e.dx = 0; e.dy = -1; }
-        else if (dir == 1) { e.dx = 1; e.dy = 0; }
-        else if (dir == 2) { e.dx = 0; e.dy = 1; }
-        else { e.dx = -1; e.dy = 0; }
-        e.facingDx = e.dx;
-        e.facingDy = e.dy;
-        e.lastMove = now;
+    // ---- enemy AI ----
+    for (auto &e : enemies) {
+      if (!e.active) continue;
+
+      if (now - e.lastTurn > 900) {
+        e.lastTurn = now;
+        float dx = player.x - e.x, dy = player.y - e.y;
+        if (fabs(dx) > fabs(dy)) { e.fdx = (dx > 0) ? 1 : -1; e.fdy = 0; }
+        else { e.fdx = 0; e.fdy = (dy > 0) ? 1 : -1; }
       }
-      
-      e.x += e.dx * e.speed * dt;
-      e.y += e.dy * e.speed * dt;
-      e.x = constrain(e.x, 0, SCREEN_W - TANK_SIZE);
-      e.y = constrain(e.y, 0, SCREEN_H - TANK_SIZE);
-      
-      // Enemy shooting
-      if (now - e.lastShot > 1500 - level * 50) {
-        float bulletX = e.x + TANK_SIZE/2 - 2;
-        float bulletY = e.y + TANK_SIZE/2 - 2;
-        fireEnemyBullet(bulletX, bulletY, e.facingDx, e.facingDy);
+
+      float ex = e.x + e.fdx * e.speed * dt;
+      float ey = e.y + e.fdy * e.speed * dt;
+      ex = constrain(ex, 0.0f, (float)(SCREEN_W - TANK));
+      ey = constrain(ey, (float)(TOP_H + 1), (float)(SCREEN_H - TANK));
+
+      bool eblocked = false;
+      for (auto &w : walls) if (w.alive && rectsOverlap(ex, ey, TANK, TANK, w.x, w.y, w.w, w.h)) eblocked = true;
+      if (!eblocked) { e.x = ex; e.y = ey; }
+      else { e.lastTurn = 0; }  // force a new direction next frame if stuck
+
+      if (now - e.lastShot > (uint32_t)max(700, 1800 - level * 60)) {
         e.lastShot = now;
-        beep(400, 10, soundLevel);
+        fireBullet(eBullets, MAX_EB, e.x + TANK / 2 - 1, e.y + TANK / 2 - 1, e.fdx, e.fdy, false);
+        beep(450, 10, soundLevel);
       }
     }
 
-    // ==========================================
-    // PLAYER BULLETS
-    // ==========================================
-    for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
+    // ---- player bullets ----
+    for (int i = 0; i < MAX_PB; i++) {
       if (!pBullets[i].active) continue;
-      
-      pBullets[i].x += pBullets[i].dx * BULLET_SPEED * dt;
-      pBullets[i].y += pBullets[i].dy * BULLET_SPEED * dt;
-      
-      // Remove if off screen
-      if (pBullets[i].x < 0 || pBullets[i].x > SCREEN_W || 
-          pBullets[i].y < 0 || pBullets[i].y > SCREEN_H) {
-        pBullets[i].active = false;
-        continue;
+      pBullets[i].x += pBullets[i].dx * 3.0f * dt;
+      pBullets[i].y += pBullets[i].dy * 3.0f * dt;
+      if (pBullets[i].x < 0 || pBullets[i].x > SCREEN_W || pBullets[i].y < TOP_H || pBullets[i].y > SCREEN_H) {
+        pBullets[i].active = false; continue;
       }
-      
-      // Check collision with enemies
-      for (int j = 0; j < MAX_ENEMIES; j++) {
-        if (!enemies[j].active) continue;
-        
-        if (pBullets[i].x > enemies[j].x && pBullets[i].x < enemies[j].x + TANK_SIZE &&
-            pBullets[i].y > enemies[j].y && pBullets[i].y < enemies[j].y + TANK_SIZE) {
-          
-          enemies[j].health -= pBullets[i].damage;
+      for (auto &w : walls) {
+        if (w.alive && rectsOverlap(pBullets[i].x, pBullets[i].y, 2, 2, w.x, w.y, w.w, w.h)) {
+          pBullets[i].active = false; break;
+        }
+      }
+      if (!pBullets[i].active) continue;
+      for (auto &e : enemies) {
+        if (!e.active) continue;
+        if (rectsOverlap(pBullets[i].x, pBullets[i].y, 2, 2, e.x, e.y, TANK, TANK)) {
+          e.health--;
           pBullets[i].active = false;
-          
-          if (enemies[j].health <= 0) {
-            // Enemy destroyed!
-            enemies[j].active = false;
-            score += 10 + level * 5;
-            enemiesDestroyed++;
-            
-            // Chance to drop power-up
-            if (random(0, 100) < 20) {
-              spawnPowerup();
-            }
-            
-            beep(800, 30, soundLevel);
-            delay(30);
-            beep(1000, 30, soundLevel);
-            
-            // Level up
-            if (enemiesDestroyed % 5 == 0) {
+          if (e.health <= 0) {
+            e.active = false;
+            score += 15 + level * 3;
+            kills++;
+            beep(850, 25, soundLevel); beep(1100, 25, soundLevel);
+            if (kills % 6 == 0) {
               level++;
-              u8g2.clearBuffer();
-              u8g2.setFont(u8g2_font_ncenB10_tr);
-              char msg[30];
-              snprintf(msg, sizeof(msg), "LEVEL %d!", level);
-              centreStr(msg, 28);
-              u8g2.setFont(u8g2_font_6x10_tr);
-              centreStr("Enemies get tougher!", 44);
-              u8g2.sendBuffer();
-              delay(1000);
-              beep(1760, 80, soundLevel);
-              delay(100);
-              beep(2093, 100, soundLevel);
+              beep(1600, 60, soundLevel); delay(70); beep(2000, 90, soundLevel);
             }
           } else {
-            beep(600, 20, soundLevel);
+            beep(600, 15, soundLevel);
           }
           break;
         }
       }
     }
 
-    // ==========================================
-    // ENEMY BULLETS
-    // ==========================================
-    for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
+    // ---- enemy bullets ----
+    for (int i = 0; i < MAX_EB; i++) {
       if (!eBullets[i].active) continue;
-      
-      eBullets[i].x += eBullets[i].dx * BULLET_SPEED * 0.7f * dt;
-      eBullets[i].y += eBullets[i].dy * BULLET_SPEED * 0.7f * dt;
-      
-      if (eBullets[i].x < 0 || eBullets[i].x > SCREEN_W || 
-          eBullets[i].y < 0 || eBullets[i].y > SCREEN_H) {
-        eBullets[i].active = false;
-        continue;
+      eBullets[i].x += eBullets[i].dx * 2.1f * dt;
+      eBullets[i].y += eBullets[i].dy * 2.1f * dt;
+      if (eBullets[i].x < 0 || eBullets[i].x > SCREEN_W || eBullets[i].y < TOP_H || eBullets[i].y > SCREEN_H) {
+        eBullets[i].active = false; continue;
       }
-      
-      // Check collision with player
-      if (!shieldActive &&
-          eBullets[i].x > player.x && eBullets[i].x < player.x + TANK_SIZE &&
-          eBullets[i].y > player.y && eBullets[i].y < player.y + TANK_SIZE) {
-        
-        player.health--;
+      for (auto &w : walls) {
+        if (w.alive && rectsOverlap(eBullets[i].x, eBullets[i].y, 2, 2, w.x, w.y, w.w, w.h)) {
+          eBullets[i].active = false; break;
+        }
+      }
+      if (!eBullets[i].active) continue;
+      if (rectsOverlap(eBullets[i].x, eBullets[i].y, 2, 2, player.x, player.y, TANK, TANK)) {
         eBullets[i].active = false;
-        beep(200, 200, soundLevel);
-        
+        player.health--;
+        beep(220, 150, soundLevel);
         if (player.health <= 0) {
-          gameOverScreen(score, 10, false);
+          gameOverScreen(score, GAME_INDEX, false);
           return;
         }
-        
-        // Brief invincibility
-        shieldActive = true;
-        shieldTimer = now + 2000;
       }
     }
 
-    // ==========================================
-    // POWER-UPS
-    // ==========================================
-    for (int i = 0; i < 3; i++) {
-      if (!powerups[i].active) continue;
-      
-      // Power-up expires after 10 seconds
-      if (now - powerups[i].spawnTime > 10000) {
-        powerups[i].active = false;
-        continue;
-      }
-      
-      // Check if player collects power-up
-      if (powerups[i].x > player.x && powerups[i].x < player.x + TANK_SIZE &&
-          powerups[i].y > player.y && powerups[i].y < player.y + TANK_SIZE) {
-        
-        switch(powerups[i].type) {
-          case 0: // Health
-            player.health = min(5, player.health + 1);
-            beep(1600, 50, soundLevel);
-            break;
-          case 1: // Speed
-            player.speed = 4;
-            powerupTimer = now + POWERUP_DURATION;
-            beep(1400, 50, soundLevel);
-            break;
-          case 2: // Triple Shot
-            tripleShot = true;
-            tripleTimer = now + POWERUP_DURATION;
-            beep(1800, 50, soundLevel);
-            break;
-          case 3: // Shield
-            shieldActive = true;
-            shieldTimer = now + POWERUP_DURATION;
-            beep(2000, 50, soundLevel);
-            break;
-        }
-        powerups[i].active = false;
-      }
-    }
-
-    // ==========================================
-    // POWER-UP TIMERS
-    // ==========================================
-    if (now > powerupTimer && player.speed > PLAYER_SPEED) {
-      player.speed = PLAYER_SPEED;
-    }
-    if (now > tripleTimer && tripleShot) {
-      tripleShot = false;
-    }
-    if (now > shieldTimer && shieldActive) {
-      shieldActive = false;
-    }
-
-    // ==========================================
-    // DRAW EVERYTHING
-    // ==========================================
+    // ================= DRAW =================
     u8g2.clearBuffer();
-    
-    // Draw grid background (optional)
-    for (int x = 0; x < SCREEN_W; x += 20) {
-      for (int y = 0; y < SCREEN_H; y += 20) {
-        if ((x/20 + y/20) % 2 == 0) {
-          u8g2.setDrawColor(0);
-          u8g2.drawBox(x, y, 20, 20);
-          u8g2.setDrawColor(1);
-        }
-      }
-    }
-    
-    // Draw power-ups
-    for (int i = 0; i < 3; i++) {
-      if (!powerups[i].active) continue;
-      
-      // Animate power-ups
-      if ((now / 200) % 2 == 0) {
-        u8g2.drawCircle((int)powerups[i].x + 5, (int)powerups[i].y + 5, 6);
-        u8g2.drawCircle((int)powerups[i].x + 5, (int)powerups[i].y + 5, 4);
-      }
-      
-      // Draw power-up symbol
-      u8g2.setFont(u8g2_font_5x7_tr);
-      char symbol;
-      switch(powerups[i].type) {
-        case 0: symbol = 'H'; break;
-        case 1: symbol = 'S'; break;
-        case 2: symbol = 'T'; break;
-        case 3: symbol = 'B'; break;
-      }
-      u8g2.drawStr((int)powerups[i].x + 3, (int)powerups[i].y + 8, &symbol);
-    }
-    
-    // Draw enemy tanks
-    for (int i = 0; i < MAX_ENEMIES; i++) {
-      if (!enemies[i].active) continue;
-      
-      int ex = (int)enemies[i].x;
-      int ey = (int)enemies[i].y;
-      
-      // Enemy tank body
-      u8g2.drawBox(ex, ey, TANK_SIZE, TANK_SIZE);
-      
-      // Enemy tank turret
-      u8g2.setDrawColor(0);
-      u8g2.drawBox(ex + 3, ey + 3, 4, 4);
-      u8g2.setDrawColor(1);
-      
-      // Health bar
-      u8g2.drawFrame(ex, ey - 4, TANK_SIZE, 3);
-      int healthWidth = (enemies[i].health * TANK_SIZE) / 3;
-      u8g2.drawBox(ex, ey - 4, healthWidth, 3);
-    }
-    
-    // Draw player tank
-    int px = (int)player.x;
-    int py = (int)player.y;
-    
-    // Shield effect
-    if (shieldActive) {
-      u8g2.drawCircle(px + TANK_SIZE/2, py + TANK_SIZE/2, TANK_SIZE + 4);
-    }
-    
-    // Player tank body
-    u8g2.drawRBox(px, py, TANK_SIZE, TANK_SIZE, 2);
-    
-    // Player tank turret
-    u8g2.setDrawColor(0);
-    u8g2.drawBox(px + 3, py + 3, 4, 4);
+
     u8g2.setDrawColor(1);
-    
-    // Player health
-    for (int i = 0; i < player.health; i++) {
-      u8g2.drawBox(5 + i * 8, SCREEN_H - 8, 6, 6);
-    }
-    
-    // Draw bullets
-    for (int i = 0; i < MAX_PLAYER_BULLETS; i++) {
-      if (pBullets[i].active) {
-        u8g2.drawDisc((int)pBullets[i].x, (int)pBullets[i].y, 2);
-      }
-    }
-    
-    for (int i = 0; i < MAX_ENEMY_BULLETS; i++) {
-      if (eBullets[i].active) {
-        u8g2.drawPixel((int)eBullets[i].x, (int)eBullets[i].y);
-      }
-    }
-    
-    // Draw UI
+    u8g2.drawBox(0, 0, SCREEN_W, TOP_H);
+    u8g2.setDrawColor(0);
     u8g2.setFont(u8g2_font_5x7_tr);
-    
-    // Score
-    char sc[10];
-    itoa(score, sc, 10);
-    u8g2.drawStr(SCREEN_W - 40, 8, "SC:");
-    u8g2.drawStr(SCREEN_W - 20, 8, sc);
-    
-    // Level
-    char lv[5];
-    itoa(level, lv, 10);
-    u8g2.drawStr(SCREEN_W - 40, 16, "LV:");
-    u8g2.drawStr(SCREEN_W - 20, 16, lv);
-    
-    // Power-up status
-    if (tripleShot) {
-      u8g2.drawStr(5, 16, "3X");
+    char info[24];
+    snprintf(info, sizeof(info), "SC:%u", score);
+    u8g2.drawStr(2, 8, info);
+    snprintf(info, sizeof(info), "LV:%d", level);
+    u8g2.drawStr(50, 8, info);
+    for (int i = 0; i < player.health; i++) u8g2.drawBox(SCREEN_W - 8 - i * 8, 2, 6, 6);
+    u8g2.setDrawColor(1);
+
+    for (auto &w : walls) {
+      if (!w.alive) continue;
+      u8g2.drawRBox(w.x, w.y, w.w, w.h, 1);
+      u8g2.setDrawColor(0);
+      u8g2.drawHLine(w.x + 1, w.y + w.h / 2, w.w - 2);
+      u8g2.setDrawColor(1);
     }
-    if (player.speed > PLAYER_SPEED) {
-      u8g2.drawStr(5, 24, "SPD");
+
+    for (auto &e : enemies) {
+      if (!e.active) continue;
+      int ex = (int)e.x, ey = (int)e.y;
+      u8g2.drawBox(ex, ey, TANK, TANK);
+      u8g2.setDrawColor(0);
+      u8g2.drawBox(ex + 3, ey + 3, 3, 3);
+      u8g2.setDrawColor(1);
+      u8g2.drawLine(ex + TANK / 2, ey + TANK / 2, ex + TANK / 2 + e.fdx * 5, ey + TANK / 2 + e.fdy * 5);
+      // enemy health bar
+      u8g2.drawFrame(ex, ey - 3, TANK, 2);
+      int maxHp = max(1, 1 + level / 4);
+      int hw = (e.health * TANK) / maxHp;
+      u8g2.drawBox(ex, ey - 3, max(1, hw), 2);
     }
-    
+
+    int px = (int)player.x, py = (int)player.y;
+    u8g2.drawRBox(px, py, TANK, TANK, 2);
+    u8g2.setDrawColor(0);
+    u8g2.drawBox(px + 3, py + 3, 3, 3);
+    u8g2.setDrawColor(1);
+    u8g2.drawLine(px + TANK / 2, py + TANK / 2, px + TANK / 2 + player.fdx * 6, py + TANK / 2 + player.fdy * 6);
+
+    for (int i = 0; i < MAX_PB; i++) if (pBullets[i].active) u8g2.drawDisc((int)pBullets[i].x, (int)pBullets[i].y, 1);
+    for (int i = 0; i < MAX_EB; i++) if (eBullets[i].active) u8g2.drawPixel((int)eBullets[i].x, (int)eBullets[i].y);
+
     u8g2.sendBuffer();
-    delay(20);
+    delay(16);
   }
 }
 
@@ -7721,124 +8811,202 @@ void game_rps() {
   const char* moves[] = {"ROCK", "PAPER", "SCISSORS"};
   int playerScore = 0, cpuScore = 0;
   int playerChoice = 0, cpuChoice = 0;
-  int state = 0;
-  uint32_t resultTime = 0;
-  int totalRounds = 0;
-  int playerWins = 0;
+  int state = 0;               // 0 = choosing, 1 = countdown, 2 = result
+  int countdownStep = 0;
+  uint32_t stateTime = 0;
+  int streak = 0, bestStreak = 0;
+
+  auto drawHandIcon = [&](int move, int cx, int cy, int scale) {
+    int s = scale;
+    switch (move) {
+      case 0: // ROCK - filled fist
+        u8g2.drawDisc(cx, cy, s);
+        u8g2.setDrawColor(0);
+        u8g2.drawDisc(cx - s/3, cy - s/3, max(1, s/3));
+        u8g2.setDrawColor(1);
+        break;
+      case 1: // PAPER - flat rounded box
+        u8g2.drawRBox(cx - s, cy - s + 2, s * 2, s * 2 - 3, 2);
+        u8g2.setDrawColor(0);
+        u8g2.drawHLine(cx - s + 2, cy, s * 2 - 4);
+        u8g2.setDrawColor(1);
+        break;
+      case 2: // SCISSORS - V shape
+        u8g2.drawLine(cx, cy, cx - s, cy - s);
+        u8g2.drawLine(cx, cy, cx + s, cy - s);
+        u8g2.drawLine(cx, cy, cx, cy + s);
+        u8g2.drawCircle(cx - s, cy - s, 1);
+        u8g2.drawCircle(cx + s, cy - s, 1);
+        break;
+    }
+  };
 
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
-  centreStr("RPS GAME", 20);
+  centreStr("ROCK PAPER", 20);
+  centreStr("SCISSORS", 34);
   u8g2.setFont(u8g2_font_6x10_tr);
-  centreStr("UP/DOWN to choose", 40);
-  centreStr("ENTER to play!", 54);
+  centreStr("UP/DOWN=choose", 48);
+  centreStr("ENTER=battle!", 60);
   u8g2.sendBuffer();
   delay(1500);
   waitRelease();
 
   while (true) {
-    if (checkPause("RPS")) return;
+    if (checkPause("RPS BATTLE")) return;
     if (checkMenuAndReturn()) return;
-    
+
+    uint32_t now = millis();
+
+    // ============= STATE 0: choosing =============
     if (state == 0) {
-      if (btnPressed(BTN_UP)) { playerChoice = (playerChoice + 2) % 3; beep(600, 10, soundLevel); }
+      if (btnPressed(BTN_UP))   { playerChoice = (playerChoice + 2) % 3; beep(600, 10, soundLevel); }
       if (btnPressed(BTN_DOWN)) { playerChoice = (playerChoice + 1) % 3; beep(600, 10, soundLevel); }
-      
+
       if (btnPressed(BTN_ENTER)) {
-        cpuChoice = random(0, 3);
         state = 1;
-        resultTime = millis();
-        beep(900, 20, soundLevel);
-        totalRounds++;
-        saveTotalGames(12);
+        countdownStep = 0;
+        stateTime = now;
+        beep(700, 20, soundLevel);
       }
-      
+
       u8g2.clearBuffer();
+      u8g2.setDrawColor(1);
+      u8g2.drawRBox(0, 0, SCREEN_W, 11, 2);
+      u8g2.setDrawColor(0);
       u8g2.setFont(u8g2_font_ncenB08_tr);
-      centreStr("CHOOSE YOUR MOVE", 10);
-      
-      u8g2.setFont(u8g2_font_6x10_tr);
-      for (int i = 0; i < 3; i++) {
-        int y = 25 + i * 12;
-        if (i == playerChoice) {
-          u8g2.drawRBox(20, y-8, SCREEN_W-40, 12, 2);
-          u8g2.setDrawColor(0);
-          centreStr(moves[i], y+3);
-          u8g2.setDrawColor(1);
-        } else {
-          centreStr(moves[i], y+3);
-        }
-      }
-      
-      char scoreStr[20];
-      snprintf(scoreStr, sizeof(scoreStr), "You:%d CPU:%d", playerScore, cpuScore);
+      centreStr("ROCK-PAPER-SCISSORS", 8);
+      u8g2.setDrawColor(1);
+
+      // win-rate progress bar
+      uint16_t winRate = 0;
+      if (totalGamesPlayed[12] > 0) winRate = (rpsWins[12] * 100) / totalGamesPlayed[12];
       u8g2.setFont(u8g2_font_5x7_tr);
-      centreStr(scoreStr, 60);
+      char wr[20];
+      snprintf(wr, sizeof(wr), "WinRate:%u%%", winRate);
+      u8g2.drawStr(2, 20, wr);
+      u8g2.drawFrame(2, 22, 60, 5);
+      int fillW = (winRate * 58) / 100;
+      if (fillW > 0) u8g2.drawBox(3, 23, fillW, 3);
+
+      char scoreStr[24];
+      snprintf(scoreStr, sizeof(scoreStr), "You:%d CPU:%d", playerScore, cpuScore);
+      u8g2.drawStr(66, 20, scoreStr);
+
+      // move carousel: prev / current(big) / next
+      int cx = SCREEN_W / 2;
+      int prev = (playerChoice + 2) % 3;
+      int next = (playerChoice + 1) % 3;
+
+      u8g2.setDrawColor(1);
+      drawHandIcon(prev, cx - 40, 46, 7);
+      drawHandIcon(next, cx + 40, 46, 7);
+
+      u8g2.drawRFrame(cx - 20, 32, 40, 28, 4);
+      drawHandIcon(playerChoice, cx, 46, 11);
+
+      u8g2.setFont(u8g2_font_6x10_tr);
+      int tw = u8g2.getStrWidth(moves[playerChoice]);
+      u8g2.drawStr(cx - tw / 2, 62, moves[playerChoice]);
+
+      if ((now / 300) % 2 == 0) {
+        u8g2.drawTriangle(cx - 26, 44, cx - 26, 50, cx - 22, 47);
+        u8g2.drawTriangle(cx + 26, 44, cx + 26, 50, cx + 22, 47);
+      }
+
       u8g2.sendBuffer();
     }
-    
+
+    // ============= STATE 1: countdown animation =============
     else if (state == 1) {
-      if (millis() - resultTime > 2000) {
+      const char* callouts[3] = {"ROCK", "PAPER", "SHOOT!"};
+      uint32_t elapsed = now - stateTime;
+      int step = elapsed / 350;
+      if (step > countdownStep && countdownStep < 3) {
+        countdownStep = step;
+        beep(700 + countdownStep * 150, 40, soundLevel);
+      }
+
+      u8g2.clearBuffer();
+      u8g2.setFont(u8g2_font_ncenB18_tr);
+      if (countdownStep < 3) {
+        centreStr(callouts[countdownStep], 40);
+      } else {
+        centreStr("SHOOT!", 40);
+      }
+      u8g2.sendBuffer();
+
+      if (elapsed > 1100) {
+        cpuChoice = random(0, 3);
+        state = 2;
+        stateTime = now;
+        totalGamesPlayed[12]++;
+        saveTotalGames(12);
+      }
+    }
+
+    // ============= STATE 2: result =============
+    else if (state == 2) {
+      if (now - stateTime > 2200) {
         state = 0;
         continue;
       }
-      
-      u8g2.clearBuffer();
-      u8g2.setFont(u8g2_font_ncenB08_tr);
-      centreStr("RESULT!", 10);
-      
-      u8g2.setFont(u8g2_font_6x10_tr);
-      char youStr[20];
-      snprintf(youStr, sizeof(youStr), "You: %s", moves[playerChoice]);
-      centreStr(youStr, 28);
-      
-      char cpuStr[20];
-      snprintf(cpuStr, sizeof(cpuStr), "CPU: %s", moves[cpuChoice]);
-      centreStr(cpuStr, 40);
-      
+
       int result = (playerChoice - cpuChoice + 3) % 3;
       const char* resultText;
-      if (result == 0) { 
-        resultText = "DRAW!"; 
-        beep(500, 40, soundLevel);
-      }
-      else if (result == 1) { 
-        resultText = "YOU WIN!"; 
-        playerScore++;
-        playerWins++;
-        saveRPSWin(12);
-        uint16_t winRate = 0;
-        if (totalGamesPlayed[12] > 0) {
-          winRate = (rpsWins[12] * 100) / totalGamesPlayed[12];
+
+      if (result == 0) {
+        resultText = "DRAW!";
+        if (now - stateTime < 30) { beep(500, 40, soundLevel); streak = 0; }
+      } else if (result == 1) {
+        resultText = "YOU WIN!";
+        if (now - stateTime < 30) {
+          playerScore++;
+          streak++;
+          if (streak > bestStreak) bestStreak = streak;
+          saveRPSWin(12);
+          uint16_t winRate = 0;
+          if (totalGamesPlayed[12] > 0) winRate = (rpsWins[12] * 100) / totalGamesPlayed[12];
+          if (winRate > highScores[12]) {
+            highScores[12] = winRate;
+            EEPROM.begin(EEPROM_SIZE);
+            EEPROM.put(12 * sizeof(uint16_t), highScores[12]);
+            EEPROM.commit();
+            EEPROM.end();
+          }
+          beep(1200, 30, soundLevel); delay(60); beep(1500, 30, soundLevel); delay(60); beep(1800, 60, soundLevel);
         }
-        if (winRate > highScores[12]) {
-          highScores[12] = winRate;
-          EEPROM.begin(EEPROM_SIZE);
-          EEPROM.put(12 * sizeof(uint16_t), highScores[12]);
-          EEPROM.commit();
-          EEPROM.end();
-        }
-        beep(1200, 30, soundLevel); 
-        delay(80); 
-        beep(1500, 30, soundLevel); 
+      } else {
+        resultText = "CPU WINS!";
+        if (now - stateTime < 30) { cpuScore++; streak = 0; beep(280, 120, soundLevel); }
       }
-      else { 
-        resultText = "CPU WINS!"; 
-        cpuScore++; 
-        beep(300, 80, soundLevel); 
-      }
-      
-      u8g2.setFont(u8g2_font_ncenB08_tr);
-      centreStr(resultText, 54);
-      
-      char scoreStr[30];
-      snprintf(scoreStr, sizeof(scoreStr), "You:%d CPU:%d", playerScore, cpuScore);
+
+      u8g2.clearBuffer();
+      int cx = SCREEN_W / 2;
+
       u8g2.setFont(u8g2_font_5x7_tr);
-      centreStr(scoreStr, 62);
-      
+      centreStr("YOU", 8);
+      drawHandIcon(playerChoice, cx - 32, 26, 10);
+
+      centreStrBox("VS", cx - 10, 20, 26);
+
+      const char* cpuLabel = "CPU";
+      int cw = u8g2.getStrWidth(cpuLabel);
+      u8g2.drawStr(cx + 32 - cw / 2, 8, cpuLabel);
+      drawHandIcon(cpuChoice, cx + 32, 26, 10);
+
+      u8g2.setFont(u8g2_font_ncenB10_tr);
+      centreStr(resultText, 46);
+
+      u8g2.setFont(u8g2_font_5x7_tr);
+      char scoreStr[24];
+      snprintf(scoreStr, sizeof(scoreStr), "You:%d  CPU:%d  Streak:%d", playerScore, cpuScore, streak);
+      centreStr(scoreStr, 60);
+
       u8g2.sendBuffer();
     }
-    delay(50);
+
+    delay(20);
   }
 }
 
@@ -7972,289 +9140,229 @@ void game_car() {
 // ============================================================
 
 void game_car_2lane() {
-  const int CAR_W = 10, CAR_H = 6;
-  int playerX = 64 - CAR_W/2;
-  int targetLane = 0;  // 0 = Left lane, 1 = Right lane
-  const int LANE_WIDTH = 63;  // SCREEN_W / 2 - 1
-  const int LANE_START = 1;
-  
-  struct Obstacle { 
-    float x, y; 
-    int lane; 
-    bool active; 
-    float speed; 
-    int type;  // 0 = car, 1 = truck, 2 = bike
+  const int GAME_INDEX = 14;   // fixed: was wrongly sharing index 13 with game_car
+  const int CAR_W = 11, CAR_H = 7;
+  const int LANE_L_CX = 44, LANE_R_CX = 84;   // lane centers
+  const int ROAD_L = 20, ROAD_R = 108;
+
+  float playerX = LANE_L_CX - CAR_W / 2.0f;
+  int targetLane = 0;
+
+  struct Obstacle {
+    float x, y;
+    int lane;
+    int type;      // 0 car, 1 truck, 2 bike
+    float speed;
+    bool active;
   };
-  
-  Obstacle obs[10];  // বেশি obstacle রাখলাম
-  for (int i = 0; i < 10; i++) obs[i].active = false;
-  
-  uint32_t lastSpawn = 0;
-  uint32_t lastFrame = millis();
-  uint16_t score = 0;
-  float baseSpeed = 1.5f;
+  const int MAX_OBS = 6;
+  Obstacle obs[MAX_OBS];
+  for (int i = 0; i < MAX_OBS; i++) obs[i].active = false;
+
+  struct Coin { float x, y; bool active; };
+  const int MAX_COINS = 3;
+  Coin coins[MAX_COINS];
+  for (int i = 0; i < MAX_COINS; i++) coins[i].active = false;
+
+  uint32_t lastSpawn = 0, lastCoinSpawn = 0, lastFrame = millis();
+  uint32_t score = 0;
   int lives = 3;
-  int laneHistory[2] = {0, 0};  // Track which lanes have obstacles
-  
-  const float SPEED_TYPES[4] = {0.6f, 0.9f, 1.35f, 1.7f};
-  
-  // Show start screen
+  float roadSpeed = 2.2f;
+  float dashOffset = 0;
+  uint32_t boostReadyAt = 0;
+  bool boosting = false;
+  uint32_t boostEndAt = 0;
+  bool invincible = false;
+  uint32_t invincibleUntil = 0;
+
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
-  centreStr("2-LANE CAR RACER", 18);
+  centreStr("HIGHWAY RACER", 18);
   u8g2.setFont(u8g2_font_6x10_tr);
-  centreStr("Avoid obstacles!", 36);
-  centreStr("LEFT/RIGHT = switch lanes", 50);
-  u8g2.setFont(u8g2_font_5x7_tr);
-  centreStr("2 lanes - double the challenge!", 62);
+  centreStr("LEFT/RIGHT = lane", 34);
+  centreStr("ENTER = nitro boost", 46);
+  centreStr("Grab stars for bonus!", 58);
   u8g2.sendBuffer();
-  delay(1500);
+  delay(1600);
   waitRelease();
 
   while (true) {
-    if (checkPause("2-LANE RACER")) return;
+    if (checkPause("HIGHWAY RACER")) return;
     if (checkMenuAndReturn()) return;
-    
+
     uint32_t now = millis();
     float dt = (now - lastFrame) / 20.0f;
     if (dt > 3.0f) dt = 3.0f;
     lastFrame = now;
-    
-    // Lane switching with button presses
-    if (btnPressed(BTN_LEFT)) {
-      targetLane = max(0, targetLane - 1);
-      beep(800, 15, soundLevel);
+
+    if (invincible && now > invincibleUntil) invincible = false;
+    if (boosting && now > boostEndAt) boosting = false;
+
+    // ---- lane switching ----
+    if (btnPressed(BTN_LEFT))  { targetLane = 0; beep(750, 12, soundLevel); }
+    if (btnPressed(BTN_RIGHT)) { targetLane = 1; beep(750, 12, soundLevel); }
+
+    // ---- nitro boost ----
+    if (btnPressed(BTN_ENTER) && !boosting && now > boostReadyAt) {
+      boosting = true;
+      boostEndAt = now + 1500;
+      boostReadyAt = now + 5000;
+      beep(1400, 40, soundLevel);
+      beep(1800, 60, soundLevel);
     }
-    if (btnPressed(BTN_RIGHT)) {
-      targetLane = min(1, targetLane + 1);
-      beep(800, 15, soundLevel);
-    }
-    
-    // Calculate target X position for each lane
-    int targetX = LANE_START + targetLane * LANE_WIDTH + (LANE_WIDTH - CAR_W) / 2  ;
-    // Smooth movement
-    playerX += (targetX - playerX) * 0.15f * dt;
-    playerX = constrain(playerX, LANE_START, LANE_START + LANE_WIDTH - CAR_W);
-    
-    // 🔥 FIXED: Spawn obstacles with random lanes
-    int spawnInterval = max(300, 1200 - score * 2);
-    if (now - lastSpawn > (uint32_t)spawnInterval) {
+
+    float targetX = (targetLane == 0 ? LANE_L_CX : LANE_R_CX) - CAR_W / 2.0f;
+    playerX += (targetX - playerX) * 0.18f * dt;
+
+    float curSpeed = roadSpeed * (boosting ? 1.9f : 1.0f) + score / 300.0f;
+    dashOffset += curSpeed * dt;
+
+    // ---- spawn obstacles ----
+    int spawnGap = max(28, 70 - (int)(score / 8));
+    if (now - lastSpawn > (uint32_t)(spawnGap * 10)) {
       lastSpawn = now;
-      
-      // Check if we need to spawn
-      int activeCount = 0;
-      for (int i = 0; i < 10; i++) {
-        if (obs[i].active) activeCount++;
-      }
-      
-      // Max 4 obstacles at a time
-      if (activeCount < 4) {
-        for (int i = 0; i < 10; i++) {
-          if (!obs[i].active) {
-            // 🔥 RANDOM LANE - 0 or 1
-            obs[i].lane = random(0, 2);
-            
-            // Different obstacle types
-            obs[i].type = random(0, 3);  // 0=car, 1=truck, 2=bike
-            
-            // Calculate X position based on lane
-            if (obs[i].type == 0) {  // Car
-              obs[i].x = LANE_START + obs[i].lane * LANE_WIDTH + (LANE_WIDTH - 12) / 2;
-            } else if (obs[i].type == 1) {  // Truck (wider)
-              obs[i].x = LANE_START + obs[i].lane * LANE_WIDTH + (LANE_WIDTH - 16) / 2;
-            } else {  // Bike (narrower)
-              obs[i].x = LANE_START + obs[i].lane * LANE_WIDTH + (LANE_WIDTH - 8) / 2;
-            }
-            
-            obs[i].y = -20 - random(0, 30);  // Random start position
-            obs[i].active = true;
-            obs[i].speed = SPEED_TYPES[random(0, 4)] * (1.0f + score / 200.0f);
-            
-            // Debug: beep to confirm spawn
-            // beep(600, 5, soundLevel);
-            break;
-          }
+      for (int i = 0; i < MAX_OBS; i++) {
+        if (!obs[i].active) {
+          obs[i].lane = random(0, 2);
+          obs[i].type = random(0, 3);
+          obs[i].y = -16;
+          obs[i].speed = curSpeed * (0.75f + random(0, 30) / 100.0f);
+          int cx = (obs[i].lane == 0) ? LANE_L_CX : LANE_R_CX;
+          int w = (obs[i].type == 1) ? 16 : (obs[i].type == 2 ? 8 : 11);
+          obs[i].x = cx - w / 2.0f;
+          obs[i].active = true;
+          break;
         }
       }
-      baseSpeed = 1.5f + score / 200.0f;
     }
-    
-    // Update obstacles and check collisions
-    for (int i = 0; i < 10; i++) {
-      if (!obs[i].active) continue;
-      
-      // Move obstacle down
-      obs[i].y += obs[i].speed * dt;
-      
-      // Remove if off screen
-      if (obs[i].y > SCREEN_H + 20) {
-        obs[i].active = false;
-        score++;
-        if (score % 5 == 0) {
-          beep(1500, 15, soundLevel);
+
+    // ---- spawn coins ----
+    if (now - lastCoinSpawn > 3500 && random(0, 100) < 60) {
+      lastCoinSpawn = now;
+      for (int i = 0; i < MAX_COINS; i++) {
+        if (!coins[i].active) {
+          int lane = random(0, 2);
+          coins[i].x = (lane == 0 ? LANE_L_CX : LANE_R_CX) - 2;
+          coins[i].y = -10;
+          coins[i].active = true;
+          break;
         }
+      }
+    }
+
+    // ---- update obstacles ----
+    for (int i = 0; i < MAX_OBS; i++) {
+      if (!obs[i].active) continue;
+      obs[i].y += obs[i].speed * dt;
+      int w = (obs[i].type == 1) ? 16 : (obs[i].type == 2 ? 8 : 11);
+      int h = (obs[i].type == 1) ? 13 : (obs[i].type == 2 ? 9 : 9);
+
+      if (obs[i].y > SCREEN_H) {
+        obs[i].active = false;
+        score += 2;
         continue;
       }
-      
-      // Get obstacle dimensions based on type
-      int obsW, obsH;
-      if (obs[i].type == 0) { obsW = 12; obsH = 10; }
-      else if (obs[i].type == 1) { obsW = 16; obsH = 12; }
-      else { obsW = 8; obsH = 8; }
-      
-      // Collision detection with player
-      if (obs[i].y + obsH > SCREEN_H - 12 && obs[i].y < SCREEN_H - 6 + 6 &&
-          obs[i].x < playerX + CAR_W && obs[i].x + obsW > playerX) {
+
+      if (!invincible &&
+          obs[i].y + h > SCREEN_H - 12 && obs[i].y < SCREEN_H - 12 + CAR_H &&
+          obs[i].x < playerX + CAR_W && obs[i].x + w > playerX) {
         lives--;
+        obs[i].active = false;
         beep(200, 160, soundLevel);
+        invincible = true;
+        invincibleUntil = now + 1200;
         if (lives <= 0) {
-          gameOverScreen(score, 13, false);
+          gameOverScreen(score, GAME_INDEX, false);
           return;
         }
-        obs[i].active = false;
-        
-        // Flash effect for invincibility
-        for (int f = 0; f < 4; f++) {
-          u8g2.clearBuffer();
-          if (f % 2 == 0) {
-            u8g2.drawRBox((int)playerX, SCREEN_H - 12, CAR_W, CAR_H, 2);
-          }
-          u8g2.sendBuffer();
-          delay(80);
-        }
       }
     }
-    
-    // ============================================
-    // DRAW EVERYTHING
-    // ============================================
+
+    // ---- update coins ----
+    for (int i = 0; i < MAX_COINS; i++) {
+      if (!coins[i].active) continue;
+      coins[i].y += curSpeed * dt;
+      if (coins[i].y > SCREEN_H) { coins[i].active = false; continue; }
+      if (fabs(coins[i].x - (playerX + CAR_W / 2.0f)) < 7 &&
+          fabs(coins[i].y - (SCREEN_H - 12 + CAR_H / 2.0f)) < 8) {
+        coins[i].active = false;
+        score += 20;
+        beep(1500, 20, soundLevel);
+        beep(1900, 20, soundLevel);
+      }
+    }
+
+    // ================= DRAW =================
     u8g2.clearBuffer();
-    
-    // 🔥 Draw 2 lanes with proper markings
-    for (int i = 0; i < 2; i++) {
-      int x = LANE_START + i * LANE_WIDTH;
-      
-      // Lane border
-      u8g2.drawFrame(x, 0, LANE_WIDTH, SCREEN_H);
-      
-      // Road edge markings (left and right edges)
-      if (i == 0) {
-        for (int y = 4; y < SCREEN_H; y += 12) {
-          u8g2.drawVLine(x, y, 4);
-        }
-      }
-      if (i == 1) {
-        for (int y = 4; y < SCREEN_H; y += 12) {
-          u8g2.drawVLine(x + LANE_WIDTH - 1, y, 4);
-        }
-      }
-      
-      // Lane markings (dashed lines inside lane)
-      if (i == 0) {
-        for (int y = 8; y < SCREEN_H; y += 20) {
-          u8g2.drawHLine(x + 15, y, 8);
-          u8g2.drawHLine(x + 35, y, 8);
-        }
-      }
-      if (i == 1) {
-        for (int y = 8; y < SCREEN_H; y += 20) {
-          u8g2.drawHLine(x + 15, y, 8);
-          u8g2.drawHLine(x + 35, y, 8);
-        }
-      }
+
+    u8g2.drawVLine(ROAD_L, 0, SCREEN_H);
+    u8g2.drawVLine(ROAD_R, 0, SCREEN_H);
+    for (int y = -16; y < SCREEN_H; y += 16) {
+      int yy = (int)(y + fmod(dashOffset, 16.0f));
+      u8g2.drawBox(63, yy, 2, 8);
     }
-    
-    // Draw center divider with animation
-    int dividerOffset = (int)(now / 100) % 20;
-    for (int y = dividerOffset; y < SCREEN_H; y += 40) {
-      u8g2.drawHLine(SCREEN_W / 2 - 2, y, 4);
-      u8g2.drawHLine(SCREEN_W / 2 - 2, y + 10, 4);
-      u8g2.drawHLine(SCREEN_W / 2 - 2, y + 20, 4);
+
+    for (int i = 0; i < MAX_COINS; i++) {
+      if (!coins[i].active) continue;
+      int cx = (int)coins[i].x, cy = (int)coins[i].y;
+      u8g2.drawLine(cx, cy - 4, cx - 3, cy + 2);
+      u8g2.drawLine(cx - 3, cy + 2, cx + 3, cy + 2);
+      u8g2.drawLine(cx + 3, cy + 2, cx, cy - 4);
     }
-    
-    // 🔥 Draw obstacles with different types
-    for (int i = 0; i < 10; i++) {
+
+    for (int i = 0; i < MAX_OBS; i++) {
       if (!obs[i].active) continue;
-      
-      int ox = (int)obs[i].x;
-      int oy = (int)obs[i].y;
-      
+      int ox = (int)obs[i].x, oy = (int)obs[i].y;
       if (obs[i].type == 0) {
-        // Car - Red
-        u8g2.drawBox(ox, oy, 12, 10);
+        u8g2.drawRBox(ox, oy, 11, 9, 2);
         u8g2.setDrawColor(0);
-        u8g2.drawBox(ox + 2, oy + 2, 8, 3);
-        u8g2.drawBox(ox + 2, oy + 6, 8, 2);
+        u8g2.drawBox(ox + 2, oy + 2, 7, 3);
         u8g2.setDrawColor(1);
-        // Headlights
-        u8g2.drawBox(ox + 1, oy + 1, 3, 1);
-        u8g2.drawBox(ox + 8, oy + 1, 3, 1);
-      } 
-      else if (obs[i].type == 1) {
-        // Truck - Blue (wider)
-        u8g2.drawBox(ox, oy, 16, 12);
+      } else if (obs[i].type == 1) {
+        u8g2.drawRBox(ox, oy, 16, 13, 2);
         u8g2.setDrawColor(0);
-        u8g2.drawBox(ox + 3, oy + 2, 10, 4);
-        u8g2.drawBox(ox + 2, oy + 7, 12, 3);
+        u8g2.drawBox(ox + 2, oy + 2, 12, 4);
         u8g2.setDrawColor(1);
-      } 
-      else {
-        // Bike - Green (narrower)
-        u8g2.drawBox(ox + 2, oy, 4, 8);
-        u8g2.drawBox(ox, oy + 2, 8, 4);
-        u8g2.drawBox(ox + 2, oy + 8, 4, 2);
-        // Wheels
+      } else {
+        u8g2.drawBox(ox + 2, oy, 4, 9);
         u8g2.drawCircle(ox + 1, oy + 8, 2);
         u8g2.drawCircle(ox + 7, oy + 8, 2);
       }
     }
-    
-    // 🔥 Draw player car with glow effect
-    // Glow
-    u8g2.setDrawColor(0);
-    u8g2.drawRBox((int)playerX - 2, SCREEN_H - 14, CAR_W + 4, CAR_H + 4, 2);
-    u8g2.setDrawColor(1);
-    
-    // Car body
-    u8g2.drawRBox((int)playerX, SCREEN_H - 12, CAR_W, CAR_H, 2);
-    u8g2.setDrawColor(0);
-    // Headlights
-    u8g2.drawBox((int)playerX + 1, SCREEN_H - 10, 3, 2);
-    u8g2.drawBox((int)playerX + CAR_W - 4, SCREEN_H - 10, 3, 2);
-    u8g2.setDrawColor(1);
-    // Windshield
-    u8g2.drawBox((int)playerX + 2, SCREEN_H - 14, 6, 2);
-    
-    // 🔥 Draw UI
-    u8g2.setFont(u8g2_font_5x7_tr);
-    char sc[8];
-    itoa(score, sc, 10);
-    u8g2.drawStr(1, 8, "SC:");
-    u8g2.drawStr(16, 8, sc);
-    
-    // Draw lives as hearts
-    for (int i = 0; i < lives; i++) {
-      drawHeart(SCREEN_W - 10 - i * 10, 1);
+
+    bool flashHide = invincible && ((now / 100) % 2 == 0);
+    if (!flashHide) {
+      int px = (int)playerX, py = SCREEN_H - 12;
+      u8g2.drawRBox(px, py, CAR_W, CAR_H, 2);
+      u8g2.setDrawColor(0);
+      u8g2.drawBox(px + 2, py + 1, CAR_W - 4, 2);
+      u8g2.setDrawColor(1);
+      if (boosting) {
+        u8g2.drawLine(px + 1, py + CAR_H, px, py + CAR_H + 4 + random(0, 3));
+        u8g2.drawLine(px + CAR_W - 2, py + CAR_H, px + CAR_W - 1, py + CAR_H + 4 + random(0, 3));
+      }
     }
-    
-    // Lane indicator with arrows
-    u8g2.setFont(u8g2_font_6x10_tr);
-    if (targetLane == 0) {
-      u8g2.drawStr(1, 20, "<-");
-    } else {
-      u8g2.drawStr(1, 20, "->");
-    }
-    
-    // Show current speed
+
     u8g2.setFont(u8g2_font_5x7_tr);
-    char speedStr[10];
-    snprintf(speedStr, sizeof(speedStr), "SPD:%d", (int)(baseSpeed * 10));
-    u8g2.drawStr(SCREEN_W - 30, 20, speedStr);
-    
+    char sc[16];
+    snprintf(sc, sizeof(sc), "SC:%lu", (unsigned long)score);
+    u8g2.drawStr(2, 8, sc);
+
+    for (int i = 0; i < lives; i++) drawHeart(SCREEN_W - 10 - i * 10, 1);
+
+    if (now < boostReadyAt && !boosting) {
+      u8g2.drawFrame(2, 12, 20, 4);
+      int pct = 20 - (int)((boostReadyAt - now) * 20 / 5000);
+      if (pct > 0) u8g2.drawBox(2, 12, pct, 4);
+    } else if (!boosting) {
+      u8g2.drawStr(2, 16, "NITRO RDY");
+    }
+
     u8g2.sendBuffer();
-    delay(20);
+    delay(16);
   }
 }
+
 
 
 void game_trex() {
@@ -9104,6 +10212,7 @@ void game_trex2() {
     }
   }
 }
+
 
 
 
@@ -10626,107 +11735,156 @@ void game_color_matching() {
 // NEW GAME: NINJA SPIKE
 // ============================================================
 
+// ============================================================
+// NEW GAME: NINJA UP (vertical bounce-climber)
+// ============================================================
+
 void game_ninja_spike() {
-  const int SPIKE_W = 4;
-  const int SPIKE_H = 8;
-  const int PLAYER_W = 6;
-  const int PLAYER_H = 8;
-  
-  float playerX = 64 - PLAYER_W/2;
-  float playerY = 56;
-  float spikeX = 110;
-  float spikeY = 30;
-  float spikeSpeed = 2.5;
-  int score = 0;
-  bool gameOver = false;
+  const int PLAYER_W = 7, PLAYER_H = 7;
+  const int MAX_PLATFORMS = 8;
+  const float GRAVITY = 0.22f;
+  const float BOUNCE_VEL = -5.2f;
+  const int CAMERA_LINE = 26;
+
+  struct Platform {
+    float x, y;
+    int w;
+    float dx;       // 0 = static, nonzero = moving
+    bool active;
+  };
+
+  Platform plats[MAX_PLATFORMS];
+
+  float playerX = 64 - PLAYER_W / 2;
+  float playerY = 40;
+  float velY = -3.0f;
+
+  long score = 0;
   uint32_t lastFrame = millis();
-  bool playerJumping = false;
-  float jumpVel = 0;
-  float gravity = 0.2;
-  bool spikeDirection = true;
-  
+
+  // ---- init: one platform under the player, rest spread upward ----
+  for (int i = 0; i < MAX_PLATFORMS; i++) plats[i].active = false;
+
+  plats[0].x = playerX - 5;
+  plats[0].y = playerY + PLAYER_H + 2;
+  plats[0].w = 22;
+  plats[0].dx = 0;
+  plats[0].active = true;
+
+  for (int i = 1; i < MAX_PLATFORMS; i++) {
+    plats[i].x = random(2, SCREEN_W - 22);
+    plats[i].y = plats[i - 1].y - random(12, 18);
+    plats[i].w = random(16, 26);
+    plats[i].dx = (random(0, 100) < 25) ? ((random(0, 2) ? 1 : -1) * (0.5f + random(0, 10) / 10.0f)) : 0;
+    plats[i].active = true;
+  }
+
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_ncenB10_tr);
-  centreStr("NINJA SPIKE", 20);
+  centreStr("NINJA UP", 22);
   u8g2.setFont(u8g2_font_6x10_tr);
-  centreStr("Dodge the spike!", 38);
-  centreStr("UP to jump", 50);
-  centreStr("Avoid at all costs!", 60);
+  centreStr("L/R to steer", 38);
+  centreStr("Bounce & climb high!", 52);
   u8g2.sendBuffer();
   delay(1500);
   waitRelease();
-  
-  while (!gameOver) {
-    if (checkPause("NINJA SPIKE")) return;
+
+  while (true) {
+    if (checkPause("NINJA UP")) return;
     if (checkMenuAndReturn()) return;
-    
+
     uint32_t now = millis();
     float dt = (now - lastFrame) / 16.0f;
-    if (dt > 2.0f) dt = 2.0f;
+    if (dt > 2.5f) dt = 2.5f;
     lastFrame = now;
-    
-    if (btnPressed(BTN_UP) && !playerJumping) {
-      jumpVel = -4.5;
-      playerJumping = true;
-      beep(800, 15, soundLevel);
-    }
-    
-    if (btnHeld(BTN_LEFT)) playerX -= 2.5 * dt;
-    if (btnHeld(BTN_RIGHT)) playerX += 2.5 * dt;
-    
-    if (playerJumping) {
-      playerY += jumpVel * dt;
-      jumpVel += gravity * dt;
-      if (playerY >= 56) {
-        playerY = 56;
-        playerJumping = false;
-        jumpVel = 0;
+
+    // ---- horizontal control, wraps around screen edges ----
+    if (btnHeld(BTN_LEFT)) playerX -= 3.0f * dt;
+    if (btnHeld(BTN_RIGHT)) playerX += 3.0f * dt;
+    if (playerX < -PLAYER_W) playerX = SCREEN_W;
+    if (playerX > SCREEN_W) playerX = -PLAYER_W;
+
+    // ---- physics ----
+    velY += GRAVITY * dt;
+    playerY += velY * dt;
+
+    // ---- moving platforms ----
+    for (int i = 0; i < MAX_PLATFORMS; i++) {
+      if (!plats[i].active) continue;
+      if (plats[i].dx != 0) {
+        plats[i].x += plats[i].dx * dt;
+        if (plats[i].x < 0) { plats[i].x = 0; plats[i].dx = -plats[i].dx; }
+        if (plats[i].x + plats[i].w > SCREEN_W) { plats[i].x = SCREEN_W - plats[i].w; plats[i].dx = -plats[i].dx; }
       }
     }
-    
-    if (playerX < 0) playerX = 0;
-    if (playerX > SCREEN_W - PLAYER_W) playerX = SCREEN_W - PLAYER_W;
-    
-    if (spikeDirection) {
-      spikeY += 1.5 * dt;
-      if (spikeY > 56 - SPIKE_H) spikeDirection = false;
-    } else {
-      spikeY -= 1.5 * dt;
-      if (spikeY < 10) spikeDirection = true;
+
+    // ---- landing check (only while falling) ----
+    if (velY > 0) {
+      for (int i = 0; i < MAX_PLATFORMS; i++) {
+        if (!plats[i].active) continue;
+        float feetY = playerY + PLAYER_H;
+        if (feetY >= plats[i].y && feetY <= plats[i].y + 4 &&
+            playerX + PLAYER_W > plats[i].x && playerX < plats[i].x + plats[i].w) {
+          velY = BOUNCE_VEL;
+          beep(900, 15, soundLevel);
+          break;
+        }
+      }
     }
-    
-    spikeX -= spikeSpeed * dt;
-    if (spikeX < -10) {
-      spikeX = SCREEN_W + 10;
-      spikeY = random(10, 50);
-      spikeSpeed = 2.5 + score * 0.01;
-      score++;
+
+    // ---- camera scroll: keep player near CAMERA_LINE while climbing ----
+    if (playerY < CAMERA_LINE) {
+      float diff = CAMERA_LINE - playerY;
+      playerY = CAMERA_LINE;
+      score += (long)diff;
+      for (int i = 0; i < MAX_PLATFORMS; i++) {
+        if (plats[i].active) plats[i].y += diff;
+      }
     }
-    
-    if (playerX < spikeX + SPIKE_W && playerX + PLAYER_W > spikeX &&
-        playerY < spikeY + SPIKE_H && playerY + PLAYER_H > spikeY) {
-      gameOver = true;
-      beep(200, 200, soundLevel);
+
+    // ---- recycle platforms that scrolled off the bottom ----
+    float topMostY = SCREEN_H;
+    for (int i = 0; i < MAX_PLATFORMS; i++) {
+      if (plats[i].active && plats[i].y < topMostY) topMostY = plats[i].y;
+    }
+    for (int i = 0; i < MAX_PLATFORMS; i++) {
+      if (plats[i].active && plats[i].y > SCREEN_H + 6) {
+        plats[i].x = random(2, SCREEN_W - 22);
+        plats[i].y = topMostY - random(12, 18);
+        plats[i].w = random(16, 26);
+        plats[i].dx = (random(0, 100) < min(60, 20 + (int)(score / 20))) ?
+                        ((random(0, 2) ? 1 : -1) * (0.5f + random(0, 12) / 10.0f)) : 0;
+        topMostY = plats[i].y;
+      }
+    }
+
+    // ---- fell off the bottom of the screen = game over ----
+    if (playerY > SCREEN_H) {
       gameOverScreen(score, 24, false);
       return;
     }
-    
+
+    // ---- draw ----
     u8g2.clearBuffer();
-    
-    u8g2.drawBox((int)playerX, (int)playerY, PLAYER_W, PLAYER_H);
-    u8g2.drawBox((int)playerX + 1, (int)playerY - 2, 4, 2);
-    
-    u8g2.drawTriangle((int)spikeX + SPIKE_W/2, (int)spikeY,
-                      (int)spikeX, (int)spikeY + SPIKE_H,
-                      (int)spikeX + SPIKE_W, (int)spikeY + SPIKE_H);
-    
+
+    for (int i = 0; i < MAX_PLATFORMS; i++) {
+      if (!plats[i].active) continue;
+      if (plats[i].y < -4 || plats[i].y > SCREEN_H) continue;
+      u8g2.drawRBox((int)plats[i].x, (int)plats[i].y, plats[i].w, 3, 1);
+    }
+
+    // ninja body
+    int px = (int)playerX, py = (int)playerY;
+    u8g2.drawBox(px, py, PLAYER_W, PLAYER_H);
+    u8g2.setDrawColor(0);
+    u8g2.drawBox(px + 1, py + 1, PLAYER_W - 2, 2);
+    u8g2.setDrawColor(1);
+
     u8g2.setFont(u8g2_font_5x7_tr);
-    char info[20];
-    snprintf(info, sizeof(info), "Score: %d", score);
-    u8g2.drawStr(2, 8, info);
-    snprintf(info, sizeof(info), "SPD: %.1f", spikeSpeed);
-    u8g2.drawStr(SCREEN_W - 40, 8, info);
-    
+    char sc[12];
+    snprintf(sc, sizeof(sc), "H:%ld", score);
+    u8g2.drawStr(2, 8, sc);
+
     u8g2.sendBuffer();
     delay(16);
   }
