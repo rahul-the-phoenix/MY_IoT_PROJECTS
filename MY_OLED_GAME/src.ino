@@ -4581,42 +4581,45 @@ void showSetupMenu() {
       if (sel == 0) {
         showSettingsMenu();
       }
-      else if (sel == 1) {
-        // TORCH
-        bool torchOn = true;
-        u8g2.setContrast(255);
-        u8g2.clearBuffer();
-        u8g2.setDrawColor(1);
-        u8g2.drawBox(0, 0, SCREEN_W, SCREEN_H);
-        u8g2.sendBuffer();
-        beep(1200, 50, soundLevel);
-        delay(100);
-        beep(1500, 50, soundLevel);
+     else if (sel == 1) {
+  // TORCH
+  bool torchOn = true;
+  u8g2.setContrast(255);
+  u8g2.clearBuffer();
+  u8g2.setDrawColor(DRAW_COLOR);          // 👈 fix: 1 এর বদলে DRAW_COLOR
+  u8g2.drawBox(0, 0, SCREEN_W, SCREEN_H);
+  u8g2.sendBuffer();
+  beep(1200, 50, soundLevel);
+  delay(100);
+  beep(1500, 50, soundLevel);
 
-        while (torchOn) {
-          static uint32_t lastRefresh = 0;
-          if (millis() - lastRefresh > 100) {
-            lastRefresh = millis();
-            u8g2.setDrawColor(1);
-            u8g2.drawBox(0, 0, SCREEN_W, SCREEN_H);
-            u8g2.sendBuffer();
-          }
-          if (btnPressed(BTN_MENU)) {
-            torchOn = false;
-            uint8_t contrast = map(brightnessLevel, 1, 7, 30, 255);
-            u8g2.setContrast(contrast);
-            u8g2.clearBuffer();
-            u8g2.setFont(u8g2_font_ncenB10_tr);
-            centreStr("TORCH OFF", 35);
-            u8g2.sendBuffer();
-            playMenuButtonSound();
-            delay(500);
-            break;
-          }
-          delay(20);
-        }
-        waitRelease();
-      }
+  while (torchOn) {
+    static uint32_t lastRefresh = 0;
+    if (millis() - lastRefresh > 100) {
+      lastRefresh = millis();
+      u8g2.setDrawColor(DRAW_COLOR);      // 👈 fix
+      u8g2.drawBox(0, 0, SCREEN_W, SCREEN_H);
+      u8g2.sendBuffer();
+    }
+    if (btnPressed(BTN_MENU)) {
+      torchOn = false;
+      uint8_t contrast = map(brightnessLevel, 1, 7, 30, 255);
+      u8g2.setContrast(contrast);
+      delay(30); 
+
+      u8g2.clearBuffer();
+      u8g2.setDrawColor(DRAW_COLOR);      // 👈 "TORCH OFF" text ও ঠিক color এ আসবে
+      u8g2.setFont(u8g2_font_ncenB10_tr);
+      centreStr("TORCH OFF", 35);
+      u8g2.sendBuffer();
+      playMenuButtonSound();
+      delay(500);
+      break;
+    }
+    delay(20);
+  }
+  waitRelease();
+}
       else if (sel == 2) {
         showFavoritesMenu();
       }
@@ -5699,11 +5702,11 @@ int menuSelect() {
   const char *names[GAME_COUNT] = {
     "Asteroids", "Breakout", "Dino Run", "Flappy Bird",
     "Snake 1", "Snake 2", "Pong", "Pacman",
-    "Space Invaders", "Tetris", "Tank Battle",
+    "Space Inv", "Tetris", "Tank Battle",
     "Maze Runner", "RPS Game", "Car Racer",
-    "2-Lane Racer", "T-Rex Run", "T-Rex Run 2",
-    "Meteor Defenders", "Death Star", "Tic-Tac-Toe",
-    "Memory Match", "Whack-A-Mole", "Lunar Lander",
+    "2-Lane Race", "T-Rex Run", "T-Rex 2",
+    "Meteor Def", "Death Star", "TicTacToe",
+    "Match Memo", "Whack Mole", "Lunar Land",
     "Color Match", "Ninja Spike", "Sperm Race", "Frogger", "Frogger 2"
   };
 
@@ -5811,16 +5814,28 @@ int menuSelect() {
       }
 
       // icon inside a circle, left side
-      int iconCX = 14, iconCY = y + (ITEM_H - 2) / 2;
-      u8g2.drawCircle(iconCX, iconCY, 7);
-      drawGameIcon(idx, iconCX, iconCY);
+      // int iconCX = 14, iconCY = y + (ITEM_H - 2) / 2;
+      // u8g2.drawCircle(iconCX, iconCY, 7);
+      // drawGameIcon(idx, iconCX, iconCY);
 
-      // game name, big font
-      u8g2.drawStr(28, y + ITEM_H - 5, names[idx]);
+      // // game name, big font
+      // u8g2.drawStr(28, y + ITEM_H - 5, names[idx]);
+
+      // // favorite heart, right side, vertically centered
+      // if (isFavorite(idx)) {
+      //   drawHeart(SCREEN_W - 14, iconCY - 4);
+
+
+            int textY = y + ITEM_H - 5;
+      char numberedName[26];
+      snprintf(numberedName, sizeof(numberedName), "%d. %s", idx + 1, names[idx]);
+      u8g2.drawStr(6, textY, numberedName);
 
       // favorite heart, right side, vertically centered
+      int heartCY = y + (ITEM_H - 2) / 2;
       if (isFavorite(idx)) {
-        drawHeart(SCREEN_W - 14, iconCY - 4);
+        drawHeart(SCREEN_W - 14, heartCY - 4);
+        
       }
 
       if (selected) u8g2.setDrawColor(1);
