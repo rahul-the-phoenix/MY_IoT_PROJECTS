@@ -663,6 +663,7 @@ bool batterySaverEnabled = false;
 uint8_t savedBrightnessLevel = 4;
 uint8_t savedSoundLevel = 3;
 uint8_t selectedRingtone = 0;   // 0 = Default (Happy Birthday), 1..MUSIC_COUNT = song index+1
+bool introEnabled = true;       // ON = show Game/Music/Media/Settings intro anims, OFF = skip straight in
  
 // Menu navigation state
 int lastGameIndex = 0;
@@ -768,6 +769,9 @@ void saveRingtoneSetting();
 void playSelectedRingtone();
 void toggleNightModeQuick();
 void toggleBatterySaver();
+void toggleIntroSetting();
+void loadIntroSetting();
+void saveIntroSetting();
 void showRingtoneMenu();
 
  
@@ -1271,6 +1275,30 @@ void toggleBatterySaver() {
     beep(900, 40, soundLevel);
     delay(80);
     beep(1200, 40, soundLevel);
+  }
+  u8g2.sendBuffer();
+  delay(800);
+  waitRelease();
+}
+
+void toggleIntroSetting() {
+  introEnabled = !introEnabled;
+  saveIntroSetting();
+
+  u8g2.clearBuffer();
+  u8g2.setDrawColor(1);
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  centreStr("INTRO", 28);
+  if (introEnabled) {
+    centreStr("ENABLED", 47);
+    beep(1200, 40, soundLevel);
+    delay(80);
+    beep(1500, 40, soundLevel);
+  } else {
+    centreStr("DISABLED", 47);
+    beep(600, 40, soundLevel);
+    delay(80);
+    beep(500, 40, soundLevel);
   }
   u8g2.sendBuffer();
   delay(800);
@@ -2703,6 +2731,7 @@ void loadHighScores() {
   loadInvertSetting();  // ✅ এই লাইনটি যোগ করুন
     loadBatterySaverSetting();
   loadRingtoneSetting();
+  loadIntroSetting();
 }
 
 void loadInvertSetting() {
@@ -2746,6 +2775,22 @@ void saveBatterySaverSetting() {
   EEPROM.put(480, (uint8_t)(batterySaverEnabled ? 1 : 0));
   EEPROM.put(481, savedBrightnessLevel);
   EEPROM.put(482, savedSoundLevel);
+  EEPROM.commit();
+  EEPROM.end();
+}
+
+void loadIntroSetting() {
+  EEPROM.begin(EEPROM_SIZE);
+  uint8_t val;
+  EEPROM.get(495, val);
+  if (val > 1) val = 1;   // default ON for a fresh/blank EEPROM
+  introEnabled = (val == 1);
+  EEPROM.end();
+}
+
+void saveIntroSetting() {
+  EEPROM.begin(EEPROM_SIZE);
+  EEPROM.put(495, (uint8_t)(introEnabled ? 1 : 0));
   EEPROM.commit();
   EEPROM.end();
 }
@@ -3567,13 +3612,10 @@ case 5: { // BATTERY SAVER - battery
       u8g2.drawDisc(cx, cy + 6, 2);
       break;
     }
-    case 7: { // QUIZ - question mark
-      u8g2.drawLine(cx - 3, cy - 4, cx - 1, cy - 6);
-      u8g2.drawLine(cx - 1, cy - 6, cx + 3, cy - 6);
-      u8g2.drawLine(cx + 3, cy - 6, cx + 4, cy - 3);
-      u8g2.drawLine(cx + 4, cy - 3, cx, cy);
-      u8g2.drawVLine(cx, cy, 3);
-      u8g2.drawPixel(cx, cy + 5);
+    case 7: { // INTRO - "i" info icon inside a ring
+      u8g2.drawCircle(cx, cy, 6);
+      u8g2.drawDisc(cx, cy - 3, 1);      // dot of the "i"
+      u8g2.drawVLine(cx, cy - 1, 4);     // stem of the "i"
       break;
     }
   }
@@ -3718,12 +3760,12 @@ void playMusicMenuTransition() {
  
 void showMainGridMenu() {
   static const char* pageOptions[2][4] = {
-    {"GAME", "MUSIC", "MEDIA", "QUIZ"},
+    {"GAME", "MUSIC", "MEDIA", "INTRO"},
     {"RING", "SAVER", "NIGHT", "SETUP"}
   };
   static const int pageIcons[2][4] = {
     {0, 1, 2, 7},
-    {6, 5, 4, 3}   // RING=bell(6), SAVER=battery(5), NIGHT=moon(4), QUIZ=question(7)
+    {6, 5, 4, 3}   // RING=bell(6), SAVER=battery(5), NIGHT=moon(4), INTRO=info-i(7)
   };
   const int TOTAL_PAGES = 2;
   int page = 0;
@@ -3776,11 +3818,12 @@ void showMainGridMenu() {
         u8g2.setFont(u8g2_font_6x10_tr);
         u8g2.drawStr(tx, cy + 4, pageOptions[page][idx]);
 
-        // ── ON/OFF status dot for toggle tiles (SAVER / NIGHT) ──
+        // ── ON/OFF status dot for toggle tiles (SAVER / NIGHT / INTRO) ──
         bool isToggleTile = false;
         bool toggleIsOn = false;
         if (page == 1 && idx == 1) { isToggleTile = true; toggleIsOn = batterySaverEnabled; } // SAVER
         if (page == 1 && idx == 2) { isToggleTile = true; toggleIsOn = invertDisplay; }        // NIGHT
+        if (page == 0 && idx == 3) { isToggleTile = true; toggleIsOn = introEnabled; }         // INTRO
 
         if (isToggleTile) {
           int dotX = x + boxW - 6;
@@ -3844,7 +3887,7 @@ void showMainGridMenu() {
       int globalIdx = page * 4 + sel;
 
       if (globalIdx == 0) {
-        playGameMenuTransition();
+        if (introEnabled) playGameMenuTransition();
         while (true) {
           int gameSel = menuSelect();
           if (gameSel >= 0 && gameSel < GAME_COUNT) {
@@ -3864,9 +3907,9 @@ void showMainGridMenu() {
           }
         }
       }
-      else if (globalIdx == 1) { playMusicMenuTransition(); showMusicMenu(); }
+      else if (globalIdx == 1) { if (introEnabled) playMusicMenuTransition(); showMusicMenu(); }
       else if (globalIdx == 2) { showMediaMenu(); }
-      else if (globalIdx == 3) { showQuizComingSoon(); }
+      else if (globalIdx == 3) { toggleIntroSetting(); }    // INTRO
       else if (globalIdx == 4) { showRingtoneMenu(); }      // RING
       else if (globalIdx == 5) { toggleBatterySaver(); }    // SAVER
       else if (globalIdx == 6) { toggleNightModeQuick(); }  // NIGHT
@@ -4029,7 +4072,7 @@ void playMediaIntroAnim() {
 // ============================================================
 
 void showMediaMenu() {
-  playMediaIntroAnim();
+  if (introEnabled) playMediaIntroAnim();
 
   const char* options[] = {"IMAGES", "VIDEOS"};
   const char* desc[] = {"54 art pieces", "Coming soon"};
@@ -5071,7 +5114,7 @@ void showSettingsMenu() {
   const char* options[] = {"1. Brightness", "2. Sound", "3.Night Mode ", "4. Reset Device"};
   int sel = 0;
     const int TOTAL = 4;
-  playSettingsIntroAnim();
+  if (introEnabled) playSettingsIntroAnim();
   
   while (true) {
     if (btnLongPressed(BTN_MENU, 200)) {
