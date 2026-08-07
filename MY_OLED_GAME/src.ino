@@ -2,7 +2,7 @@
 // COMPLETE GAME CONSOLE FOR ESP32-C3
 // 27 Games Total with Main Menu, Music Player, and Settings
 // ============================================================
-
+//location ==>   C:\Users\r4236\Downloads\opopopop
 #include <Arduino.h>
 #include <Wire.h>
 #include <U8g2lib.h>
